@@ -38,7 +38,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   const openSkillsPanel = async (): Promise<void> => {
     const skills = await loadSkills();
     if (skills.length === 0) {
-      input.setRows((current) => [...current, createRow("system", t("chat.picker.skills.none"))]);
+      input.setRows((current) => [...current, createRow("system", t("tui.picker.skills.none"))]);
       return;
     }
     input.setPicker(
@@ -54,7 +54,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   const openResumePanel = (): void => {
     const nextPicker = createResumePicker(input.sessionState);
     if (!nextPicker) {
-      input.setRows((current) => [...current, createRow("system", t("chat.picker.sessions.none"))]);
+      input.setRows((current) => [...current, createRow("system", t("tui.picker.sessions.none"))]);
       return;
     }
     input.setPicker(nextPicker);

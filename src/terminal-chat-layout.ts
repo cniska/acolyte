@@ -409,7 +409,7 @@ export function layoutComposerStatus(input: {
     let labelLine: TerminalLine;
     let labelColumn: number;
     if (picker.kind === "model") {
-      const modelPrefix = `${t("chat.picker.label.model")} `;
+      const modelPrefix = `${t("tui.picker.label.model")} `;
       // Reserve one column for the trailing caret so the label can never outgrow the box interior.
       const query = truncateToWidth(picker.input.text, Math.max(1, cw - width(modelPrefix) - 1));
       const caret = Math.max(0, Math.min(picker.input.cursor, query.length));
@@ -423,7 +423,7 @@ export function layoutComposerStatus(input: {
       };
       labelColumn = width(modelPrefix) + width(query.slice(0, caret));
     } else {
-      const title = picker.kind === "skills" ? t("chat.picker.title.skills") : t("chat.picker.title.resume");
+      const title = picker.kind === "skills" ? t("tui.picker.title.skills") : t("tui.picker.title.resume");
       labelLine = { spans: [{ text: title, role: "plain" }] };
       labelColumn = width(title);
     }
@@ -436,9 +436,9 @@ export function layoutComposerStatus(input: {
     });
     let pickerItems: TerminalLine[];
     if (picker.kind === "model" && picker.loading) {
-      pickerItems = [{ spans: [{ text: `  ${t("chat.picker.loading")}`, role: "muted" }] }];
+      pickerItems = [{ spans: [{ text: `  ${t("tui.picker.loading")}`, role: "muted" }] }];
     } else if (visible.length === 0) {
-      pickerItems = [{ spans: [{ text: ` ${t("chat.picker.no_matches")}`, role: "muted" }] }];
+      pickerItems = [{ spans: [{ text: ` ${t("tui.picker.no_matches")}`, role: "muted" }] }];
     } else if (picker.kind === "sessions") {
       // alignCols across the full list (not just the visible slice), matching legacy, so a
       // long id or title in an off-screen row still lines up the visible rows' columns.
@@ -601,7 +601,7 @@ export function layoutComposerStatus(input: {
     );
   }
   if (!presentation.showHelp && presentation.suggestions.kind === "none" && presentation.ctrlCPending)
-    attached.push({ spans: [{ text: t("chat.input.ctrl_c_hint"), role: "muted" }] });
+    attached.push({ spans: [{ text: t("tui.input.ctrl_c_hint"), role: "muted" }] });
   return {
     lines: [...boxed.lines, ...insetScene({ lines: attached }, CONTENT_COLUMN).lines],
     cursor: boxed.cursor,

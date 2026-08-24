@@ -34,13 +34,21 @@
       }
     }
   },
-  "chat.input.ctrl_c_hint": "ctrl+c again to exit",
-  "@chat.input.ctrl_c_hint": {
-    "description": "Hint shown after a first ctrl+c, telling the user a second press exits. Lowercase and terse because it sits inline under the composer. 'ctrl+c' is a literal key name and must not be translated."
-  },
   "chat.input.placeholder": "Ask anything…",
   "@chat.input.placeholder": {
     "description": "Placeholder text inside the empty message composer, inviting the first prompt."
+  },
+  "chat.interrupted": "Interrupted after {duration}{suffix}",
+  "@chat.interrupted": {
+    "description": "Chat footer replacing chat.worked when the user cancelled the turn. {duration} is a formatted elapsed time such as '4.2s'. {suffix} is either empty or a parenthesized detail list built at chat-turn.ts:136, for example ' (3 tools · ↑1.2k ↓340)' — it already carries its own leading space and brackets, so it must sit at the very end of the message.",
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      },
+      "suffix": {
+        "type": "String"
+      }
+    }
   },
   "chat.memory.archive.header.all": "Retired memory {count}",
   "@chat.memory.archive.header.all": {
@@ -139,46 +147,6 @@
   "@chat.model.failed": {
     "description": "Shown when /model could not apply the requested model."
   },
-  "chat.picker.hint.model": "Type to filter · Enter to apply · Esc to close",
-  "@chat.picker.hint.model": {
-    "description": "Key hints along the bottom of the model picker. The three actions are separated by ' · '. 'Enter' and 'Esc' are literal key names and must not be translated."
-  },
-  "chat.picker.hint.resume": "Enter to resume · Esc to close",
-  "@chat.picker.hint.resume": {
-    "description": "Key hints along the bottom of the session-resume picker. 'Enter' and 'Esc' are literal key names and must not be translated."
-  },
-  "chat.picker.hint.skills": "Enter to select · Esc to close",
-  "@chat.picker.hint.skills": {
-    "description": "Key hints along the bottom of the skills picker. 'Enter' and 'Esc' are literal key names and must not be translated."
-  },
-  "chat.picker.loading": "Loading…",
-  "@chat.picker.loading": {
-    "description": "Shown inside a picker while its entries are still being fetched."
-  },
-  "chat.picker.no_matches": "No matches.",
-  "@chat.picker.no_matches": {
-    "description": "Shown inside any picker when the typed filter matches no entries."
-  },
-  "chat.picker.sessions.none": "No saved sessions.",
-  "@chat.picker.sessions.none": {
-    "description": "Shown in the resume picker when no previous sessions exist on disk."
-  },
-  "chat.picker.skills.none": "No skills found in ./.agents/skills.",
-  "@chat.picker.skills.none": {
-    "description": "Shown in the skills picker when the workspace has no skills. './.agents/skills' is a literal path and must not be translated."
-  },
-  "chat.picker.label.model": "Model",
-  "@chat.picker.label.model": {
-    "description": "Column or field label naming the model in the model picker. Noun, not a verb."
-  },
-  "chat.picker.title.resume": "Resume Session",
-  "@chat.picker.title.resume": {
-    "description": "Title bar of the picker that reopens a previous session. Title case in English."
-  },
-  "chat.picker.title.skills": "Skills",
-  "@chat.picker.title.skills": {
-    "description": "Title bar of the skills picker. Title case in English."
-  },
   "chat.remember.failed": "Failed to save memory.",
   "@chat.remember.failed": {
     "description": "Shown when saving a memory note did not succeed."
@@ -243,37 +211,6 @@
       }
     }
   },
-  "chat.relative_time.days_ago": "{count}d ago",
-  "@chat.relative_time.days_ago": {
-    "description": "Relative timestamp a day or more old (datetime.ts:53). {count} is whole days. English abbreviates hard ('5d ago') to fit narrow list columns; keep it short.",
-    "placeholders": {
-      "count": {
-        "type": "number"
-      }
-    }
-  },
-  "chat.relative_time.hours_ago": "{count}h ago",
-  "@chat.relative_time.hours_ago": {
-    "description": "Relative timestamp under a day old (datetime.ts:51). {count} is whole hours. English abbreviates hard ('5h ago') to fit narrow list columns; keep it short.",
-    "placeholders": {
-      "count": {
-        "type": "number"
-      }
-    }
-  },
-  "chat.relative_time.just_now": "just now",
-  "@chat.relative_time.just_now": {
-    "description": "Relative timestamp for anything under a minute old (datetime.ts:47). Lowercase; appears in session and memory lists."
-  },
-  "chat.relative_time.minutes_ago": "{count}m ago",
-  "@chat.relative_time.minutes_ago": {
-    "description": "Relative timestamp under an hour old (datetime.ts:49). {count} is whole minutes. English abbreviates hard ('5m ago') to fit narrow list columns; keep it short.",
-    "placeholders": {
-      "count": {
-        "type": "number"
-      }
-    }
-  },
   "chat.scope.all": "All",
   "@chat.scope.all": {
     "description": "Scope name for memory covering both project and user scopes. Used as a standalone label and interpolated into the memory list headers, so it must read correctly in both."
@@ -308,27 +245,9 @@
       }
     }
   },
-  "chat.workspaces.header": "Workspaces {count}",
-  "@chat.workspaces.header": {
-    "description": "Header of the /workspaces list table (chat-commands-workspaces.ts:44). {count} is the number of workspaces and renders as a trailing count beside the title, not inside a sentence.",
-    "placeholders": {
-      "count": {
-        "type": "number"
-      }
-    }
-  },
   "chat.skill.failed": "Failed to activate skill: {skill}",
   "@chat.skill.failed": {
     "description": "Shown when a skill was found but could not be activated. {skill} is the skill's name, an untranslated identifier.",
-    "placeholders": {
-      "skill": {
-        "type": "String"
-      }
-    }
-  },
-  "chat.skill.not_found": "Skill not found: {skill}",
-  "@chat.skill.not_found": {
-    "description": "Shown by the skill CLI command when no skill matches the requested name. {skill} is the name as typed, untranslated.",
     "placeholders": {
       "skill": {
         "type": "String"
@@ -411,22 +330,6 @@
   "@chat.status.check_failed": {
     "description": "Shown when /status could not reach the server or read its health."
   },
-  "chat.status.header": "Status",
-  "@chat.status.header": {
-    "description": "Title above the /status report (status-format.ts:50). Single noun."
-  },
-  "chat.interrupted": "Interrupted after {duration}{suffix}",
-  "@chat.interrupted": {
-    "description": "Chat footer replacing chat.worked when the user cancelled the turn. {duration} is a formatted elapsed time such as '4.2s'. {suffix} is either empty or a parenthesized detail list built at chat-turn.ts:136, for example ' (3 tools · ↑1.2k ↓340)' — it already carries its own leading space and brackets, so it must sit at the very end of the message.",
-    "placeholders": {
-      "duration": {
-        "type": "String"
-      },
-      "suffix": {
-        "type": "String"
-      }
-    }
-  },
   "chat.task.followup.cancelled": "Task cancelled.",
   "@chat.task.followup.cancelled": {
     "description": "Shown when a server-side task ended because it was cancelled."
@@ -442,6 +345,15 @@
   "chat.task.followup.running_hint": "Task is still running. Use /status to check server health.",
   "@chat.task.followup.running_hint": {
     "description": "Shown when a task outlives its stream and is still running. Two sentences: the state, then the command to check. '/status' is a literal command and must not be translated."
+  },
+  "chat.unresolved_path": "No file or folder found: @{path}",
+  "@chat.unresolved_path": {
+    "description": "Shown when an @-mention in the composer points at nothing on disk. The literal '@' is part of the rendered text and precedes {path}, which is the path exactly as the user typed it.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
   },
   "chat.usage.header": "Usage",
   "@chat.usage.header": {
@@ -483,15 +395,6 @@
   "@chat.usage.none": {
     "description": "Shown by /usage before any prompt has been sent, so no counts exist yet. Two short sentences: the state, then what to do."
   },
-  "chat.unresolved_path": "No file or folder found: @{path}",
-  "@chat.unresolved_path": {
-    "description": "Shown when an @-mention in the composer points at nothing on disk. The literal '@' is part of the rendered text and precedes {path}, which is the path exactly as the user typed it.",
-    "placeholders": {
-      "path": {
-        "type": "String"
-      }
-    }
-  },
   "chat.worked": "Worked for {duration}{suffix}",
   "@chat.worked": {
     "description": "Chat footer shown after a turn completes normally. {duration} is a formatted elapsed time such as '4.2s'. {suffix} is either empty or a parenthesized detail list built at chat-turn.ts:136, for example ' (3 tools · ↑1.2k ↓340)' — it already carries its own leading space and brackets, so it must sit at the very end of the message.",
@@ -503,6 +406,243 @@
         "type": "String"
       }
     }
+  },
+  "chat.workspaces.create_failed": "Failed to create workspace: {reason}",
+  "@chat.workspaces.create_failed": {
+    "description": "Shown when workspace creation failed. {reason} is an error string from the workspace layer and is not itself translated.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "chat.workspaces.created": "Created workspace {name}.",
+  "@chat.workspaces.created": {
+    "description": "Confirmation after a workspace is created. {name} is the workspace name as given by the user, untranslated.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chat.workspaces.header": "Workspaces {count}",
+  "@chat.workspaces.header": {
+    "description": "Header of the /workspaces list table (chat-commands-workspaces.ts:44). {count} is the number of workspaces and renders as a trailing count beside the title, not inside a sentence.",
+    "placeholders": {
+      "count": {
+        "type": "number"
+      }
+    }
+  },
+  "chat.workspaces.list.none": "No workspaces yet. Create one with: /workspaces new <name> or /workspaces new -- <prompt>",
+  "@chat.workspaces.list.none": {
+    "description": "Shown by /workspaces list when none exist (chat-commands-workspaces.ts:32). The two command forms after the colon are literal syntax and must not be translated, including the placeholders <name> and <prompt>."
+  },
+  "chat.workspaces.name_conflict": "Workspace name already exists. Choose a different name.",
+  "@chat.workspaces.name_conflict": {
+    "description": "Shown when creating or renaming a workspace would reuse an existing name (chat-commands-workspaces.ts:101,115). Two short sentences: the problem, then what to do."
+  },
+  "chat.workspaces.not_found": "No workspace found: {name}",
+  "@chat.workspaces.not_found": {
+    "description": "Shown when '/workspaces switch' names a workspace that does not exist. {name} is the name as typed.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chat.workspaces.switched": "Switched to workspace {name}.",
+  "@chat.workspaces.switched": {
+    "description": "Confirmation after the active workspace changes. {name} is the workspace name, untranslated.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.api_key.empty": "{envKey} cannot be empty.",
+  "@cli.auth.api_key.empty": {
+    "description": "TODO",
+    "placeholders": {
+      "envKey": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.failed": "Authorization failed: {reason}",
+  "@cli.auth.failed": {
+    "description": "TODO",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.invalid_provider": "Invalid provider. Use {providers}.",
+  "@cli.auth.invalid_provider": {
+    "description": "TODO",
+    "placeholders": {
+      "providers": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.logout": "Removed credentials for {provider}.",
+  "@cli.auth.logout": {
+    "description": "TODO",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.logout.key": "Removed API key for {provider}.",
+  "@cli.auth.logout.key": {
+    "description": "TODO",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.logout.key_none": "No API key stored for {provider}.",
+  "@cli.auth.logout.key_none": {
+    "description": "TODO",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.logout.subscription": "Disconnected {provider} subscription.",
+  "@cli.auth.logout.subscription": {
+    "description": "TODO",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.logout.subscription_none": "No {provider} subscription connected.",
+  "@cli.auth.logout.subscription_none": {
+    "description": "TODO",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.logout_none": "No credentials stored for {provider}.",
+  "@cli.auth.logout_none": {
+    "description": "TODO",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.method.conflict": "Use only one of --key or --subscription.",
+  "@cli.auth.method.conflict": {
+    "description": "TODO"
+  },
+  "cli.auth.method.invalid": "Invalid method. Use key or subscription.",
+  "@cli.auth.method.invalid": {
+    "description": "TODO"
+  },
+  "cli.auth.opening": "Opening browser to authorize with OpenAI…",
+  "@cli.auth.opening": {
+    "description": "TODO"
+  },
+  "cli.auth.override.cancelled": "Left the existing key unchanged.",
+  "@cli.auth.override.cancelled": {
+    "description": "TODO"
+  },
+  "cli.auth.override.confirm": "{envKey} is already set. Replace it? [y/N]: ",
+  "@cli.auth.override.confirm": {
+    "description": "TODO",
+    "placeholders": {
+      "envKey": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.port_in_use": "Port 1455 is in use. OpenAI requires this exact port. Close the process using it (often Codex CLI or another login attempt) and retry.",
+  "@cli.auth.port_in_use": {
+    "description": "TODO"
+  },
+  "cli.auth.prompt.api_key": "API key: ",
+  "@cli.auth.prompt.api_key": {
+    "description": "TODO"
+  },
+  "cli.auth.prompt.method": "Method [key|subscription]: ",
+  "@cli.auth.prompt.method": {
+    "description": "TODO"
+  },
+  "cli.auth.provider.required": "Provider required. Use: acolyte auth <provider>",
+  "@cli.auth.provider.required": {
+    "description": "TODO"
+  },
+  "cli.auth.saved": "Saved {envKey} in {path}",
+  "@cli.auth.saved": {
+    "description": "TODO",
+    "placeholders": {
+      "envKey": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.status.line": "{provider} ({methods})",
+  "@cli.auth.status.line": {
+    "description": "TODO",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      },
+      "methods": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.status.none_method": "none",
+  "@cli.auth.status.none_method": {
+    "description": "TODO"
+  },
+  "cli.auth.subscription.override.cancelled": "Left the existing subscription unchanged.",
+  "@cli.auth.subscription.override.cancelled": {
+    "description": "TODO"
+  },
+  "cli.auth.subscription.override.confirm": "{provider} subscription is already connected. Replace it? [y/N]: ",
+  "@cli.auth.subscription.override.confirm": {
+    "description": "TODO",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.subscription.unsupported": "{provider} does not support subscription auth. Use --key.",
+  "@cli.auth.subscription.unsupported": {
+    "description": "TODO",
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.auth.success": "Connected. Supported models now use your OpenAI subscription.",
+  "@cli.auth.success": {
+    "description": "TODO"
+  },
+  "cli.auth.timeout": "Authorization timed out. Please try again.",
+  "@cli.auth.timeout": {
+    "description": "TODO"
+  },
+  "cli.auth.waiting": "Waiting for authorization…",
+  "@cli.auth.waiting": {
+    "description": "TODO"
   },
   "cli.config.api_key_unsupported": "Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.",
   "@cli.config.api_key_unsupported": {
@@ -520,6 +660,15 @@
       }
     }
   },
+  "cli.config.keys": "Keys: {keys}",
+  "@cli.config.keys": {
+    "description": "Lists the config keys accepted by the command. {keys} is a comma-joined list of literal key names, untranslated.",
+    "placeholders": {
+      "keys": {
+        "type": "String"
+      }
+    }
+  },
   "cli.config.parse_failed": "Failed to parse {scope} config: {reason}",
   "@cli.config.parse_failed": {
     "description": "Shown when a config file could not be read (config.ts:184). {scope} is an untranslated lowercase English word naming the config source; {reason} is a parser message that is not itself translated.",
@@ -528,15 +677,6 @@
         "type": "String"
       },
       "reason": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.config.keys": "Keys: {keys}",
-  "@cli.config.keys": {
-    "description": "Lists the config keys accepted by the command. {keys} is a comma-joined list of literal key names, untranslated.",
-    "placeholders": {
-      "keys": {
         "type": "String"
       }
     }
@@ -582,13 +722,17 @@
   "@cli.config.value_empty": {
     "description": "Shown when 'config set' is given an empty value. No trailing period, matching the neighbouring config errors."
   },
+  "cli.help.desc.auth": "authenticate a provider (API key or subscription)",
+  "@cli.help.desc.auth": {
+    "description": "Description of the 'auth' command in the CLI command table. Lowercase verb phrase, no trailing period. The parenthetical names the two ways to authenticate."
+  },
   "cli.help.desc.config": "manage config",
   "@cli.help.desc.config": {
     "description": "Description of the 'config' command in the CLI command table. Lowercase verb phrase, no trailing period — the whole column follows this shape."
   },
-  "cli.help.desc.auth": "authenticate a provider (API key or subscription)",
-  "@cli.help.desc.auth": {
-    "description": "Description of the 'auth' command in the CLI command table. Lowercase verb phrase, no trailing period. The parenthetical names the two ways to authenticate."
+  "cli.help.desc.history": "show recent sessions",
+  "@cli.help.desc.history": {
+    "description": "Description of the 'history' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.login": "authenticate with the cloud",
   "@cli.help.desc.login": {
@@ -597,10 +741,6 @@
   "cli.help.desc.logout": "remove cloud credentials",
   "@cli.help.desc.logout": {
     "description": "Description of the 'logout' command, which clears stored cloud credentials. Lowercase verb phrase, no trailing period."
-  },
-  "cli.help.desc.history": "show recent sessions",
-  "@cli.help.desc.history": {
-    "description": "Description of the 'history' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.logs": "view server logs",
   "@cli.help.desc.logs": {
@@ -642,50 +782,6 @@
   "@cli.help.desc.stop": {
     "description": "Description of the 'stop' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
-  "chat.workspaces.created": "Created workspace {name}.",
-  "@chat.workspaces.created": {
-    "description": "Confirmation after a workspace is created. {name} is the workspace name as given by the user, untranslated.",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "chat.workspaces.create_failed": "Failed to create workspace: {reason}",
-  "@chat.workspaces.create_failed": {
-    "description": "Shown when workspace creation failed. {reason} is an error string from the workspace layer and is not itself translated.",
-    "placeholders": {
-      "reason": {
-        "type": "String"
-      }
-    }
-  },
-  "chat.workspaces.switched": "Switched to workspace {name}.",
-  "@chat.workspaces.switched": {
-    "description": "Confirmation after the active workspace changes. {name} is the workspace name, untranslated.",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "chat.workspaces.not_found": "No workspace found: {name}",
-  "@chat.workspaces.not_found": {
-    "description": "Shown when '/workspaces switch' names a workspace that does not exist. {name} is the name as typed.",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "chat.workspaces.list.none": "No workspaces yet. Create one with: /workspaces new <name> or /workspaces new -- <prompt>",
-  "@chat.workspaces.list.none": {
-    "description": "Shown by /workspaces list when none exist (chat-commands-workspaces.ts:32). The two command forms after the colon are literal syntax and must not be translated, including the placeholders <name> and <prompt>."
-  },
-  "chat.workspaces.name_conflict": "Workspace name already exists. Choose a different name.",
-  "@chat.workspaces.name_conflict": {
-    "description": "Shown when creating or renaming a workspace would reuse an existing name (chat-commands-workspaces.ts:101,115). Two short sentences: the problem, then what to do."
-  },
   "cli.help.desc.tool": "run a tool directly",
   "@cli.help.desc.tool": {
     "description": "Description of the 'tool' command, which invokes one tool directly. Lowercase verb phrase, no trailing period."
@@ -697,299 +793,6 @@
   "cli.help.desc.update": "check for and install updates",
   "@cli.help.desc.update": {
     "description": "Description of the 'update' command in the CLI command table. Lowercase verb phrase, no trailing period."
-  },
-  "cli.trace.no_store": "No trace data available. Run a task first.",
-  "@cli.trace.no_store": {
-    "description": "TODO"
-  },
-  "cli.trace.col.model": "Model",
-  "@cli.trace.col.model": {
-    "description": "TODO"
-  },
-  "cli.trace.col.status": "Status",
-  "@cli.trace.col.status": {
-    "description": "TODO"
-  },
-  "cli.trace.col.task_id": "Task",
-  "@cli.trace.col.task_id": {
-    "description": "TODO"
-  },
-  "cli.trace.col.time": "Time",
-  "@cli.trace.col.time": {
-    "description": "TODO"
-  },
-  "cli.trace.no_lines_for_task": "No lines found for task_id={taskId}",
-  "@cli.trace.no_lines_for_task": {
-    "description": "TODO",
-    "placeholders": {
-      "taskId": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.trace.no_tasks": "No tasks found.",
-  "@cli.trace.no_tasks": {
-    "description": "TODO"
-  },
-  "cli.trace.unknown_subcommand": "Unknown subcommand: {subcommand}",
-  "@cli.trace.unknown_subcommand": {
-    "description": "TODO",
-    "placeholders": {
-      "subcommand": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.login.prompt.token": "Cloud token: ",
-  "@cli.login.prompt.token": {
-    "description": "TODO"
-  },
-  "cli.login.prompt.url": "Cloud URL (https://app.acolyte.sh): ",
-  "@cli.login.prompt.url": {
-    "description": "TODO"
-  },
-  "cli.login.saved": "Logged in.",
-  "@cli.login.saved": {
-    "description": "TODO"
-  },
-  "cli.login.opening.browser": "Opening browser to sign in…",
-  "@cli.login.opening.browser": {
-    "description": "TODO"
-  },
-  "cli.login.waiting": "Waiting for authentication…",
-  "@cli.login.waiting": {
-    "description": "TODO"
-  },
-  "cli.login.timeout": "Authentication timed out. Please try again.",
-  "@cli.login.timeout": {
-    "description": "TODO"
-  },
-  "cli.login.welcome": "Logged in as {email}.",
-  "@cli.login.welcome": {
-    "description": "TODO",
-    "placeholders": {
-      "email": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.login.token.empty": "Token cannot be empty.",
-  "@cli.login.token.empty": {
-    "description": "TODO"
-  },
-  "cli.logout.done": "Logged out.",
-  "@cli.logout.done": {
-    "description": "TODO"
-  },
-  "cli.auth.opening": "Opening browser to authorize with OpenAI…",
-  "@cli.auth.opening": {
-    "description": "TODO"
-  },
-  "cli.auth.waiting": "Waiting for authorization…",
-  "@cli.auth.waiting": {
-    "description": "TODO"
-  },
-  "cli.auth.success": "Connected. Supported models now use your OpenAI subscription.",
-  "@cli.auth.success": {
-    "description": "TODO"
-  },
-  "cli.auth.failed": "Authorization failed: {reason}",
-  "@cli.auth.failed": {
-    "description": "TODO",
-    "placeholders": {
-      "reason": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.auth.timeout": "Authorization timed out. Please try again.",
-  "@cli.auth.timeout": {
-    "description": "TODO"
-  },
-  "cli.auth.port_in_use": "Port 1455 is in use. OpenAI requires this exact port. Close the process using it (often Codex CLI or another login attempt) and retry.",
-  "@cli.auth.port_in_use": {
-    "description": "TODO"
-  },
-  "cli.auth.logout": "Removed credentials for {provider}.",
-  "@cli.auth.logout": {
-    "description": "TODO",
-    "placeholders": {
-      "provider": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.auth.logout_none": "No credentials stored for {provider}.",
-  "@cli.auth.logout_none": {
-    "description": "TODO",
-    "placeholders": {
-      "provider": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.auth.logout.key": "Removed API key for {provider}.",
-  "@cli.auth.logout.key": {
-    "description": "TODO",
-    "placeholders": {
-      "provider": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.auth.logout.key_none": "No API key stored for {provider}.",
-  "@cli.auth.logout.key_none": {
-    "description": "TODO",
-    "placeholders": {
-      "provider": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.auth.logout.subscription": "Disconnected {provider} subscription.",
-  "@cli.auth.logout.subscription": {
-    "description": "TODO",
-    "placeholders": {
-      "provider": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.auth.logout.subscription_none": "No {provider} subscription connected.",
-  "@cli.auth.logout.subscription_none": {
-    "description": "TODO",
-    "placeholders": {
-      "provider": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.auth.invalid_provider": "Invalid provider. Use {providers}.",
-  "@cli.auth.invalid_provider": {
-    "description": "TODO",
-    "placeholders": {
-      "providers": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.auth.provider.required": "Provider required. Use: acolyte auth <provider>",
-  "@cli.auth.provider.required": {
-    "description": "TODO"
-  },
-  "cli.auth.status.line": "{provider} ({methods})",
-  "@cli.auth.status.line": {
-    "description": "TODO",
-    "placeholders": {
-      "provider": {
-        "type": "String"
-      },
-      "methods": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.auth.status.none_method": "none",
-  "@cli.auth.status.none_method": {
-    "description": "TODO"
-  },
-  "cli.auth.prompt.api_key": "API key: ",
-  "@cli.auth.prompt.api_key": {
-    "description": "TODO"
-  },
-  "cli.auth.prompt.method": "Method [key|subscription]: ",
-  "@cli.auth.prompt.method": {
-    "description": "TODO"
-  },
-  "cli.auth.method.invalid": "Invalid method. Use key or subscription.",
-  "@cli.auth.method.invalid": {
-    "description": "TODO"
-  },
-  "cli.auth.method.conflict": "Use only one of --key or --subscription.",
-  "@cli.auth.method.conflict": {
-    "description": "TODO"
-  },
-  "cli.auth.subscription.unsupported": "{provider} does not support subscription auth. Use --key.",
-  "@cli.auth.subscription.unsupported": {
-    "description": "TODO",
-    "placeholders": {
-      "provider": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.auth.subscription.override.confirm": "{provider} subscription is already connected. Replace it? [y/N]: ",
-  "@cli.auth.subscription.override.confirm": {
-    "description": "TODO",
-    "placeholders": {
-      "provider": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.auth.subscription.override.cancelled": "Left the existing subscription unchanged.",
-  "@cli.auth.subscription.override.cancelled": {
-    "description": "TODO"
-  },
-  "cli.auth.override.confirm": "{envKey} is already set. Replace it? [y/N]: ",
-  "@cli.auth.override.confirm": {
-    "description": "TODO",
-    "placeholders": {
-      "envKey": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.auth.override.cancelled": "Left the existing key unchanged.",
-  "@cli.auth.override.cancelled": {
-    "description": "TODO"
-  },
-  "cli.auth.api_key.empty": "{envKey} cannot be empty.",
-  "@cli.auth.api_key.empty": {
-    "description": "TODO",
-    "placeholders": {
-      "envKey": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.auth.saved": "Saved {envKey} in {path}",
-  "@cli.auth.saved": {
-    "description": "TODO",
-    "placeholders": {
-      "envKey": {
-        "type": "String"
-      },
-      "path": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.logs.no_file": "No log file found. Start a server first.",
-  "@cli.logs.no_file": {
-    "description": "TODO"
-  },
-  "cli.logs.no_lines": "No log lines match the given filters.",
-  "@cli.logs.no_lines": {
-    "description": "TODO"
-  },
-  "cli.logs.invalid_level": "Invalid level: {level}. Use debug, info, warn, or error.",
-  "@cli.logs.invalid_level": {
-    "description": "TODO",
-    "placeholders": {
-      "level": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.logs.invalid_since": "Invalid --since value: {value}. Use format like 5m, 2h, 1d.",
-  "@cli.logs.invalid_since": {
-    "description": "TODO",
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
   },
   "cli.help.examples": "Examples:",
   "@cli.help.examples": {
@@ -1041,6 +844,77 @@
   "@cli.help.section.usage": {
     "description": "Section heading above the invocation form on the root help page (cli-help.ts:67). No colon; the layout supplies the spacing."
   },
+  "cli.history.none": "No saved sessions.",
+  "@cli.history.none": {
+    "description": "Shown by the 'history' command when no sessions are stored (cli-history.ts:30). Separate from the picker's equivalent because the two surfaces may word it differently."
+  },
+  "cli.login.opening.browser": "Opening browser to sign in…",
+  "@cli.login.opening.browser": {
+    "description": "Progress line shown just before a browser window is opened for sign-in."
+  },
+  "cli.login.prompt.token": "Cloud token: ",
+  "@cli.login.prompt.token": {
+    "description": "Interactive prompt asking for the cloud token (cli-login.ts:62). Ends with a colon and a trailing space because the user types on the same line; keep both."
+  },
+  "cli.login.prompt.url": "Cloud URL (https://app.acolyte.sh): ",
+  "@cli.login.prompt.url": {
+    "description": "Interactive prompt asking for the cloud URL (cli-login.ts:38). Ends with a colon and a trailing space because the user types on the same line; keep both. The parenthesized URL is an example default and must not be translated."
+  },
+  "cli.login.saved": "Logged in.",
+  "@cli.login.saved": {
+    "description": "Confirmation that credentials were stored and the user is signed in."
+  },
+  "cli.login.timeout": "Authentication timed out. Please try again.",
+  "@cli.login.timeout": {
+    "description": "Shown when browser sign-in did not complete in time. Two sentences: the outcome, then the suggestion."
+  },
+  "cli.login.token.empty": "Token cannot be empty.",
+  "@cli.login.token.empty": {
+    "description": "Shown when the token prompt was submitted with no value."
+  },
+  "cli.login.waiting": "Waiting for authentication…",
+  "@cli.login.waiting": {
+    "description": "Progress line shown while waiting for the browser sign-in to complete."
+  },
+  "cli.login.welcome": "Logged in as {email}.",
+  "@cli.login.welcome": {
+    "description": "Confirmation naming the signed-in account. {email} is the user's email address, shown verbatim.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.logout.done": "Logged out.",
+  "@cli.logout.done": {
+    "description": "Confirmation that stored cloud credentials were removed."
+  },
+  "cli.logs.invalid_level": "Invalid level: {level}. Use debug, info, warn, or error.",
+  "@cli.logs.invalid_level": {
+    "description": "Shown when --level is given an unrecognized value. {level} is what the user typed; the four names after it are literal flag values and must not be translated.",
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.logs.invalid_since": "Invalid --since value: {value}. Use format like 5m, 2h, 1d.",
+  "@cli.logs.invalid_since": {
+    "description": "Shown when --since is given an unparseable value. '--since' is a literal flag name; {value} is what the user typed; the example durations are literal syntax and must not be translated.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.logs.no_file": "No log file found. Start a server first.",
+  "@cli.logs.no_file": {
+    "description": "Shown by 'logs' when no log file exists yet. Two short sentences: the state, then what to do."
+  },
+  "cli.logs.no_lines": "No log lines match the given filters.",
+  "@cli.logs.no_lines": {
+    "description": "Shown by 'logs' when the file exists but the active filters match nothing."
+  },
   "cli.memory.archive.none": "No retired memories.",
   "@cli.memory.archive.none": {
     "description": "TODO"
@@ -1082,18 +956,6 @@
       }
     }
   },
-  "cli.server.col.pid": "PID",
-  "@cli.server.col.pid": {
-    "description": "TODO"
-  },
-  "cli.server.col.port": "Port",
-  "@cli.server.col.port": {
-    "description": "TODO"
-  },
-  "cli.server.col.uptime": "Uptime",
-  "@cli.server.col.uptime": {
-    "description": "TODO"
-  },
   "cli.server.already_running": "Server already running on port {port} (pid {pid})",
   "@cli.server.already_running": {
     "description": "TODO",
@@ -1105,6 +967,18 @@
         "type": "number"
       }
     }
+  },
+  "cli.server.col.pid": "PID",
+  "@cli.server.col.pid": {
+    "description": "TODO"
+  },
+  "cli.server.col.port": "Port",
+  "@cli.server.col.port": {
+    "description": "TODO"
+  },
+  "cli.server.col.uptime": "Uptime",
+  "@cli.server.col.uptime": {
+    "description": "TODO"
   },
   "cli.server.no_servers_running": "No servers running",
   "@cli.server.no_servers_running": {
@@ -1185,13 +1059,14 @@
       }
     }
   },
-  "cli.update.daemon_busy": "Server left running on the old version: a turn is in progress. Run acolyte restart once it finishes.",
-  "@cli.update.daemon_busy": {
-    "description": "TODO"
-  },
-  "cli.update.daemon_left_running": "Server left running on the old version: it did not stop. Run acolyte ps to find it, then stop that process and run acolyte start",
-  "@cli.update.daemon_left_running": {
-    "description": "TODO"
+  "cli.skill.not_found": "Skill not found: {skill}",
+  "@cli.skill.not_found": {
+    "description": "Shown by the skill CLI command when no skill matches the requested name. {skill} is the name as typed, untranslated.",
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
   },
   "cli.status.local_start_hint": "Server is not running. Start it with: acolyte start",
   "@cli.status.local_start_hint": {
@@ -1240,6 +1115,56 @@
   "@cli.tool.usage": {
     "description": "TODO"
   },
+  "cli.trace.col.model": "Model",
+  "@cli.trace.col.model": {
+    "description": "Column heading for the model used, in the trace table. Keep short; it heads a narrow column."
+  },
+  "cli.trace.col.status": "Status",
+  "@cli.trace.col.status": {
+    "description": "Column heading for the task outcome, in the trace table. Keep short; it heads a narrow column."
+  },
+  "cli.trace.col.task_id": "Task",
+  "@cli.trace.col.task_id": {
+    "description": "Column heading for the task identifier in the trace table. Narrow column, so English shortens 'task id' to one word."
+  },
+  "cli.trace.col.time": "Time",
+  "@cli.trace.col.time": {
+    "description": "Column heading for the timestamp, in the trace table. Keep short; it heads a narrow column."
+  },
+  "cli.trace.no_lines_for_task": "No lines found for task_id={taskId}",
+  "@cli.trace.no_lines_for_task": {
+    "description": "Shown when a trace exists but holds no lines for the requested task. 'task_id=' is a literal machine field name printed verbatim and must not be translated; {taskId} is its value.",
+    "placeholders": {
+      "taskId": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.trace.no_store": "No trace data available. Run a task first.",
+  "@cli.trace.no_store": {
+    "description": "Shown by 'trace' when no lifecycle traces have been recorded yet. Two short sentences: the state, then what to do."
+  },
+  "cli.trace.no_tasks": "No tasks found.",
+  "@cli.trace.no_tasks": {
+    "description": "Shown when the trace store holds no tasks at all (cli-trace.ts:255,282)."
+  },
+  "cli.trace.unknown_subcommand": "Unknown subcommand: {subcommand}",
+  "@cli.trace.unknown_subcommand": {
+    "description": "Shown when 'trace' is given an unrecognized subcommand. {subcommand} is the word as typed.",
+    "placeholders": {
+      "subcommand": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.update.daemon_busy": "Server left running on the old version: a turn is in progress. Run acolyte restart once it finishes.",
+  "@cli.update.daemon_busy": {
+    "description": "TODO"
+  },
+  "cli.update.daemon_left_running": "Server left running on the old version: it did not stop. Run acolyte ps to find it, then stop that process and run acolyte start",
+  "@cli.update.daemon_left_running": {
+    "description": "TODO"
+  },
   "error.connection.generic": "Cannot reach server at {url}. Check apiUrl and server availability.",
   "@error.connection.generic": {
     "description": "TODO",
@@ -1266,14 +1191,6 @@
         "type": "String"
       }
     }
-  },
-  "error.reply_timeout": "No reply within the timeout, so this client closed the connection. The session is intact — send the message again to continue.",
-  "@error.reply_timeout": {
-    "description": "TODO"
-  },
-  "error.unauthorized": "The server rejected this connection as unauthorized. Check the configured API key.",
-  "@error.unauthorized": {
-    "description": "TODO"
   },
   "error.daemon.lost": "The server stopped while this turn was running, so the turn was lost. The session is intact — send the message again to continue.",
   "@error.daemon.lost": {
@@ -1344,20 +1261,32 @@
   "@error.prompt.server_unavailable": {
     "description": "TODO"
   },
-  "lifecycle.finish.empty_answer": "The agent finished without writing a response. Retry or rephrase the request.",
-  "@lifecycle.finish.empty_answer": {
+  "error.reply_timeout": "No reply within the timeout, so this client closed the connection. The session is intact — send the message again to continue.",
+  "@error.reply_timeout": {
     "description": "TODO"
   },
-  "lifecycle.finish.truncated": "The response hit the output-token limit and was cut off. Raise the limit or ask for less.",
-  "@lifecycle.finish.truncated": {
+  "error.unauthorized": "The server rejected this connection as unauthorized. Check the configured API key.",
+  "@error.unauthorized": {
+    "description": "TODO"
+  },
+  "error.unknown": "Unknown error",
+  "@error.unknown": {
     "description": "TODO"
   },
   "lifecycle.finish.content_filter": "The response was stopped by a content filter.",
   "@lifecycle.finish.content_filter": {
     "description": "TODO"
   },
+  "lifecycle.finish.empty_answer": "The agent finished without writing a response. Retry or rephrase the request.",
+  "@lifecycle.finish.empty_answer": {
+    "description": "TODO"
+  },
   "lifecycle.finish.provider_error": "The response ended with a provider error. Try again.",
   "@lifecycle.finish.provider_error": {
+    "description": "TODO"
+  },
+  "lifecycle.finish.truncated": "The response hit the output-token limit and was cut off. Raise the limit or ask for less.",
+  "@lifecycle.finish.truncated": {
     "description": "TODO"
   },
   "lifecycle.stopped_unknown_errors": "Stopped after repeated unknown errors. Narrow the task scope or inspect lifecycle traces and retry.",
@@ -1394,6 +1323,10 @@
       }
     }
   },
+  "status.header": "Status",
+  "@status.header": {
+    "description": "Title above the /status report (status-format.ts:50). Single noun."
+  },
   "status.label.capabilities": "Capabilities",
   "@status.label.capabilities": {
     "description": "TODO"
@@ -1410,18 +1343,6 @@
   "@status.label.memory": {
     "description": "TODO"
   },
-  "status.memory.summary": "{storage} ({count, plural, one {# entry} other {# entries}})",
-  "@status.memory.summary": {
-    "description": "TODO",
-    "placeholders": {
-      "storage": {
-        "type": "String"
-      },
-      "count": {
-        "type": "number"
-      }
-    }
-  },
   "status.label.model": "Model",
   "@status.label.model": {
     "description": "TODO"
@@ -1434,12 +1355,56 @@
   "@status.label.providers": {
     "description": "TODO"
   },
-  "status.provider_auth.api_key": "api key",
-  "@status.provider_auth.api_key": {
+  "status.label.resources.config.collisions": "Config file collisions",
+  "@status.label.resources.config.collisions": {
     "description": "TODO"
   },
-  "status.provider_auth.subscription": "subscription",
-  "@status.provider_auth.subscription": {
+  "status.label.resources.plugins.duplicates": "Shadowed plugins",
+  "@status.label.resources.plugins.duplicates": {
+    "description": "TODO"
+  },
+  "status.label.resources.plugins.loaded": "Plugins loaded",
+  "@status.label.resources.plugins.loaded": {
+    "description": "TODO"
+  },
+  "status.label.resources.plugins.mcp_disabled": "Plugins with MCP disabled",
+  "@status.label.resources.plugins.mcp_disabled": {
+    "description": "TODO"
+  },
+  "status.label.resources.plugins.rejected": "Rejected plugins",
+  "@status.label.resources.plugins.rejected": {
+    "description": "TODO"
+  },
+  "status.label.resources.plugins.servers_skipped": "Skipped plugin servers",
+  "@status.label.resources.plugins.servers_skipped": {
+    "description": "TODO"
+  },
+  "status.label.resources.plugins.skills_duplicates": "Shadowed plugin skills",
+  "@status.label.resources.plugins.skills_duplicates": {
+    "description": "TODO"
+  },
+  "status.label.resources.plugins.skills_invalid": "Invalid plugin skills",
+  "@status.label.resources.plugins.skills_invalid": {
+    "description": "TODO"
+  },
+  "status.label.resources.prompt.agents": "Agents file",
+  "@status.label.resources.prompt.agents": {
+    "description": "TODO"
+  },
+  "status.label.resources.skills.duplicates": "Duplicate skills",
+  "@status.label.resources.skills.duplicates": {
+    "description": "TODO"
+  },
+  "status.label.resources.skills.invalid": "Invalid skills",
+  "@status.label.resources.skills.invalid": {
+    "description": "TODO"
+  },
+  "status.label.resources.skills.read_errors": "Skill read errors",
+  "@status.label.resources.skills.read_errors": {
+    "description": "TODO"
+  },
+  "status.label.resources.skills.status": "Skills",
+  "@status.label.resources.skills.status": {
     "description": "TODO"
   },
   "status.label.rpc_queue_length": "Queue length",
@@ -1458,56 +1423,24 @@
   "@status.label.tasks_total": {
     "description": "TODO"
   },
-  "status.label.resources.config.collisions": "Config file collisions",
-  "@status.label.resources.config.collisions": {
+  "status.memory.summary": "{storage} ({count, plural, one {# entry} other {# entries}})",
+  "@status.memory.summary": {
+    "description": "TODO",
+    "placeholders": {
+      "storage": {
+        "type": "String"
+      },
+      "count": {
+        "type": "number"
+      }
+    }
+  },
+  "status.provider_auth.api_key": "api key",
+  "@status.provider_auth.api_key": {
     "description": "TODO"
   },
-  "status.label.resources.prompt.agents": "Agents file",
-  "@status.label.resources.prompt.agents": {
-    "description": "TODO"
-  },
-  "status.label.resources.skills.invalid": "Invalid skills",
-  "@status.label.resources.skills.invalid": {
-    "description": "TODO"
-  },
-  "status.label.resources.skills.duplicates": "Duplicate skills",
-  "@status.label.resources.skills.duplicates": {
-    "description": "TODO"
-  },
-  "status.label.resources.skills.read_errors": "Skill read errors",
-  "@status.label.resources.skills.read_errors": {
-    "description": "TODO"
-  },
-  "status.label.resources.skills.status": "Skills",
-  "@status.label.resources.skills.status": {
-    "description": "TODO"
-  },
-  "status.label.resources.plugins.loaded": "Plugins loaded",
-  "@status.label.resources.plugins.loaded": {
-    "description": "TODO"
-  },
-  "status.label.resources.plugins.rejected": "Rejected plugins",
-  "@status.label.resources.plugins.rejected": {
-    "description": "TODO"
-  },
-  "status.label.resources.plugins.duplicates": "Shadowed plugins",
-  "@status.label.resources.plugins.duplicates": {
-    "description": "TODO"
-  },
-  "status.label.resources.plugins.mcp_disabled": "Plugins with MCP disabled",
-  "@status.label.resources.plugins.mcp_disabled": {
-    "description": "TODO"
-  },
-  "status.label.resources.plugins.servers_skipped": "Skipped plugin servers",
-  "@status.label.resources.plugins.servers_skipped": {
-    "description": "TODO"
-  },
-  "status.label.resources.plugins.skills_invalid": "Invalid plugin skills",
-  "@status.label.resources.plugins.skills_invalid": {
-    "description": "TODO"
-  },
-  "status.label.resources.plugins.skills_duplicates": "Shadowed plugin skills",
-  "@status.label.resources.plugins.skills_duplicates": {
+  "status.provider_auth.subscription": "subscription",
+  "@status.provider_auth.subscription": {
     "description": "TODO"
   },
   "tool.content.no_matches": "No matches.",
@@ -1528,26 +1461,6 @@
   },
   "tool.label.code_scan": "Scan Code",
   "@tool.label.code_scan": {
-    "description": "TODO"
-  },
-  "tool.label.gh_issue_create": "Create Issue",
-  "@tool.label.gh_issue_create": {
-    "description": "TODO"
-  },
-  "tool.label.gh_issue_list": "List Issues",
-  "@tool.label.gh_issue_list": {
-    "description": "TODO"
-  },
-  "tool.label.gh_pr_create": "Create PR",
-  "@tool.label.gh_pr_create": {
-    "description": "TODO"
-  },
-  "tool.label.gh_pr_edit": "Edit PR",
-  "@tool.label.gh_pr_edit": {
-    "description": "TODO"
-  },
-  "tool.label.gh_pr_view": "PR",
-  "@tool.label.gh_pr_view": {
     "description": "TODO"
   },
   "tool.label.file_create": "Create",
@@ -1574,6 +1487,26 @@
   "@tool.label.file_search": {
     "description": "TODO"
   },
+  "tool.label.gh_issue_create": "Create Issue",
+  "@tool.label.gh_issue_create": {
+    "description": "TODO"
+  },
+  "tool.label.gh_issue_list": "List Issues",
+  "@tool.label.gh_issue_list": {
+    "description": "TODO"
+  },
+  "tool.label.gh_pr_create": "Create PR",
+  "@tool.label.gh_pr_create": {
+    "description": "TODO"
+  },
+  "tool.label.gh_pr_edit": "Edit PR",
+  "@tool.label.gh_pr_edit": {
+    "description": "TODO"
+  },
+  "tool.label.gh_pr_view": "PR",
+  "@tool.label.gh_pr_view": {
+    "description": "TODO"
+  },
   "tool.label.git_add": "Git Add",
   "@tool.label.git_add": {
     "description": "TODO"
@@ -1598,6 +1531,18 @@
   "@tool.label.git_status": {
     "description": "TODO"
   },
+  "tool.label.memory_add": "Add (Memory)",
+  "@tool.label.memory_add": {
+    "description": "TODO"
+  },
+  "tool.label.memory_remove": "Remove (Memory)",
+  "@tool.label.memory_remove": {
+    "description": "TODO"
+  },
+  "tool.label.memory_search": "Search (Memory)",
+  "@tool.label.memory_search": {
+    "description": "TODO"
+  },
   "tool.label.shell_run": "Run",
   "@tool.label.shell_run": {
     "description": "TODO"
@@ -1614,18 +1559,6 @@
   "@tool.label.test_run": {
     "description": "TODO"
   },
-  "tool.label.memory_add": "Add (Memory)",
-  "@tool.label.memory_add": {
-    "description": "TODO"
-  },
-  "tool.label.memory_remove": "Remove (Memory)",
-  "@tool.label.memory_remove": {
-    "description": "TODO"
-  },
-  "tool.label.memory_search": "Search (Memory)",
-  "@tool.label.memory_search": {
-    "description": "TODO"
-  },
   "tool.label.web_fetch": "Web Fetch",
   "@tool.label.web_fetch": {
     "description": "TODO"
@@ -1633,6 +1566,81 @@
   "tool.label.web_search": "Web Search",
   "@tool.label.web_search": {
     "description": "TODO"
+  },
+  "tui.input.ctrl_c_hint": "ctrl+c again to exit",
+  "@tui.input.ctrl_c_hint": {
+    "description": "Hint shown after a first ctrl+c, telling the user a second press exits. Lowercase and terse because it sits inline under the composer. 'ctrl+c' is a literal key name and must not be translated."
+  },
+  "tui.picker.hint.model": "Type to filter · Enter to apply · Esc to close",
+  "@tui.picker.hint.model": {
+    "description": "Key hints along the bottom of the model picker. The three actions are separated by ' · '. 'Enter' and 'Esc' are literal key names and must not be translated."
+  },
+  "tui.picker.hint.resume": "Enter to resume · Esc to close",
+  "@tui.picker.hint.resume": {
+    "description": "Key hints along the bottom of the session-resume picker. 'Enter' and 'Esc' are literal key names and must not be translated."
+  },
+  "tui.picker.hint.skills": "Enter to select · Esc to close",
+  "@tui.picker.hint.skills": {
+    "description": "Key hints along the bottom of the skills picker. 'Enter' and 'Esc' are literal key names and must not be translated."
+  },
+  "tui.picker.label.model": "Model",
+  "@tui.picker.label.model": {
+    "description": "Column or field label naming the model in the model picker. Noun, not a verb."
+  },
+  "tui.picker.loading": "Loading…",
+  "@tui.picker.loading": {
+    "description": "Shown inside a picker while its entries are still being fetched."
+  },
+  "tui.picker.no_matches": "No matches.",
+  "@tui.picker.no_matches": {
+    "description": "Shown inside any picker when the typed filter matches no entries."
+  },
+  "tui.picker.sessions.none": "No saved sessions.",
+  "@tui.picker.sessions.none": {
+    "description": "Shown in the resume picker when no previous sessions exist on disk."
+  },
+  "tui.picker.skills.none": "No skills found in ./.agents/skills.",
+  "@tui.picker.skills.none": {
+    "description": "Shown in the skills picker when the workspace has no skills. './.agents/skills' is a literal path and must not be translated."
+  },
+  "tui.picker.title.resume": "Resume Session",
+  "@tui.picker.title.resume": {
+    "description": "Title bar of the picker that reopens a previous session. Title case in English."
+  },
+  "tui.picker.title.skills": "Skills",
+  "@tui.picker.title.skills": {
+    "description": "Title bar of the skills picker. Title case in English."
+  },
+  "tui.relative_time.days_ago": "{count}d ago",
+  "@tui.relative_time.days_ago": {
+    "description": "Relative timestamp a day or more old (datetime.ts:53). {count} is whole days. English abbreviates hard ('5d ago') to fit narrow list columns; keep it short.",
+    "placeholders": {
+      "count": {
+        "type": "number"
+      }
+    }
+  },
+  "tui.relative_time.hours_ago": "{count}h ago",
+  "@tui.relative_time.hours_ago": {
+    "description": "Relative timestamp under a day old (datetime.ts:51). {count} is whole hours. English abbreviates hard ('5h ago') to fit narrow list columns; keep it short.",
+    "placeholders": {
+      "count": {
+        "type": "number"
+      }
+    }
+  },
+  "tui.relative_time.just_now": "just now",
+  "@tui.relative_time.just_now": {
+    "description": "Relative timestamp for anything under a minute old (datetime.ts:47). Lowercase; appears in session and memory lists."
+  },
+  "tui.relative_time.minutes_ago": "{count}m ago",
+  "@tui.relative_time.minutes_ago": {
+    "description": "Relative timestamp under an hour old (datetime.ts:49). {count} is whole minutes. English abbreviates hard ('5m ago') to fit narrow list columns; keep it short.",
+    "placeholders": {
+      "count": {
+        "type": "number"
+      }
+    }
   },
   "unit.call": "{count, plural, one {# call} other {# calls}}",
   "@unit.call": {
@@ -1717,9 +1725,5 @@
         "type": "number"
       }
     }
-  },
-  "unknown_error": "Unknown error",
-  "@unknown_error": {
-    "description": "TODO"
   }
 }

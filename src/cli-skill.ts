@@ -104,7 +104,7 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
   await loadSkills();
   const skill = findSkillByName(parsed.skillName);
   if (!skill) {
-    printError(t("chat.skill.not_found", { skill: parsed.skillName }));
+    printError(t("cli.skill.not_found", { skill: parsed.skillName }));
     process.exitCode = 1;
     return;
   }
@@ -132,7 +132,7 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
       await attachFileToSession(session, filePath);
       printDim(t("run.file_context.attached", { filePath }));
     } catch (error) {
-      const message = error instanceof Error ? error.message : t("unknown_error");
+      const message = error instanceof Error ? error.message : t("error.unknown");
       printError(message);
       process.exitCode = 1;
       return;

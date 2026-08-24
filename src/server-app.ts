@@ -40,7 +40,7 @@ function serverError(
   status = 500,
 ): Response {
   const errorId = nextErrorId();
-  const errorMessage = error instanceof Error ? error.message : t("unknown_error");
+  const errorMessage = error instanceof Error ? error.message : t("error.unknown");
   const publicMessage = mapQuotaErrorMessage(errorMessage);
   const { errorCode, error: streamError } = createStreamError({
     message: publicMessage,

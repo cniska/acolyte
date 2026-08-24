@@ -47,5 +47,5 @@ export function createStatusOutput(fields: StatusFields): CommandOutput | null {
     STATUS_KEY_LABEL_MAP[key] as string,
     Array.isArray(value) ? value.join(", ") : String(value),
   ]);
-  return { header: t("chat.status.header"), sections: [section] };
+  return { header: t("status.header"), sections: [section] };
 }
