@@ -52,20 +52,20 @@ import { formatStatus } from "./status-format";
 import { openTraceStore } from "./trace-store";
 import { formatCliTitle, printDim, printError, printOutput } from "./ui";
 
-function helpFor(name: string): CliCommandHelp | undefined {
-  return COMMAND_REGISTRY[name]?.help;
+export function commandHelpDoc(name: string): CliCommandHelp | undefined {
+  return COMMAND_REGISTRY[name]?.help();
 }
 
 export function commandHelp(name: string): void {
-  commandHelpFromHelp(helpFor(name), printDim);
+  commandHelpFromHelp(commandHelpDoc(name), printDim);
 }
 
 export function commandError(name: string, message?: string): void {
-  commandErrorFromHelp(helpFor(name), name, printError, message);
+  commandErrorFromHelp(commandHelpDoc(name), name, printError, message);
 }
 
 export function usage(version: string): void {
-  const docs = Object.values(COMMAND_REGISTRY).map((entry) => entry.help);
+  const docs = Object.values(COMMAND_REGISTRY).map((entry) => entry.help());
   printUsage(version, docs, printOutput, formatCliTitle);
 }
 
@@ -102,7 +102,7 @@ const daemonDeps = {
 
 const COMMAND_REGISTRY: Record<string, CliCommand> = {
   auth: {
-    help: {
+    help: () => ({
       command: "auth [provider]",
       usage: "acolyte auth [vercel|anthropic|google|openai] [--key|--subscription] [--logout]",
       description: t("cli.help.desc.auth"),
@@ -116,7 +116,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         "acolyte auth openai --logout --key",
         "acolyte auth openai --logout --subscription",
       ],
-    },
+    }),
     handler: (args) =>
       authMode(args, {
         hasHelpFlag,
@@ -148,12 +148,12 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
   ...(appConfig.features.cloudSync
     ? {
         login: {
-          help: {
+          help: () => ({
             command: "login",
             usage: "acolyte login [--token <value>] [--url <value>]",
             description: t("cli.help.desc.login"),
             examples: ["acolyte login", "acolyte login --token tok_abc --url https://cloud.example.com"],
-          },
+          }),
           handler: (args: string[]) =>
             loginMode(args, {
               hasHelpFlag,
@@ -171,12 +171,12 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
             }),
         },
         logout: {
-          help: {
+          help: () => ({
             command: "logout",
             usage: "acolyte logout",
             description: t("cli.help.desc.logout"),
             examples: ["acolyte logout"],
-          },
+          }),
           handler: (args: string[]) =>
             logoutMode(args, {
               hasHelpFlag,
@@ -189,21 +189,21 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       }
     : {}),
   resume: {
-    help: {
+    help: () => ({
       command: "resume [id]",
       usage: "acolyte resume [id]",
       description: t("cli.help.desc.resume"),
       examples: ["acolyte resume", "acolyte resume sess_abc123"],
-    },
+    }),
     handler: resumeMode,
   },
   run: {
-    help: {
+    help: () => ({
       command: "run <prompt>",
       usage: "acolyte run [--file <path>] [--workspace <path>] [--model <id>] <prompt>",
       description: t("cli.help.desc.run"),
       examples: ['acolyte run "summarize README.md"', 'acolyte run --file src/cli.ts "refactor help text"'],
-    },
+    }),
     handler: (args) =>
       runMode(args, {
         apiUrlForPort,
@@ -226,12 +226,12 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       }),
   },
   history: {
-    help: {
+    help: () => ({
       command: "history",
       usage: "acolyte history",
       description: t("cli.help.desc.history"),
       examples: ["acolyte history"],
-    },
+    }),
     handler: (args) =>
       historyMode(args, {
         hasHelpFlag,
@@ -242,48 +242,48 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       }),
   },
   start: {
-    help: {
+    help: () => ({
       command: "start",
       usage: "acolyte start",
       description: t("cli.help.desc.start"),
       examples: ["acolyte start"],
-    },
+    }),
     handler: (args) => startMode(args, daemonDeps),
   },
   stop: {
-    help: {
+    help: () => ({
       command: "stop",
       usage: "acolyte stop [--force]",
       description: t("cli.help.desc.stop"),
       examples: ["acolyte stop", "acolyte stop --force"],
-    },
+    }),
     handler: (args) => stopMode(args, daemonDeps),
   },
   restart: {
-    help: {
+    help: () => ({
       command: "restart",
       usage: "acolyte restart [--force]",
       description: t("cli.help.desc.restart"),
       examples: ["acolyte restart"],
-    },
+    }),
     handler: (args) => restartMode(args, daemonDeps),
   },
   ps: {
-    help: {
+    help: () => ({
       command: "ps",
       usage: "acolyte ps",
       description: t("cli.help.desc.ps"),
       examples: ["acolyte ps"],
-    },
+    }),
     handler: (args) => psMode(args, daemonDeps),
   },
   status: {
-    help: {
+    help: () => ({
       command: "status",
       usage: "acolyte status",
       description: t("cli.help.desc.status"),
       examples: ["acolyte status"],
-    },
+    }),
     handler: (args) =>
       statusMode(args, {
         apiUrlForPort,
@@ -302,7 +302,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       }),
   },
   memory: {
-    help: {
+    help: () => ({
       command: "memory",
       usage: "acolyte memory <list|add|restore> [options]",
       description: t("cli.help.desc.memory"),
@@ -312,7 +312,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         "acolyte memory list --archived",
         "acolyte memory restore mem_abc123",
       ],
-    },
+    }),
     handler: (args) =>
       memoryMode(args, {
         ops: fileMemoryStore,
@@ -323,12 +323,12 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       }),
   },
   config: {
-    help: {
+    help: () => ({
       command: "config",
       usage: "acolyte config <list|set|unset> [options]",
       description: t("cli.help.desc.config"),
       examples: ["acolyte config list", "acolyte config set model gpt-5-mini", "acolyte config unset port"],
-    },
+    }),
     handler: (args) =>
       configMode(args, {
         hasHelpFlag,
@@ -343,12 +343,12 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       }),
   },
   skill: {
-    help: {
+    help: () => ({
       command: "skill <name> [prompt]",
       usage: "acolyte skill <name> [--file <path>] [--workspace <path>] [--model <id>] <prompt>",
       description: t("cli.help.desc.skill"),
       examples: ['acolyte skill arch-audit "review the lifecycle module"'],
-    },
+    }),
     handler: (args) =>
       skillMode(args, {
         apiUrlForPort,
@@ -373,12 +373,12 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       }),
   },
   tool: {
-    help: {
+    help: () => ({
       command: "tool",
       usage: "acolyte tool <tool-id> ['<json-input>']",
       description: t("cli.help.desc.tool"),
       examples: ['acolyte tool file-find \'{"pattern":"src/**/*.ts"}\'', "acolyte tool git-status"],
-    },
+    }),
     handler: (args) =>
       toolMode(args, {
         hasHelpFlag,
@@ -387,12 +387,12 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       }),
   },
   logs: {
-    help: {
+    help: () => ({
       command: "logs",
       usage: "acolyte logs [-n <count>] [--level <level>] [--session <id>] [--since <duration>] [--json]",
       description: t("cli.help.desc.logs"),
       examples: ["acolyte logs", "acolyte logs -n 100", "acolyte logs --level error --since 1h"],
-    },
+    }),
     handler: (args) =>
       logsMode(args, {
         hasHelpFlag,
@@ -405,21 +405,21 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       }),
   },
   update: {
-    help: {
+    help: () => ({
       command: "update",
       usage: "acolyte update",
       description: t("cli.help.desc.update"),
       examples: ["acolyte update"],
-    },
+    }),
     handler: () => updateMode(),
   },
   trace: {
-    help: {
+    help: () => ({
       command: "trace",
       usage: "acolyte trace [list|task <id>] [--lines <n>] [--verbose] [--json]",
       description: t("cli.help.desc.trace"),
       examples: ["acolyte trace", "acolyte trace task task_abc123", "acolyte trace task --verbose"],
-    },
+    }),
     handler: (args) =>
       traceMode(args, {
         hasHelpFlag,
