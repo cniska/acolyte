@@ -310,7 +310,7 @@
   },
   "chat.workspaces.header": "Workspaces {count}",
   "@chat.workspaces.header": {
-    "description": "TODO",
+    "description": "Header of the /workspaces list table (chat-commands-workspaces.ts:44). {count} is the number of workspaces and renders as a trailing count beside the title, not inside a sentence.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -319,7 +319,7 @@
   },
   "chat.skill.failed": "Failed to activate skill: {skill}",
   "@chat.skill.failed": {
-    "description": "TODO",
+    "description": "Shown when a skill was found but could not be activated. {skill} is the skill's name, an untranslated identifier.",
     "placeholders": {
       "skill": {
         "type": "String"
@@ -328,7 +328,7 @@
   },
   "chat.skill.not_found": "Skill not found: {skill}",
   "@chat.skill.not_found": {
-    "description": "TODO",
+    "description": "Shown by the skill CLI command when no skill matches the requested name. {skill} is the name as typed, untranslated.",
     "placeholders": {
       "skill": {
         "type": "String"
@@ -337,7 +337,7 @@
   },
   "chat.skill.run_prompt": "Run the {skill} skill.",
   "@chat.skill.run_prompt": {
-    "description": "TODO",
+    "description": "MODEL-FACING: this is not display copy. It becomes the user turn text sent to the model when a skill is activated without explicit arguments (chat-commands-skill.ts:26, chat-picker-handlers.ts:98). Translating it changes what the model receives, so treat it as an instruction to the model rather than a UI string. {skill} is the skill's name, an untranslated identifier.",
     "placeholders": {
       "skill": {
         "type": "String"
@@ -346,87 +346,87 @@
   },
   "chat.slash.help.clear": "clear transcript",
   "@chat.slash.help.clear": {
-    "description": "TODO"
+    "description": "Help text for /clear in the slash-command list. Lowercase verb phrase, no trailing period — the whole column follows this shape."
   },
   "chat.slash.help.exit": "exit chat",
   "@chat.slash.help.exit": {
-    "description": "TODO"
+    "description": "Help text for /exit in the slash-command list. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.memory": "manage memory",
   "@chat.slash.help.memory": {
-    "description": "TODO"
+    "description": "Help text for the /memory command group in the slash-command list. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.memory.add": "add memory note",
   "@chat.slash.help.memory.add": {
-    "description": "TODO"
+    "description": "Help text for the '/memory add' subcommand. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.memory.list": "show memory notes",
   "@chat.slash.help.memory.list": {
-    "description": "TODO"
+    "description": "Help text for the '/memory list' subcommand. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.memory.rm": "remove memory note",
   "@chat.slash.help.memory.rm": {
-    "description": "TODO"
+    "description": "Help text for the '/memory rm' subcommand. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.model": "change model",
   "@chat.slash.help.model": {
-    "description": "TODO"
+    "description": "Help text for /model in the slash-command list. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.new": "start new session",
   "@chat.slash.help.new": {
-    "description": "TODO"
+    "description": "Help text for /new in the slash-command list. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.resume": "resume session",
   "@chat.slash.help.resume": {
-    "description": "TODO"
+    "description": "Help text for /resume in the slash-command list. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.sessions": "show sessions",
   "@chat.slash.help.sessions": {
-    "description": "TODO"
+    "description": "Help text for /sessions in the slash-command list. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.skill": "run skill command",
   "@chat.slash.help.skill": {
-    "description": "TODO"
+    "description": "Help text for a skill registered as its own slash command (chat-command-registry.ts:55). Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.skills": "show skills picker",
   "@chat.slash.help.skills": {
-    "description": "TODO"
+    "description": "Help text for /skills, which opens the skills picker. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.status": "show server status",
   "@chat.slash.help.status": {
-    "description": "TODO"
+    "description": "Help text for /status in the slash-command list. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.usage": "show token usage",
   "@chat.slash.help.usage": {
-    "description": "TODO"
+    "description": "Help text for /usage, which reports token consumption. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.workspaces": "manage workspaces",
   "@chat.slash.help.workspaces": {
-    "description": "TODO"
+    "description": "Help text for the /workspaces command group. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.workspaces.list": "list workspaces",
   "@chat.slash.help.workspaces.list": {
-    "description": "TODO"
+    "description": "Help text for the '/workspaces list' subcommand. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.workspaces.new": "create a new workspace",
   "@chat.slash.help.workspaces.new": {
-    "description": "TODO"
+    "description": "Help text for the '/workspaces new' subcommand. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.workspaces.switch": "switch workspace",
   "@chat.slash.help.workspaces.switch": {
-    "description": "TODO"
+    "description": "Help text for the '/workspaces switch' subcommand. Lowercase verb phrase, no trailing period."
   },
   "chat.status.check_failed": "Status check failed.",
   "@chat.status.check_failed": {
-    "description": "TODO"
+    "description": "Shown when /status could not reach the server or read its health."
   },
   "chat.status.header": "Status",
   "@chat.status.header": {
-    "description": "TODO"
+    "description": "Title above the /status report (status-format.ts:50). Single noun."
   },
   "chat.interrupted": "Interrupted after {duration}{suffix}",
   "@chat.interrupted": {
-    "description": "TODO",
+    "description": "Chat footer replacing chat.worked when the user cancelled the turn. {duration} is a formatted elapsed time such as '4.2s'. {suffix} is either empty or a parenthesized detail list built at chat-turn.ts:136, for example ' (3 tools · ↑1.2k ↓340)' — it already carries its own leading space and brackets, so it must sit at the very end of the message.",
     "placeholders": {
       "duration": {
         "type": "String"
@@ -438,63 +438,63 @@
   },
   "chat.task.followup.cancelled": "Task cancelled.",
   "@chat.task.followup.cancelled": {
-    "description": "TODO"
+    "description": "Shown when a server-side task ended because it was cancelled."
   },
   "chat.task.followup.failed": "Task failed on server.",
   "@chat.task.followup.failed": {
-    "description": "TODO"
+    "description": "Shown when a server-side task ended in failure. Deliberately does not name a cause; the user is pointed elsewhere by the neighbouring hint."
   },
   "chat.task.followup.lost_tracking": "Lost task tracking after stream disconnect.",
   "@chat.task.followup.lost_tracking": {
-    "description": "TODO"
+    "description": "Shown when the client reconnected but can no longer follow the task it was running."
   },
   "chat.task.followup.running_hint": "Task is still running. Use /status to check server health.",
   "@chat.task.followup.running_hint": {
-    "description": "TODO"
+    "description": "Shown when a task outlives its stream and is still running. Two sentences: the state, then the command to check. '/status' is a literal command and must not be translated."
   },
   "chat.usage.header": "Usage",
   "@chat.usage.header": {
-    "description": "TODO"
+    "description": "Title above the /usage report (chat-commands-usage.ts:65). Single noun."
   },
   "chat.usage.metric.input": "Input",
   "@chat.usage.metric.input": {
-    "description": "TODO"
+    "description": "Row label in the /usage summary for tokens sent to the model. Paired with a number in a narrow column, so keep it short."
   },
   "chat.usage.metric.memory": "Memory",
   "@chat.usage.metric.memory": {
-    "description": "TODO"
+    "description": "Row label in the /usage breakdown for tokens spent on recalled memory. Paired with a number in a narrow column."
   },
   "chat.usage.metric.messages": "Messages",
   "@chat.usage.metric.messages": {
-    "description": "TODO"
+    "description": "Row label in the /usage breakdown for tokens spent on conversation history. Paired with a number in a narrow column."
   },
   "chat.usage.metric.output": "Output",
   "@chat.usage.metric.output": {
-    "description": "TODO"
+    "description": "Row label in the /usage summary for tokens generated by the model. Paired with a number in a narrow column, so keep it short."
   },
   "chat.usage.metric.skills": "Skills",
   "@chat.usage.metric.skills": {
-    "description": "TODO"
+    "description": "Row label in the /usage breakdown for tokens spent on active skills. Paired with a number in a narrow column."
   },
   "chat.usage.metric.system": "System",
   "@chat.usage.metric.system": {
-    "description": "TODO"
+    "description": "Row label in the /usage breakdown for tokens spent on the system prompt. Paired with a number in a narrow column."
   },
   "chat.usage.metric.tools": "Tools",
   "@chat.usage.metric.tools": {
-    "description": "TODO"
+    "description": "Row label in the /usage breakdown for tokens spent on tool definitions. Paired with a number in a narrow column."
   },
   "chat.usage.metric.total": "Total",
   "@chat.usage.metric.total": {
-    "description": "TODO"
+    "description": "Row label in the /usage summary for input and output tokens combined. Paired with a number in a narrow column, so keep it short."
   },
   "chat.usage.none": "No usage data yet. Send a prompt first.",
   "@chat.usage.none": {
-    "description": "TODO"
+    "description": "Shown by /usage before any prompt has been sent, so no counts exist yet. Two short sentences: the state, then what to do."
   },
   "chat.unresolved_path": "No file or folder found: @{path}",
   "@chat.unresolved_path": {
-    "description": "TODO",
+    "description": "Shown when an @-mention in the composer points at nothing on disk. The literal '@' is part of the rendered text and precedes {path}, which is the path exactly as the user typed it.",
     "placeholders": {
       "path": {
         "type": "String"
@@ -503,7 +503,7 @@
   },
   "chat.worked": "Worked for {duration}{suffix}",
   "@chat.worked": {
-    "description": "TODO",
+    "description": "Chat footer shown after a turn completes normally. {duration} is a formatted elapsed time such as '4.2s'. {suffix} is either empty or a parenthesized detail list built at chat-turn.ts:136, for example ' (3 tools · ↑1.2k ↓340)' — it already carries its own leading space and brackets, so it must sit at the very end of the message.",
     "placeholders": {
       "duration": {
         "type": "String"
@@ -653,7 +653,7 @@
   },
   "chat.workspaces.created": "Created workspace {name}.",
   "@chat.workspaces.created": {
-    "description": "TODO",
+    "description": "Confirmation after a workspace is created. {name} is the workspace name as given by the user, untranslated.",
     "placeholders": {
       "name": {
         "type": "String"
@@ -662,7 +662,7 @@
   },
   "chat.workspaces.create_failed": "Failed to create workspace: {reason}",
   "@chat.workspaces.create_failed": {
-    "description": "TODO",
+    "description": "Shown when workspace creation failed. {reason} is an error string from the workspace layer and is not itself translated.",
     "placeholders": {
       "reason": {
         "type": "String"
@@ -671,7 +671,7 @@
   },
   "chat.workspaces.switched": "Switched to workspace {name}.",
   "@chat.workspaces.switched": {
-    "description": "TODO",
+    "description": "Confirmation after the active workspace changes. {name} is the workspace name, untranslated.",
     "placeholders": {
       "name": {
         "type": "String"
@@ -680,7 +680,7 @@
   },
   "chat.workspaces.not_found": "No workspace found: {name}",
   "@chat.workspaces.not_found": {
-    "description": "TODO",
+    "description": "Shown when '/workspaces switch' names a workspace that does not exist. {name} is the name as typed.",
     "placeholders": {
       "name": {
         "type": "String"
@@ -689,11 +689,11 @@
   },
   "chat.workspaces.list.none": "No workspaces yet. Create one with: /workspaces new <name> or /workspaces new -- <prompt>",
   "@chat.workspaces.list.none": {
-    "description": "TODO"
+    "description": "Shown by /workspaces list when none exist (chat-commands-workspaces.ts:32). The two command forms after the colon are literal syntax and must not be translated, including the placeholders <name> and <prompt>."
   },
   "chat.workspaces.name_conflict": "Workspace name already exists. Choose a different name.",
   "@chat.workspaces.name_conflict": {
-    "description": "TODO"
+    "description": "Shown when creating or renaming a workspace would reuse an existing name (chat-commands-workspaces.ts:101,115). Two short sentences: the problem, then what to do."
   },
   "cli.help.desc.tool": "run a tool directly",
   "@cli.help.desc.tool": {
