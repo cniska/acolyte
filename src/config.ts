@@ -70,8 +70,11 @@ function resolvePaths(options?: ConfigOptions): {
   projectJsonPath: string;
   projectTomlPath: string;
 } {
+  const configEnv = options?.env ?? process.env;
   const userDataDir = configDir(options?.env);
-  const projectDataDir = join(options?.cwd ?? process.cwd(), ".acolyte");
+  // The project root is the working directory, overridable the way the user config
+  // directory already is, so a caller can be isolated from whatever tree it runs in.
+  const projectDataDir = join(options?.cwd ?? configEnv.ACOLYTE_PROJECT_DIR ?? process.cwd(), ".acolyte");
   return {
     userDataDir,
     userJsonPath: join(userDataDir, "config.json"),
