@@ -20,6 +20,11 @@ type CreateSkillActivatorInput = {
   persist: () => Promise<void>;
 };
 
+/** Turn text sent to the model when a skill is activated with no arguments. Model-facing, so never localized. */
+export function skillRunPrompt(skillName: string): string {
+  return `Run the ${skillName} skill.`;
+}
+
 export function skillActivationRow(skillName: string): ChatRow {
   return createRow("tool", {
     parts: [{ kind: "tool-header", labelKey: toolLabelKey("skill-activate"), detail: skillName, state: "on" }],

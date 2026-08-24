@@ -335,15 +335,6 @@
       }
     }
   },
-  "chat.skill.run_prompt": "Run the {skill} skill.",
-  "@chat.skill.run_prompt": {
-    "description": "MODEL-FACING: this is not display copy. It becomes the user turn text sent to the model when a skill is activated without explicit arguments (chat-commands-skill.ts:26, chat-picker-handlers.ts:98). Translating it changes what the model receives, so treat it as an instruction to the model rather than a UI string. {skill} is the skill's name, an untranslated identifier.",
-    "placeholders": {
-      "skill": {
-        "type": "String"
-      }
-    }
-  },
   "chat.slash.help.clear": "clear transcript",
   "@chat.slash.help.clear": {
     "description": "Help text for /clear in the slash-command list. Lowercase verb phrase, no trailing period — the whole column follows this shape."
@@ -515,11 +506,11 @@
   },
   "cli.config.api_key_unsupported": "Config apiKey is not supported. Use ACOLYTE_API_KEY in .env instead.",
   "@cli.config.api_key_unsupported": {
-    "description": "TODO"
+    "description": "Shown when the user tries to set an api key through config. 'apiKey' and 'ACOLYTE_API_KEY' are literal identifiers and '.env' a literal filename; none of them are translated."
   },
   "cli.config.invalid_value": "Invalid value for {key}: {reason}",
   "@cli.config.invalid_value": {
-    "description": "TODO",
+    "description": "Shown when a config value fails validation (config.ts:259,271). {key} is a literal config key name; {reason} is a validation message that is not itself translated.",
     "placeholders": {
       "key": {
         "type": "String"
@@ -531,7 +522,7 @@
   },
   "cli.config.parse_failed": "Failed to parse {scope} config: {reason}",
   "@cli.config.parse_failed": {
-    "description": "TODO",
+    "description": "Shown when a config file could not be read (config.ts:184). {scope} is an untranslated lowercase English word naming the config source; {reason} is a parser message that is not itself translated.",
     "placeholders": {
       "scope": {
         "type": "String"
@@ -543,7 +534,7 @@
   },
   "cli.config.keys": "Keys: {keys}",
   "@cli.config.keys": {
-    "description": "TODO",
+    "description": "Lists the config keys accepted by the command. {keys} is a comma-joined list of literal key names, untranslated.",
     "placeholders": {
       "keys": {
         "type": "String"
@@ -552,7 +543,7 @@
   },
   "cli.config.removed": "Removed config {key} ({scope}).",
   "@cli.config.removed": {
-    "description": "TODO",
+    "description": "Confirmation after a config key is deleted. {key} is a literal config key name; {scope} is an untranslated lowercase English word naming which config file changed.",
     "placeholders": {
       "key": {
         "type": "String"
@@ -564,7 +555,7 @@
   },
   "cli.config.saved": "Saved config {key} ({scope}).",
   "@cli.config.saved": {
-    "description": "TODO",
+    "description": "Confirmation after a config key is written. {key} is a literal config key name; {scope} is an untranslated lowercase English word naming which config file changed.",
     "placeholders": {
       "key": {
         "type": "String"
@@ -576,11 +567,11 @@
   },
   "cli.config.scope": "scope",
   "@cli.config.scope": {
-    "description": "TODO"
+    "description": "Row label in the config listing naming which config file is shown (cli-config.ts:83). The code appends ':' itself, so do not include punctuation. Lowercase, because it sits in a column beside untranslated config key names."
   },
   "cli.config.unknown_key": "Unknown config key: {key}",
   "@cli.config.unknown_key": {
-    "description": "TODO",
+    "description": "Shown when the user names a config key that does not exist. {key} is the name as typed.",
     "placeholders": {
       "key": {
         "type": "String"
@@ -589,67 +580,67 @@
   },
   "cli.config.value_empty": "Config value cannot be empty",
   "@cli.config.value_empty": {
-    "description": "TODO"
+    "description": "Shown when 'config set' is given an empty value. No trailing period, matching the neighbouring config errors."
   },
   "cli.help.desc.config": "manage config",
   "@cli.help.desc.config": {
-    "description": "TODO"
+    "description": "Description of the 'config' command in the CLI command table. Lowercase verb phrase, no trailing period — the whole column follows this shape."
   },
   "cli.help.desc.auth": "authenticate a provider (API key or subscription)",
   "@cli.help.desc.auth": {
-    "description": "TODO"
+    "description": "Description of the 'auth' command in the CLI command table. Lowercase verb phrase, no trailing period. The parenthetical names the two ways to authenticate."
   },
   "cli.help.desc.login": "authenticate with the cloud",
   "@cli.help.desc.login": {
-    "description": "TODO"
+    "description": "Description of the 'login' command, which signs in to the hosted cloud service. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.logout": "remove cloud credentials",
   "@cli.help.desc.logout": {
-    "description": "TODO"
+    "description": "Description of the 'logout' command, which clears stored cloud credentials. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.history": "show recent sessions",
   "@cli.help.desc.history": {
-    "description": "TODO"
+    "description": "Description of the 'history' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.logs": "view server logs",
   "@cli.help.desc.logs": {
-    "description": "TODO"
+    "description": "Description of the 'logs' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.memory": "manage memory",
   "@cli.help.desc.memory": {
-    "description": "TODO"
+    "description": "Description of the 'memory' command group in the CLI command table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.ps": "list running servers",
   "@cli.help.desc.ps": {
-    "description": "TODO"
+    "description": "Description of the 'ps' command, which lists running servers. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.restart": "restart server",
   "@cli.help.desc.restart": {
-    "description": "TODO"
+    "description": "Description of the 'restart' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.resume": "resume previous session",
   "@cli.help.desc.resume": {
-    "description": "TODO"
+    "description": "Description of the 'resume' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.run": "run a single prompt",
   "@cli.help.desc.run": {
-    "description": "TODO"
+    "description": "Description of the 'run' command, which executes one prompt without entering chat. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.skill": "run a prompt with an active skill",
   "@cli.help.desc.skill": {
-    "description": "TODO"
+    "description": "Description of the 'skill' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.start": "start server",
   "@cli.help.desc.start": {
-    "description": "TODO"
+    "description": "Description of the 'start' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.status": "show server status",
   "@cli.help.desc.status": {
-    "description": "TODO"
+    "description": "Description of the 'status' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.stop": "stop all servers",
   "@cli.help.desc.stop": {
-    "description": "TODO"
+    "description": "Description of the 'stop' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
   "chat.workspaces.created": "Created workspace {name}.",
   "@chat.workspaces.created": {
@@ -697,15 +688,15 @@
   },
   "cli.help.desc.tool": "run a tool directly",
   "@cli.help.desc.tool": {
-    "description": "TODO"
+    "description": "Description of the 'tool' command, which invokes one tool directly. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.trace": "inspect server lifecycle traces",
   "@cli.help.desc.trace": {
-    "description": "TODO"
+    "description": "Description of the 'trace' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.desc.update": "check for and install updates",
   "@cli.help.desc.update": {
-    "description": "TODO"
+    "description": "Description of the 'update' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
   "cli.trace.no_store": "No trace data available. Run a task first.",
   "@cli.trace.no_store": {
@@ -1002,11 +993,11 @@
   },
   "cli.help.examples": "Examples:",
   "@cli.help.examples": {
-    "description": "TODO"
+    "description": "Heading above the worked examples in a command's help page (cli-help.ts:22). Includes its trailing colon."
   },
   "cli.help.label.description": "Description: {description}",
   "@cli.help.label.description": {
-    "description": "TODO",
+    "description": "Line in a command's help page giving what the command does (cli-help.ts:19). The label carries its own colon; {description} is one of the cli.help.desc.* strings.",
     "placeholders": {
       "description": {
         "type": "String"
@@ -1015,7 +1006,7 @@
   },
   "cli.help.label.usage": "Usage: {usage}",
   "@cli.help.label.usage": {
-    "description": "TODO",
+    "description": "Line in a command's help page giving the invocation form (cli-help.ts:12,17). The label carries its own colon; {usage} is literal command syntax and must not be translated.",
     "placeholders": {
       "usage": {
         "type": "String"
@@ -1024,31 +1015,31 @@
   },
   "cli.help.option.help": "print help",
   "@cli.help.option.help": {
-    "description": "TODO"
+    "description": "Description of the --help flag in the global options table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.option.no_update": "disable update checks",
   "@cli.help.option.no_update": {
-    "description": "TODO"
+    "description": "Description of the --no-update flag in the global options table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.option.update": "check for updates before running",
   "@cli.help.option.update": {
-    "description": "TODO"
+    "description": "Description of the --update flag in the global options table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.option.version": "print version",
   "@cli.help.option.version": {
-    "description": "TODO"
+    "description": "Description of the --version flag in the global options table. Lowercase verb phrase, no trailing period."
   },
   "cli.help.section.commands": "Commands",
   "@cli.help.section.commands": {
-    "description": "TODO"
+    "description": "Section heading above the command table on the root help page (cli-help.ts:72). No colon; the layout supplies the spacing."
   },
   "cli.help.section.options": "Options",
   "@cli.help.section.options": {
-    "description": "TODO"
+    "description": "Section heading above the global options table on the root help page (cli-help.ts:76). No colon; the layout supplies the spacing."
   },
   "cli.help.section.usage": "Usage",
   "@cli.help.section.usage": {
-    "description": "TODO"
+    "description": "Section heading above the invocation form on the root help page (cli-help.ts:67). No colon; the layout supplies the spacing."
   },
   "cli.memory.archive.none": "No retired memories.",
   "@cli.memory.archive.none": {
