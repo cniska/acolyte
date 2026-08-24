@@ -33,6 +33,12 @@ Each message carries an `@<key>` entry describing where it appears and what its 
 
 The compiler rejects a catalog that omits a key, adds an unknown one, uses a placeholder the English message does not, or leaves a description unwritten. It also rejects a key no source file references, so a message cannot be translated into every language after the code that showed it is gone.
 
+Call `t()` inside the function that renders, never at module scope. `setLocale` runs at the entrypoints (`cli.ts`, `server.ts`), so a string built while a module evaluates keeps the locale that happened to be active at import. A table of labels or help text is a thunk or a table of keys, resolved on read. Nothing enforces this — a frozen string is a half-translated screen, not an error — so a table that must hold rendered text is covered by a test that switches locale after import and asserts the new language.
+
+## Selecting a language
+
+`acolyte config set locale <id>` chooses the interface language, writing user scope so the choice follows the person across projects. The value is validated against the bundled locales, and a wrong one is answered with the full list. The language applies from the next launch.
+
 ## Message syntax
 
 A message is literal text, `{name}` placeholders, and the ICU plural form `{count, plural, one {# file} other {# files}}`, where `#` is the count. Plural categories come from `Intl.PluralRules`, so a locale gets the arms its language actually needs; `other` is required and is used when a category has no arm.
