@@ -1,18 +1,31 @@
 import { basename } from "node:path";
-import { slashCommandRows } from "./chat-slash";
 import { t } from "./i18n";
 import { envWithoutGitState } from "./tool-utils";
 
 export type ShortcutItem = { key: string; description: string };
 
-/** Help entries, resolved per call so flag-gated commands stay absent while their flag is off. */
-export function shortcutItems(): ShortcutItem[] {
+/** The chord that moves by word, named the way the platform's own keyboard labels it. */
+function wordMotionKey(platform: string): string {
+  return platform === "darwin" ? "opt + ← / →" : "alt + ← / →";
+}
+
+/** Keys only: commands are their own list, reached by typing the `/` this one names. */
+export function shortcutItems(platform: string = process.platform): ShortcutItem[] {
   return [
-    { key: "@path", description: t("chat.at_ref.mention_path") },
-    ...slashCommandRows()
-      // Skills stay out of the cheatsheet; `/skills` is their discovery surface, and a full roster would bury it.
-      .filter((row) => row.source === "builtin")
-      .map((row) => ({ key: row.usage, description: row.help })),
+    { key: "/", description: t("tui.help.commands") },
+    { key: "@", description: t("tui.help.file_paths") },
+    { key: "?", description: t("tui.help.toggle_list") },
+    { key: "tab", description: t("tui.help.accept") },
+    { key: "→", description: t("tui.help.accept_ghost") },
+    { key: "esc", description: t("tui.help.interrupt") },
+    { key: "esc", description: t("tui.help.close_list") },
+    { key: "ctrl + c", description: t("tui.help.exit") },
+    { key: "↑ ↓", description: t("tui.help.history") },
+    { key: "shift + ⏎", description: t("tui.help.newline") },
+    { key: "ctrl + a / e", description: t("tui.help.line_bounds") },
+    { key: "ctrl + w", description: t("tui.help.delete_word") },
+    { key: "ctrl + u", description: t("tui.help.clear_line") },
+    { key: wordMotionKey(platform), description: t("tui.help.move_word") },
   ];
 }
 

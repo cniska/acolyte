@@ -12,10 +12,6 @@
   "@agent.status.working": {
     "description": "Transient status shown beside the spinner while a turn is in flight. Present participle; keep it short enough for a narrow terminal."
   },
-  "chat.at_ref.mention_path": "mention path",
-  "@chat.at_ref.mention_path": {
-    "description": "Placeholder label for the @-mention picker that inserts a file or folder path into the composer."
-  },
   "chat.command.unknown": "Unknown command: {command}",
   "@chat.command.unknown": {
     "description": "Error shown when the user types a slash command that does not exist. {command} is the name as typed, without the leading slash.",
@@ -1539,6 +1535,62 @@
   "tool.content.working_tree_clean": "Working tree clean.",
   "@tool.content.working_tree_clean": {
     "description": "Stands in for git status output when the working tree has no changes."
+  },
+  "tui.help.accept": "to accept",
+  "@tui.help.accept": {
+    "description": "Help panel row for the tab key, which accepts the selected completion."
+  },
+  "tui.help.accept_ghost": "to accept the ghost",
+  "@tui.help.accept_ghost": {
+    "description": "Help panel row for the right arrow, which accepts the dimmed inline completion preview."
+  },
+  "tui.help.clear_line": "to clear the line",
+  "@tui.help.clear_line": {
+    "description": "Help panel row for ctrl + u, which clears the whole input line."
+  },
+  "tui.help.close_list": "to close this list",
+  "@tui.help.close_list": {
+    "description": "Help panel row for esc while the help panel is open."
+  },
+  "tui.help.commands": "for commands",
+  "@tui.help.commands": {
+    "description": "Help panel row for the / prefix. Follows the literal key, so it reads as \"/ for commands\"."
+  },
+  "tui.help.delete_word": "to delete a word",
+  "@tui.help.delete_word": {
+    "description": "Help panel row for ctrl + w, which deletes the word before the cursor."
+  },
+  "tui.help.exit": "twice to exit",
+  "@tui.help.exit": {
+    "description": "Help panel row for ctrl + c, which exits when pressed twice. The word for \"twice\" belongs here rather than in the key, so it translates: the key column holds only the chord itself."
+  },
+  "tui.help.file_paths": "for file paths",
+  "@tui.help.file_paths": {
+    "description": "Help panel row for the @ prefix. Follows the literal key, so it reads as \"@ for file paths\"."
+  },
+  "tui.help.history": "for earlier messages",
+  "@tui.help.history": {
+    "description": "Help panel row for the up and down arrows, which walk the input history."
+  },
+  "tui.help.interrupt": "to interrupt",
+  "@tui.help.interrupt": {
+    "description": "Help panel row for esc while a turn is running."
+  },
+  "tui.help.line_bounds": "for line start / end",
+  "@tui.help.line_bounds": {
+    "description": "Help panel row for ctrl + a and ctrl + e, which move the cursor to the ends of the line."
+  },
+  "tui.help.move_word": "to move by word",
+  "@tui.help.move_word": {
+    "description": "Help panel row for the word-motion chord, which is opt on macOS and alt elsewhere."
+  },
+  "tui.help.newline": "for a newline",
+  "@tui.help.newline": {
+    "description": "Help panel row for shift + return, which inserts a newline instead of sending."
+  },
+  "tui.help.toggle_list": "to toggle this list",
+  "@tui.help.toggle_list": {
+    "description": "Help panel row for the ? key, which shows and hides the help panel itself."
   },
   "tui.input.ctrl_c_hint": "ctrl+c again to exit",
   "@tui.input.ctrl_c_hint": {

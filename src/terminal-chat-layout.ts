@@ -86,15 +86,23 @@ const BOX_PAD = 1;
 // The column where content begins: transcript rows inset by the box's border+pad thickness so
 // their glyphs align with the boxed composer prompt, even though only the composer draws a frame.
 const CONTENT_COLUMN = GUTTER + BOX_BORDER + BOX_PAD;
-const HELP_COLUMN_GAP = "  ";
+const HELP_COLUMNS = 3;
+const HELP_COLUMN_GAP = 2;
 
-// A cheatsheet row leads with what the user types and trails with the argument form; splitting at
-// the first placeholder lets the arguments recede without losing them.
-function splitUsage(usage: string): { command: string; args: string } {
-  const start = usage.search(/\s[<[]/);
-  if (start === -1) return { command: usage, args: "" };
-  return { command: usage.slice(0, start), args: usage.slice(start) };
+/** Keeps a composed row inside the content width by cutting the spans that run past it. */
+function clipSpans(spans: TerminalSpan[], limit: number): TerminalSpan[] {
+  const out: TerminalSpan[] = [];
+  let used = 0;
+  for (const span of spans) {
+    const room = limit - used;
+    if (room <= 0) break;
+    const text = width(span.text) <= room ? span.text : truncateToWidth(span.text, room);
+    out.push({ ...span, text });
+    used += width(text);
+  }
+  return out;
 }
+
 function contentWidth(columns: number): number {
   return Math.max(24, columns - 2 * CONTENT_COLUMN);
 }
@@ -549,21 +557,26 @@ export function layoutComposerStatus(input: {
   const boxed = frameScene({ lines: promptLines, cursor: { row: caretRow, column: caretColumn } }, terminalWidth);
   const attached: TerminalLine[] = [];
   if (presentation.showHelp) {
-    const keys = presentation.helpEntries.map((entry) => splitUsage(entry.key));
-    const keyWidth = Math.min(cw - 2, Math.max(0, ...keys.map(({ command, args }) => width(command) + width(args))));
-    for (const [index, entry] of presentation.helpEntries.entries()) {
-      const { command, args } = keys[index] ?? { command: entry.key, args: "" };
-      const pad = " ".repeat(Math.max(0, keyWidth - width(command) - width(args)));
-      attached.push({
-        spans: [
-          { text: `  ${command}`, role: "plain" as const },
-          { text: `${args}${pad}`, role: "faint" as const },
-          {
-            text: truncateToWidth(`${HELP_COLUMN_GAP}${entry.description}`, Math.max(1, cw - 2 - keyWidth)),
-            role: "muted" as const,
-          },
-        ],
-      });
+    const rows = Math.ceil(presentation.helpEntries.length / HELP_COLUMNS);
+    const columns = Array.from({ length: HELP_COLUMNS }, (_, column) =>
+      presentation.helpEntries.slice(column * rows, column * rows + rows),
+    );
+    const columnWidths = columns.map((entries) =>
+      Math.max(0, ...entries.map((entry) => width(entry.key) + 1 + width(entry.description))),
+    );
+    for (let row = 0; row < rows; row++) {
+      const spans: TerminalSpan[] = [];
+      for (const [column, entries] of columns.entries()) {
+        const entry = entries[row];
+        if (!entry) continue;
+        const cell = width(entry.key) + 1 + width(entry.description);
+        const trailing = column === columns.length - 1 ? 0 : (columnWidths[column] ?? 0) - cell + HELP_COLUMN_GAP;
+        spans.push(
+          { text: `${spans.length === 0 ? "  " : ""}${entry.key} `, role: "plain" },
+          { text: `${entry.description}${" ".repeat(Math.max(0, trailing))}`, role: "muted" },
+        );
+      }
+      attached.push({ spans: clipSpans(spans, cw) });
     }
   } else if (presentation.suggestions.kind === "at") {
     const selected = presentation.suggestions.selected;

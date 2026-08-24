@@ -15,7 +15,6 @@ export type MessageArgs = {
   "agent.output.no_output": never;
   "agent.output.no_response_after_tools": never;
   "agent.status.working": never;
-  "chat.at_ref.mention_path": never;
   "chat.command.unknown": { command: string | number };
   "chat.command.unknown_subcommand": { subcommand: string | number };
   "chat.input.placeholder": never;
@@ -274,6 +273,20 @@ export type MessageArgs = {
   "tool.content.no_matches": never;
   "tool.content.no_output": never;
   "tool.content.working_tree_clean": never;
+  "tui.help.accept": never;
+  "tui.help.accept_ghost": never;
+  "tui.help.clear_line": never;
+  "tui.help.close_list": never;
+  "tui.help.commands": never;
+  "tui.help.delete_word": never;
+  "tui.help.exit": never;
+  "tui.help.file_paths": never;
+  "tui.help.history": never;
+  "tui.help.interrupt": never;
+  "tui.help.line_bounds": never;
+  "tui.help.move_word": never;
+  "tui.help.newline": never;
+  "tui.help.toggle_list": never;
   "tui.input.ctrl_c_hint": never;
   "tui.picker.hint.model": never;
   "tui.picker.hint.resume": never;

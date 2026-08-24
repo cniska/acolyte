@@ -91,7 +91,7 @@ function composerScene(overrides: InputPanelOverrides, columns: number) {
       input: { text: value, cursor: value.length },
       picker,
       suggestions,
-      help: overrides.showHelp ? { visible: true, entries: shortcutItems() } : { visible: false, entries: [] },
+      help: overrides.showHelp ? { visible: true, entries: shortcutItems("darwin") } : { visible: false, entries: [] },
       ctrlCPending: overrides.ctrlCPending ?? false,
       footer: overrides.statusLine ?? DEFAULT_STATUS_LINE,
     },
@@ -135,28 +135,19 @@ describe("chat tui visual regression: status line and help", () => {
   });
 
   const HELP_ROWS = [
-    "     @path                                         mention path",
-    "     /new                                          start new session",
-    "     /clear                                        clear transcript",
-    "     /model <id>                                   change model",
-    "     /status                                       show server status",
-    "     /sessions                                     show sessions",
-    "     /skills                                       show skills picker",
-    "     /resume <id-prefix>                           resume session",
-    "     /memory                                       manage memory",
-    "     /memory add [--user|--project] <memory text>  add memory note",
-    "     /memory rm <id>                               remove memory note",
-    "     /memory list [all|user|project] [--archived]  show memory notes",
-    "     /usage                                        show token usage",
-    "     /exit                                         exit chat",
+    "     / for commands         esc to interrupt          ctrl + a / e for line start / end",
+    "     @ for file paths       esc to close this list    ctrl + w to delete a word",
+    "     ? to toggle this list  ctrl + c twice to exit    ctrl + u to clear the line",
+    "     tab to accept          \u2191 \u2193 for earlier messages  opt + \u2190 / \u2192 to move by word",
+    "     \u2192 to accept the ghost  shift + \u23ce for a newline",
   ];
 
-  test("renders help pane one entry per row", () => {
+  test("renders the help pane as three key columns", () => {
     const out = renderInputPanel({ showHelp: true });
     expect(out).toBe([box(["\u276f"]), ...HELP_ROWS].join("\n"));
   });
 
-  test("keeps one entry per row on a wide terminal", () => {
+  test("keeps the same three columns on a wide terminal", () => {
     const out = renderInputPanel({ showHelp: true }, 200);
     expect(out).toBe([box(["\u276f"], 200), ...HELP_ROWS].join("\n"));
   });
