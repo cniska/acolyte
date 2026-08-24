@@ -1325,107 +1325,107 @@
   },
   "status.header": "Status",
   "@status.header": {
-    "description": "Title above the /status report (status-format.ts:50). Single noun."
+    "description": "Title above the status report, shown by both '/status' in chat and 'acolyte status' on the command line (status-format.ts:50). Single noun; must read well on both surfaces."
   },
   "status.label.capabilities": "Capabilities",
   "@status.label.capabilities": {
-    "description": "TODO"
+    "description": "Row label in the status report listing what the server supports. Labels sit in a left column beside their values, so keep them short."
   },
   "status.label.cloud_url": "Cloud URL",
   "@status.label.cloud_url": {
-    "description": "TODO"
+    "description": "Row label in the status report for the configured cloud address. 'URL' is a literal machine term normally left as-is."
   },
   "status.label.cloud_user": "User",
   "@status.label.cloud_user": {
-    "description": "TODO"
+    "description": "Row label in the status report naming the signed-in cloud account. Distinct from chat.scope.user, which names a memory scope — these may translate differently."
   },
   "status.label.memory": "Memory",
   "@status.label.memory": {
-    "description": "TODO"
+    "description": "Row label in the status report for memory storage and size. Its value comes from status.memory.summary."
   },
   "status.label.model": "Model",
   "@status.label.model": {
-    "description": "TODO"
+    "description": "Row label in the status report for the active model. Distinct from the picker label and the trace column, which may translate differently."
   },
   "status.label.protocol_version": "Protocol version",
   "@status.label.protocol_version": {
-    "description": "TODO"
+    "description": "Row label in the status report for the client/server protocol version."
   },
   "status.label.providers": "Providers",
   "@status.label.providers": {
-    "description": "TODO"
+    "description": "Row label in the status report listing configured model providers and how each is authenticated."
   },
   "status.label.resources.config.collisions": "Config file collisions",
   "@status.label.resources.config.collisions": {
-    "description": "TODO"
+    "description": "Row label in the status report counting config files that shadow one another."
   },
   "status.label.resources.plugins.duplicates": "Shadowed plugins",
   "@status.label.resources.plugins.duplicates": {
-    "description": "TODO"
+    "description": "Row label in the status report counting plugins hidden by another of the same name. 'Shadowed' means overridden rather than removed."
   },
   "status.label.resources.plugins.loaded": "Plugins loaded",
   "@status.label.resources.plugins.loaded": {
-    "description": "TODO"
+    "description": "Row label in the status report counting plugins that loaded successfully."
   },
   "status.label.resources.plugins.mcp_disabled": "Plugins with MCP disabled",
   "@status.label.resources.plugins.mcp_disabled": {
-    "description": "TODO"
+    "description": "Row label in the status report counting plugins whose MCP servers are turned off. 'MCP' is a protocol name and stays as-is."
   },
   "status.label.resources.plugins.rejected": "Rejected plugins",
   "@status.label.resources.plugins.rejected": {
-    "description": "TODO"
+    "description": "Row label in the status report counting plugins refused at load time."
   },
   "status.label.resources.plugins.servers_skipped": "Skipped plugin servers",
   "@status.label.resources.plugins.servers_skipped": {
-    "description": "TODO"
+    "description": "Row label in the status report counting plugin servers that were not started."
   },
   "status.label.resources.plugins.skills_duplicates": "Shadowed plugin skills",
   "@status.label.resources.plugins.skills_duplicates": {
-    "description": "TODO"
+    "description": "Row label in the status report counting plugin-provided skills hidden by another of the same name. 'Shadowed' means overridden rather than removed."
   },
   "status.label.resources.plugins.skills_invalid": "Invalid plugin skills",
   "@status.label.resources.plugins.skills_invalid": {
-    "description": "TODO"
+    "description": "Row label in the status report counting plugin-provided skills that failed validation."
   },
   "status.label.resources.prompt.agents": "Agents file",
   "@status.label.resources.prompt.agents": {
-    "description": "TODO"
+    "description": "Row label in the status report for the project's agents instruction file. 'Agents file' refers to AGENTS.md, so keep it recognizable as a filename."
   },
   "status.label.resources.skills.duplicates": "Duplicate skills",
   "@status.label.resources.skills.duplicates": {
-    "description": "TODO"
+    "description": "Row label in the status report counting skills declared more than once."
   },
   "status.label.resources.skills.invalid": "Invalid skills",
   "@status.label.resources.skills.invalid": {
-    "description": "TODO"
+    "description": "Row label in the status report counting skills that failed validation."
   },
   "status.label.resources.skills.read_errors": "Skill read errors",
   "@status.label.resources.skills.read_errors": {
-    "description": "TODO"
+    "description": "Row label in the status report counting skills that could not be read from disk."
   },
   "status.label.resources.skills.status": "Skills",
   "@status.label.resources.skills.status": {
-    "description": "TODO"
+    "description": "Row label in the status report summarizing loaded skills."
   },
   "status.label.rpc_queue_length": "Queue length",
   "@status.label.rpc_queue_length": {
-    "description": "TODO"
+    "description": "Row label in the status report for how many requests are waiting."
   },
   "status.label.service": "Service",
   "@status.label.service": {
-    "description": "TODO"
+    "description": "Row label in the status report naming the service the client is talking to."
   },
   "status.label.tasks_running": "Tasks running",
   "@status.label.tasks_running": {
-    "description": "TODO"
+    "description": "Row label in the status report for tasks currently executing."
   },
   "status.label.tasks_total": "Tasks total",
   "@status.label.tasks_total": {
-    "description": "TODO"
+    "description": "Row label in the status report for tasks handled since the server started."
   },
   "status.memory.summary": "{storage} ({count, plural, one {# entry} other {# entries}})",
   "@status.memory.summary": {
-    "description": "TODO",
+    "description": "Value beside the memory row in the status report. {storage} is an untranslated backend name such as 'sqlite' or 'cloud'; {count} is how many records it holds.",
     "placeholders": {
       "storage": {
         "type": "String"
@@ -1437,135 +1437,135 @@
   },
   "status.provider_auth.api_key": "api key",
   "@status.provider_auth.api_key": {
-    "description": "TODO"
+    "description": "Names API-key authentication in the providers row. Lowercase, because it appears inside a parenthesized list beside a provider name."
   },
   "status.provider_auth.subscription": "subscription",
   "@status.provider_auth.subscription": {
-    "description": "TODO"
+    "description": "Names subscription authentication in the providers row. Lowercase, because it appears inside a parenthesized list beside a provider name."
   },
   "tool.content.no_matches": "No matches.",
   "@tool.content.no_matches": {
-    "description": "TODO"
+    "description": "Stands in for a search tool's output when nothing matched. Distinct from the picker's equivalent, which is UI chrome rather than tool output."
   },
   "tool.content.no_output": "(No output)",
   "@tool.content.no_output": {
-    "description": "TODO"
+    "description": "Stands in for a tool's output when it produced none. The surrounding parentheses are part of the text and mark it as a note rather than real output."
   },
   "tool.content.working_tree_clean": "Working tree clean.",
   "@tool.content.working_tree_clean": {
-    "description": "TODO"
+    "description": "Stands in for git status output when the working tree has no changes."
   },
   "tool.label.code_edit": "Edit (Code)",
   "@tool.label.code_edit": {
-    "description": "TODO"
+    "description": "Action label on the tool row for a structural code edit. The parenthetical distinguishes it from the plain file edit label."
   },
   "tool.label.code_scan": "Scan Code",
   "@tool.label.code_scan": {
-    "description": "TODO"
+    "description": "Action label on the tool row for structural code search. Match the verb form used across tool.label.* keys."
   },
   "tool.label.file_create": "Create",
   "@tool.label.file_create": {
-    "description": "TODO"
+    "description": "Action label on the tool row for creating a file. Match the verb form used across tool.label.* keys."
   },
   "tool.label.file_delete": "Delete",
   "@tool.label.file_delete": {
-    "description": "TODO"
+    "description": "Action label on the tool row for deleting a file. Match the verb form used across tool.label.* keys."
   },
   "tool.label.file_edit": "Edit",
   "@tool.label.file_edit": {
-    "description": "TODO"
+    "description": "Action label on the tool row for editing a file. Match the verb form used across tool.label.* keys."
   },
   "tool.label.file_find": "Find",
   "@tool.label.file_find": {
-    "description": "TODO"
+    "description": "Action label on the tool row for finding files by name. Match the verb form used across tool.label.* keys."
   },
   "tool.label.file_read": "Read",
   "@tool.label.file_read": {
-    "description": "TODO"
+    "description": "Action label on the tool row for reading a file (cli-format.ts:33 and the TUI tool header). These labels name the action as it happens, so use the same verb form across every tool.label.* key. The file path is shown separately as the row's detail."
   },
   "tool.label.file_search": "Search",
   "@tool.label.file_search": {
-    "description": "TODO"
+    "description": "Action label on the tool row for searching file contents. Match the verb form used across tool.label.* keys."
   },
   "tool.label.gh_issue_create": "Create Issue",
   "@tool.label.gh_issue_create": {
-    "description": "TODO"
+    "description": "Action label on the tool row for opening an issue. Translate the action word; 'Issue' is the GitHub term for the object."
   },
   "tool.label.gh_issue_list": "List Issues",
   "@tool.label.gh_issue_list": {
-    "description": "TODO"
+    "description": "Action label on the tool row for listing issues. Translate the action word; 'Issues' is the GitHub term for the objects."
   },
   "tool.label.gh_pr_create": "Create PR",
   "@tool.label.gh_pr_create": {
-    "description": "TODO"
+    "description": "Action label on the tool row for opening a pull request. 'PR' is normally left as-is; translate the action word beside it."
   },
   "tool.label.gh_pr_edit": "Edit PR",
   "@tool.label.gh_pr_edit": {
-    "description": "TODO"
+    "description": "Action label on the tool row for editing a pull request. 'PR' is normally left as-is; translate the action word beside it."
   },
   "tool.label.gh_pr_view": "PR",
   "@tool.label.gh_pr_view": {
-    "description": "TODO"
+    "description": "Action label on the tool row for viewing a pull request. 'PR' is the widely used abbreviation on GitHub and is normally left as-is."
   },
   "tool.label.git_add": "Git Add",
   "@tool.label.git_add": {
-    "description": "TODO"
+    "description": "Action label on the tool row for 'git add'. 'Git' is a product name and must not be translated; translate only the action word beside it."
   },
   "tool.label.git_commit": "Git Commit",
   "@tool.label.git_commit": {
-    "description": "TODO"
+    "description": "Action label on the tool row for 'git commit'. 'Git' is a product name; 'commit' is a git term a user needs to recognize from the command line."
   },
   "tool.label.git_diff": "Git Diff",
   "@tool.label.git_diff": {
-    "description": "TODO"
+    "description": "Action label on the tool row for 'git diff'. 'Git' is a product name and 'Diff' a git term; keep both recognizable to someone who knows the command."
   },
   "tool.label.git_log": "Git Log",
   "@tool.label.git_log": {
-    "description": "TODO"
+    "description": "Action label on the tool row for 'git log'. 'Git' is a product name and must not be translated."
   },
   "tool.label.git_show": "Git Show",
   "@tool.label.git_show": {
-    "description": "TODO"
+    "description": "Action label on the tool row for 'git show'. 'Git' is a product name and must not be translated."
   },
   "tool.label.git_status": "Git Status",
   "@tool.label.git_status": {
-    "description": "TODO"
+    "description": "Action label on the tool row for 'git status'. 'Git' is the tool's product name and must not be translated; translate only the action word beside it."
   },
   "tool.label.memory_add": "Add (Memory)",
   "@tool.label.memory_add": {
-    "description": "TODO"
+    "description": "Action label on the tool row for storing a memory note. The parenthetical names the subsystem and should match the other memory labels."
   },
   "tool.label.memory_remove": "Remove (Memory)",
   "@tool.label.memory_remove": {
-    "description": "TODO"
+    "description": "Action label on the tool row for deleting a memory note. The parenthetical names the subsystem and should match the other memory labels."
   },
   "tool.label.memory_search": "Search (Memory)",
   "@tool.label.memory_search": {
-    "description": "TODO"
+    "description": "Action label on the tool row for searching memory. The parenthetical names the subsystem and should match the other memory labels."
   },
   "tool.label.shell_run": "Run",
   "@tool.label.shell_run": {
-    "description": "TODO"
+    "description": "Action label on the tool row for running a shell command. Match the verb form used across tool.label.* keys."
   },
   "tool.label.skill_activate": "Skill",
   "@tool.label.skill_activate": {
-    "description": "TODO"
+    "description": "Action label on the tool row when a skill is activated. Shares its text with the deactivate label; the skill's name is shown separately as the row's detail."
   },
   "tool.label.skill_deactivate": "Skill",
   "@tool.label.skill_deactivate": {
-    "description": "TODO"
+    "description": "Action label on the tool row when a skill is deactivated. Shares its text with the activate label; the skill's name is shown separately as the row's detail."
   },
   "tool.label.test_run": "Run (Test)",
   "@tool.label.test_run": {
-    "description": "TODO"
+    "description": "Action label on the tool row for running tests. The parenthetical distinguishes it from the plain run label."
   },
   "tool.label.web_fetch": "Web Fetch",
   "@tool.label.web_fetch": {
-    "description": "TODO"
+    "description": "Action label on the tool row for fetching a web page. 'Web' is normally left as-is."
   },
   "tool.label.web_search": "Web Search",
   "@tool.label.web_search": {
-    "description": "TODO"
+    "description": "Action label on the tool row for searching the web. 'Web' is normally left as-is."
   },
   "tui.input.ctrl_c_hint": "ctrl+c again to exit",
   "@tui.input.ctrl_c_hint": {
@@ -1644,7 +1644,7 @@
   },
   "unit.call": "{count, plural, one {# call} other {# calls}}",
   "@unit.call": {
-    "description": "TODO",
+    "description": "Counts tool calls in a turn summary. {count} is the number.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -1653,7 +1653,7 @@
   },
   "unit.file": "{count, plural, one {# file} other {# files}}",
   "@unit.file": {
-    "description": "TODO",
+    "description": "Counts files in a tool row's summary, for example after a search. {count} is the number. Finnish and Swedish take one/other; Spanish also has a 'many' form for millions, which no count here reaches.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -1662,7 +1662,7 @@
   },
   "unit.line": "{count, plural, one {# line} other {# lines}}",
   "@unit.line": {
-    "description": "TODO",
+    "description": "Counts lines in a tool row's summary, for example after reading or editing a file. {count} is the number.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -1671,7 +1671,7 @@
   },
   "unit.match": "{count, plural, one {# match} other {# matches}}",
   "@unit.match": {
-    "description": "TODO",
+    "description": "Counts search matches in a tool row's summary. {count} is the number.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -1680,7 +1680,7 @@
   },
   "unit.more": "{count, plural, one {# more} other {# more}}",
   "@unit.more": {
-    "description": "TODO",
+    "description": "Marks how many items were hidden when a tool's output is truncated (tool-output-layout.ts:77). It is rendered after a leading '… +', so it must read as a bare count, not a sentence.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -1689,7 +1689,7 @@
   },
   "unit.pattern": "{count, plural, one {# pattern} other {# patterns}}",
   "@unit.pattern": {
-    "description": "TODO",
+    "description": "Counts search patterns in a tool row's summary. {count} is the number.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -1698,7 +1698,7 @@
   },
   "unit.result": "{count, plural, one {# result} other {# results}}",
   "@unit.result": {
-    "description": "TODO",
+    "description": "Counts results in a tool row's summary, for example from a web search. {count} is the number.",
     "placeholders": {
       "count": {
         "type": "number"
@@ -1707,7 +1707,7 @@
   },
   "unit.token.arrows": "↑{input} ↓{output}",
   "@unit.token.arrows": {
-    "description": "TODO",
+    "description": "Compact token counts in the turn summary. The arrows mark input and output and are symbols rather than words; {input} and {output} are already-formatted short numbers such as '1.2k'. Nothing here should be translated.",
     "placeholders": {
       "input": {
         "type": "String"
@@ -1719,7 +1719,7 @@
   },
   "unit.tool": "{count, plural, one {# tool} other {# tools}}",
   "@unit.tool": {
-    "description": "TODO",
+    "description": "Counts distinct tools used in a turn summary, and feeds the parenthesized detail in chat.worked and chat.interrupted. {count} is the number.",
     "placeholders": {
       "count": {
         "type": "number"

@@ -3,7 +3,7 @@
  * Compiles the authored ARB catalogs in src/i18n/*.arb into typed TypeScript
  * modules. Translators edit ARB; nothing reads ARB at runtime.
  */
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Part } from "../src/i18n/catalog-contract";
 import { argNames, parseMessage } from "../src/i18n/message-parser";
@@ -90,6 +90,8 @@ if (unique.length) {
   console.error(`\n${unique.length} message error(s).`);
   process.exit(1);
 }
+
+mkdirSync(OUT_DIR, { recursive: true });
 
 for (const locale of locales) {
   const body = referenceKeys
