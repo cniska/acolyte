@@ -1,10 +1,14 @@
 #!/usr/bin/env bun
+import { appConfig } from "./app-config";
 import { parseGlobalArgsAndCommand } from "./cli-args";
 import { chatModeWithOptions } from "./cli-chat";
 import { commands, usage } from "./cli-command-registry";
 import { checkAndUpdateOnStartup, updateMode } from "./cli-update";
 import { formatVersionWithCommit, resolveCliCommitShort, resolveCliVersion } from "./cli-version";
+import { setLocale } from "./i18n";
 import { printOutput } from "./ui";
+
+setLocale(appConfig.locale);
 
 const CLI_VERSION = resolveCliVersion();
 const CLI_VERSION_OUTPUT = formatVersionWithCommit(CLI_VERSION, resolveCliCommitShort());

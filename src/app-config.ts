@@ -1,12 +1,10 @@
 import { readResolvedConfigSync } from "./config";
 import { readCredentialsSync, readProviderApiKeysSync } from "./credentials";
 import { env } from "./env";
-import { setLocale } from "./i18n";
 
 const fileConfig = readResolvedConfigSync();
 const credentials = readCredentialsSync();
 const providerApiKeys = readProviderApiKeysSync();
-setLocale(fileConfig.locale);
 
 export const appConfig = {
   locale: fileConfig.locale,
