@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { unreachable } from "./assert";
-import { t, tDynamic } from "./i18n";
+import { type TranslationKey, t } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { resolveToolLabel } from "./tool-output-format";
 import { truncateMiddleToWidth, truncateToWidth } from "./truncate-text";
@@ -67,15 +67,16 @@ export function resolveHeader(content: ToolOutputPart): ResolvedHeader | null {
   }
 }
 
-const TRUNCATED_UNIT_KEYS: Record<string, string> = {
+const TRUNCATED_UNIT_KEYS = {
   lines: "unit.line",
   matches: "unit.match",
   files: "unit.file",
-};
+} as const satisfies Record<string, TranslationKey>;
 
 function truncatedText(count: number | undefined, unit: string | undefined): string {
   if (!count) return "…";
-  const text = tDynamic(TRUNCATED_UNIT_KEYS[unit ?? ""] ?? "unit.more", { count });
+  const key = TRUNCATED_UNIT_KEYS[unit as keyof typeof TRUNCATED_UNIT_KEYS] ?? "unit.more";
+  const text = t(key, { count });
   return `… +${text}`;
 }
 
