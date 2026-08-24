@@ -31,7 +31,7 @@ Messages are authored in ARB (`src/i18n/<locale>.arb`) and compiled into TypeScr
 
 Each message carries an `@<key>` entry describing where it appears and what its placeholders hold. Write that description as if for a translator who cannot see the code: name the surface, say whether a placeholder arrives already translated, and call out any literal that must survive translation, such as a command name, flag, or environment variable.
 
-The compiler rejects a catalog that omits a key, adds an unknown one, uses a placeholder the English message does not, or leaves a description unwritten.
+The compiler rejects a catalog that omits a key, adds an unknown one, uses a placeholder the English message does not, or leaves a description unwritten. It also rejects a key no source file references, so a message cannot be translated into every language after the code that showed it is gone.
 
 ## Message syntax
 

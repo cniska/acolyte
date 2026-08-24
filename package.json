@@ -30,7 +30,7 @@
     "test:int": "bash scripts/run-test-suite.sh int",
     "test:perf": "bash scripts/run-test-suite.sh perf",
     "audit": "bun audit",
-    "verify": "bun run lint && bun run typecheck && bun run messages:check && bun test && bun run audit",
+    "verify": "bun run messages:check && bun run lint && bun run typecheck && bun test && bun run audit",
     "benchmark": "bun run scripts/benchmark.ts",
     "release": "bash scripts/release.sh"
   },
