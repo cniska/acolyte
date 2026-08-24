@@ -339,8 +339,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           .replace(/\s+/g, " ")
           .trim();
         await addMemory(distilled, { scope: naturalRememberDirective.scope });
-        const label = naturalRememberDirective.scope === "project" ? "project" : "user";
-        const confirmation = t("chat.remember.saved", { scope: label, content: distilled });
+        const savedKey =
+          naturalRememberDirective.scope === "project" ? "chat.remember.saved.project" : "chat.remember.saved.user";
+        const confirmation = t(savedKey, { content: distilled });
         const assistant = input.createMessage("assistant", confirmation);
         input.currentSession.messages.push(assistant);
         input.currentSession.updatedAt = input.nowIso();

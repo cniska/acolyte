@@ -48,20 +48,26 @@ export const EN_MESSAGES = {
     { kind: "arg", name: "count" },
   ],
   "chat.memory.list.failed": [{ kind: "text", value: "Failed to list memory." }],
-  "chat.memory.none": [
-    { kind: "text", value: "No " },
-    { kind: "arg", name: "scope" },
-    { kind: "text", value: "memory saved yet." },
-  ],
+  "chat.memory.none.all": [{ kind: "text", value: "No memory saved yet." }],
+  "chat.memory.none.project": [{ kind: "text", value: "No project memory saved yet." }],
+  "chat.memory.none.user": [{ kind: "text", value: "No user memory saved yet." }],
   "chat.memory.rm.failed": [{ kind: "text", value: "Failed to remove memory." }],
   "chat.memory.rm.not_found": [
     { kind: "text", value: "No memory found for id: " },
     { kind: "arg", name: "id" },
   ],
-  "chat.memory.rm.removed": [
-    { kind: "text", value: "Removed " },
-    { kind: "arg", name: "scope" },
-    { kind: "text", value: " memory " },
+  "chat.memory.rm.removed.project": [
+    { kind: "text", value: "Removed project memory " },
+    { kind: "arg", name: "id" },
+    { kind: "text", value: "." },
+  ],
+  "chat.memory.rm.removed.session": [
+    { kind: "text", value: "Removed session memory " },
+    { kind: "arg", name: "id" },
+    { kind: "text", value: "." },
+  ],
+  "chat.memory.rm.removed.user": [
+    { kind: "text", value: "Removed user memory " },
     { kind: "arg", name: "id" },
     { kind: "text", value: "." },
   ],
@@ -72,10 +78,16 @@ export const EN_MESSAGES = {
   ],
   "chat.model.failed": [{ kind: "text", value: "Failed to set model." }],
   "chat.remember.failed": [{ kind: "text", value: "Failed to save memory." }],
-  "chat.remember.saved": [
-    { kind: "text", value: "Saved " },
-    { kind: "arg", name: "scope" },
-    { kind: "text", value: " memory: " },
+  "chat.remember.saved.project": [
+    { kind: "text", value: "Saved project memory: " },
+    { kind: "arg", name: "content" },
+  ],
+  "chat.remember.saved.session": [
+    { kind: "text", value: "Saved session memory: " },
+    { kind: "arg", name: "content" },
+  ],
+  "chat.remember.saved.user": [
+    { kind: "text", value: "Saved user memory: " },
     { kind: "arg", name: "content" },
   ],
   "chat.resume.ambiguous": [
@@ -401,10 +413,13 @@ export const EN_MESSAGES = {
     { kind: "arg", name: "ids" },
     { kind: "text", value: "." },
   ],
-  "cli.memory.saved": [
-    { kind: "text", value: "Saved " },
-    { kind: "arg", name: "scope" },
-    { kind: "text", value: " memory " },
+  "cli.memory.saved.project": [
+    { kind: "text", value: "Saved project memory " },
+    { kind: "arg", name: "id" },
+    { kind: "text", value: "." },
+  ],
+  "cli.memory.saved.user": [
+    { kind: "text", value: "Saved user memory " },
     { kind: "arg", name: "id" },
     { kind: "text", value: "." },
   ],

@@ -100,14 +100,17 @@
   "@chat.memory.list.failed": {
     "description": "Fallback shown when /memory list fails and the underlying error carried no message of its own (chat-commands-memory.ts:97)."
   },
-  "chat.memory.none": "No {scope}memory saved yet.",
-  "@chat.memory.none": {
-    "description": "Shown by /memory list when the selected scope holds no notes. {scope} is either empty or an untranslated lowercase English word with a trailing space, 'project ' or 'user ' (chat-commands-memory.ts:112) — so the message must read correctly both with and without it.",
-    "placeholders": {
-      "scope": {
-        "type": "String"
-      }
-    }
+  "chat.memory.none.all": "No memory saved yet.",
+  "@chat.memory.none.all": {
+    "description": "Shown by /memory list when no notes exist in any scope. One of a set of complete sentences, one per scope, so no scope word is interpolated into a sentence."
+  },
+  "chat.memory.none.project": "No project memory saved yet.",
+  "@chat.memory.none.project": {
+    "description": "Shown by /memory list when the project scope holds no notes. A complete sentence: translate the scope word naturally rather than treating it as a placeholder."
+  },
+  "chat.memory.none.user": "No user memory saved yet.",
+  "@chat.memory.none.user": {
+    "description": "Shown by /memory list when the user scope holds no notes. A complete sentence: translate the scope word naturally rather than treating it as a placeholder."
   },
   "chat.memory.rm.failed": "Failed to remove memory.",
   "@chat.memory.rm.failed": {
@@ -122,13 +125,28 @@
       }
     }
   },
-  "chat.memory.rm.removed": "Removed {scope} memory {id}.",
-  "@chat.memory.rm.removed": {
-    "description": "Confirmation after /memory rm deletes a note. {scope} is an untranslated lowercase English word, 'project' or 'user', passed raw from the memory record (chat-commands-memory.ts:57); {id} is the note's identifier.",
+  "chat.memory.rm.removed.project": "Removed project memory {id}.",
+  "@chat.memory.rm.removed.project": {
+    "description": "Confirmation after /memory rm deletes a note from the project scope. {id} is the note's identifier.",
     "placeholders": {
-      "scope": {
+      "id": {
         "type": "String"
-      },
+      }
+    }
+  },
+  "chat.memory.rm.removed.session": "Removed session memory {id}.",
+  "@chat.memory.rm.removed.session": {
+    "description": "Confirmation after /memory rm deletes a note from the session scope. {id} is the note's identifier.",
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "chat.memory.rm.removed.user": "Removed user memory {id}.",
+  "@chat.memory.rm.removed.user": {
+    "description": "Confirmation after /memory rm deletes a note from the user scope. {id} is the note's identifier.",
+    "placeholders": {
       "id": {
         "type": "String"
       }
@@ -151,13 +169,28 @@
   "@chat.remember.failed": {
     "description": "Shown when saving a memory note did not succeed."
   },
-  "chat.remember.saved": "Saved {scope} memory: {content}",
-  "@chat.remember.saved": {
-    "description": "Confirmation after a memory note is stored. {scope} is an untranslated lowercase English word, 'project' or 'user', passed raw from the memory record (chat-commands-memory.ts:178, chat-message-handler.ts:341) — build the sentence so an English word reads acceptably inside it. {content} is the note text, shown verbatim.",
+  "chat.remember.saved.project": "Saved project memory: {content}",
+  "@chat.remember.saved.project": {
+    "description": "Confirmation after a note is stored in the project scope. A complete sentence per scope, so the scope word can inflect naturally. {content} is the note text, shown verbatim.",
     "placeholders": {
-      "scope": {
+      "content": {
         "type": "String"
-      },
+      }
+    }
+  },
+  "chat.remember.saved.session": "Saved session memory: {content}",
+  "@chat.remember.saved.session": {
+    "description": "Confirmation after a note is stored in the session scope. A complete sentence per scope, so the scope word can inflect naturally. {content} is the note text, shown verbatim.",
+    "placeholders": {
+      "content": {
+        "type": "String"
+      }
+    }
+  },
+  "chat.remember.saved.user": "Saved user memory: {content}",
+  "@chat.remember.saved.user": {
+    "description": "Confirmation after a note is stored in the user scope. A complete sentence per scope, so the scope word can inflect naturally. {content} is the note text, shown verbatim.",
+    "placeholders": {
       "content": {
         "type": "String"
       }
@@ -944,13 +977,19 @@
       }
     }
   },
-  "cli.memory.saved": "Saved {scope} memory {id}.",
-  "@cli.memory.saved": {
-    "description": "Confirmation after the CLI stores a note. {scope} is an untranslated lowercase English word, 'project' or 'user'; {id} is the new note's identifier.",
+  "cli.memory.saved.project": "Saved project memory {id}.",
+  "@cli.memory.saved.project": {
+    "description": "Confirmation after the CLI stores a note in the project scope. {id} is the new note's identifier.",
     "placeholders": {
-      "scope": {
+      "id": {
         "type": "String"
-      },
+      }
+    }
+  },
+  "cli.memory.saved.user": "Saved user memory {id}.",
+  "@cli.memory.saved.user": {
+    "description": "Confirmation after the CLI stores a note in the user scope. {id} is the new note's identifier.",
+    "placeholders": {
       "id": {
         "type": "String"
       }

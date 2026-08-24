@@ -5,6 +5,11 @@ import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import { formatDisposition, type MemoryArchiveEntry, type MemoryEntry, type MemoryScope } from "./memory-contract";
 
+const SAVED_KEYS = {
+  project: "cli.memory.saved.project",
+  user: "cli.memory.saved.user",
+} as const;
+
 type MemoryOps = {
   list: (scope?: MemoryScope) => Promise<MemoryEntry[]>;
   add: (content: string, scope: MemoryScope) => Promise<MemoryEntry>;
@@ -112,7 +117,7 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
       return;
     }
     const entry = await ops.add(content, scope);
-    printDim(t("cli.memory.saved", { scope, id: entry.id }));
+    printDim(t(SAVED_KEYS[scope], { id: entry.id }));
     return;
   }
 
