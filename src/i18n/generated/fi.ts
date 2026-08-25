@@ -757,6 +757,7 @@ export const FI_MESSAGES = {
     { kind: "arg", name: "count" },
     { kind: "text", value: " min sitten" },
   ],
+  "tui.suggestions.no_matches": [{ kind: "text", value: "Ei osumia." }],
   "unit.call": [
     {
       kind: "plural",

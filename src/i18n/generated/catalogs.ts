@@ -301,6 +301,7 @@ export type MessageArgs = {
   "tui.relative_time.hours_ago": { count: number };
   "tui.relative_time.just_now": never;
   "tui.relative_time.minutes_ago": { count: number };
+  "tui.suggestions.no_matches": never;
   "unit.call": { count: number };
   "unit.file": { count: number };
   "unit.line": { count: number };

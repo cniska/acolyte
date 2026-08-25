@@ -289,6 +289,7 @@
   "tui.relative_time.hours_ago": "{count} t sitten",
   "tui.relative_time.just_now": "juuri nyt",
   "tui.relative_time.minutes_ago": "{count} min sitten",
+  "tui.suggestions.no_matches": "Ei osumia.",
   "unit.call": "{count, plural, one {# kutsu} other {# kutsua}}",
   "unit.file": "{count, plural, one {# tiedosto} other {# tiedostoa}}",
   "unit.line": "{count, plural, one {# rivi} other {# riviä}}",

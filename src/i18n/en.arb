@@ -1663,6 +1663,10 @@
       }
     }
   },
+  "tui.suggestions.no_matches": "No matches.",
+  "@tui.suggestions.no_matches": {
+    "description": "Shown under the composer when an @ path query matches nothing. Separate from tui.picker.no_matches: that one labels a filtered picker list, this one an inline suggestion row."
+  },
   "unit.call": "{count, plural, one {# call} other {# calls}}",
   "@unit.call": {
     "description": "Counts tool calls in a turn summary. {count} is the number.",

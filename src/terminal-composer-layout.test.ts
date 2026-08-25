@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test";
+import { setLocale } from "./i18n";
 import { cursorLineIndex } from "./prompt-display";
 import { layoutComposerStatus, promptWrapWidth } from "./terminal-chat-layout";
 
 const base = {
   input: { text: "one two three four five six", cursor: 27 },
-  placeholder: "Ask",
   focus: true,
   caretVisible: true,
   revision: 0,
@@ -163,4 +163,21 @@ test("help keys read plain and their descriptions dim", () => {
   const row = scene.lines.at(-1);
   expect(row?.spans.find((span) => span.role === "plain" && span.text.includes("ctrl"))?.text.trim()).toBe("ctrl + w");
   expect(row?.spans.find((span) => span.role === "muted")?.text.trim()).toBe("to delete a word");
+});
+
+test("the no-matches row follows the active locale", () => {
+  const presentation = {
+    ...base,
+    suggestions: { kind: "at" as const, query: "zz", candidates: [], selected: 0, noMatches: true },
+  };
+  const row = () =>
+    layoutComposerStatus({ presentation, constraints: { columns: 120, rows: 40 } })
+      .lines.at(-1)
+      ?.spans.map((span) => span.text)
+      .join("")
+      .trim();
+  expect(row()).toBe("No matches.");
+  setLocale("fi");
+  expect(row()).toBe("Ei osumia.");
+  setLocale("en");
 });

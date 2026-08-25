@@ -580,7 +580,8 @@ export function layoutComposerStatus(input: {
     }
   } else if (presentation.suggestions.kind === "at") {
     const selected = presentation.suggestions.selected;
-    if (presentation.suggestions.noMatches) attached.push({ spans: [{ text: " No matches.", role: "muted" }] });
+    if (presentation.suggestions.noMatches)
+      attached.push({ spans: [{ text: ` ${t("tui.suggestions.no_matches")}`, role: "muted" }] });
     else
       attached.push(
         ...presentation.suggestions.candidates.map((candidate, index) => ({

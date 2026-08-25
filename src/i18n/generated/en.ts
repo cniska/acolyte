@@ -732,6 +732,7 @@ export const EN_MESSAGES = {
     { kind: "arg", name: "count" },
     { kind: "text", value: "m ago" },
   ],
+  "tui.suggestions.no_matches": [{ kind: "text", value: "No matches." }],
   "unit.call": [
     {
       kind: "plural",

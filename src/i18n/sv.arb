@@ -289,6 +289,7 @@
   "tui.relative_time.hours_ago": "{count} tim sedan",
   "tui.relative_time.just_now": "just nu",
   "tui.relative_time.minutes_ago": "{count} min sedan",
+  "tui.suggestions.no_matches": "Inga träffar.",
   "unit.call": "{count, plural, one {# anrop} other {# anrop}}",
   "unit.file": "{count, plural, one {# fil} other {# filer}}",
   "unit.line": "{count, plural, one {# rad} other {# rader}}",

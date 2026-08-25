@@ -759,6 +759,7 @@ export const SV_MESSAGES = {
     { kind: "arg", name: "count" },
     { kind: "text", value: " min sedan" },
   ],
+  "tui.suggestions.no_matches": [{ kind: "text", value: "Inga träffar." }],
   "unit.call": [
     {
       kind: "plural",
