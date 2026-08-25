@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { appConfig } from "./app-config";
+import { findCommandEntry } from "./chat-command-registry";
 import { dispatchSlashCommand } from "./chat-commands";
 import { loadSkills, resetSkillCache } from "./skill-ops";
 import { createCommandContext, createSession, createSessionState, tempDir, writeSkill } from "./test-utils";
@@ -78,6 +79,15 @@ describe("chat-commands", () => {
       });
       expect(result.stop).toBe(true);
       expect(assistantTurnTexts).toEqual(["Run the demo skill."]);
+    });
+
+    test("a skill entry is marked a skill and a builtin is not", async () => {
+      const tmpDir = createDir("acolyte-cmd-skill-");
+      writeSkill(tmpDir, "demo", "---\nname: demo\ndescription: Demo\n---", "# Demo");
+      await loadSkills(tmpDir);
+
+      expect(findCommandEntry("demo")?.isSkill).toBe(true);
+      expect(findCommandEntry("status")?.isSkill).toBeUndefined();
     });
 
     test("unknown /xyz still shows unknown command", async () => {

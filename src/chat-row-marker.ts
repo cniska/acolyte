@@ -12,6 +12,7 @@ const OUTCOME_COLORS: Record<RowOutcome, string> = {
 const MARKERS: Record<ChatRow["kind"], string> = {
   user: GLYPH_USER,
   assistant: GLYPH_FILLED,
+  command: GLYPH_USER,
   tool: GLYPH_FILLED,
   status: GLYPH_FILLED,
   task: GLYPH_FILLED,

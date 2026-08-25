@@ -83,8 +83,9 @@ test("transcript rows live region renders messages above the composer", () => {
   expect(sceneTail({ activeTranscript: presentation })).toBe(
     dedent(
       `
-        ❯ hello there
-
+      ╭${"─".repeat(56)}╮
+      │ ❯ hello there${" ".repeat(42)}│
+      ╰${"─".repeat(56)}╯
 
         ◆ hi back
 
@@ -120,8 +121,9 @@ test("rows, pending, and tasklist live region renders in order with indent", () 
     expect(scene).toBe(
       dedent(
         `
-          ❯ do the thing
-
+        ╭${"─".repeat(56)}╮
+        │ ❯ do the thing${" ".repeat(41)}│
+        ╰${"─".repeat(56)}╯
 
           ◆ on it
 
@@ -163,8 +165,9 @@ test("queued messages live region renders below the pending indicator", () => {
     expect(scene).toBe(
       dedent(
         `
-          ❯ first
-
+        ╭${"─".repeat(56)}╮
+        │ ❯ first${" ".repeat(48)}│
+        ╰${"─".repeat(56)}╯
 
           ◆ Working… (5s)
 

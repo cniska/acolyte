@@ -27,7 +27,7 @@ export async function historyMode(args: string[], deps: HistoryModeDeps): Promis
   const store = await getSessionStore();
   const sessions = await store.listSessions({ limit: 20 });
   if (sessions.length === 0) {
-    printDim(t("chat.picker.sessions.none"));
+    printDim(t("cli.history.none"));
     return;
   }
 

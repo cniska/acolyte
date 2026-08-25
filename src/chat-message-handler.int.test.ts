@@ -165,9 +165,9 @@ describe("chat message handler", () => {
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const [userRow, systemRow] = allRows;
-    expect(userRow?.kind).toBe("user");
-    expect(userRow?.content).toBe("/status");
+    const [commandRow, systemRow] = allRows;
+    expect(commandRow?.kind).toBe("command");
+    expect(commandRow?.content).toBe("/status");
     expect(systemRow?.kind).toBe("system");
     const statusContent = systemRow?.content as { header: string; sections: [string, string][][] };
     expect(statusContent?.header).toBe("Status");
@@ -183,9 +183,9 @@ describe("chat message handler", () => {
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const [userRow, systemRow] = allRows;
-    expect(userRow?.kind).toBe("user");
-    expect(userRow?.content).toBe("/sessions");
+    const [commandRow, systemRow] = allRows;
+    expect(commandRow?.kind).toBe("command");
+    expect(commandRow?.content).toBe("/sessions");
     expect(systemRow?.kind).toBe("system");
     expect(isCommandOutput(systemRow?.content) && systemRow?.content.header).toBe("Sessions 1");
   });
@@ -197,9 +197,9 @@ describe("chat message handler", () => {
 
     expect(calls.setInputHistory).toBe(1);
     expect(calls.setValue).toEqual([""]);
-    const [userRow, systemRow] = allRows;
-    expect(userRow?.kind).toBe("user");
-    expect(userRow?.content).toBe("/usage");
+    const [commandRow, systemRow] = allRows;
+    expect(commandRow?.kind).toBe("command");
+    expect(commandRow?.content).toBe("/usage");
     expect(systemRow?.kind).toBe("system");
     expect(systemRow?.content).toBe("No usage data yet. Send a prompt first.");
   });

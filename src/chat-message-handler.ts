@@ -1,4 +1,6 @@
+import { findCommandEntry } from "./chat-command-registry";
 import { dispatchSlashCommand } from "./chat-commands";
+import { parseSlashCommand } from "./chat-commands-contract";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
@@ -337,8 +339,9 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           .replace(/\s+/g, " ")
           .trim();
         await addMemory(distilled, { scope: naturalRememberDirective.scope });
-        const label = naturalRememberDirective.scope === "project" ? "project" : "user";
-        const confirmation = t("chat.remember.saved", { scope: label, content: distilled });
+        const savedKey =
+          naturalRememberDirective.scope === "project" ? "chat.remember.saved.project" : "chat.remember.saved.user";
+        const confirmation = t(savedKey, { content: distilled });
         const assistant = input.createMessage("assistant", confirmation);
         input.currentSession.messages.push(assistant);
         input.currentSession.updatedAt = input.nowIso();
@@ -356,7 +359,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       return;
     }
     if (text.startsWith("/")) {
-      input.setRows((current) => [...current, createRow("user", text)]);
+      const entry = findCommandEntry(parseSlashCommand(text).root);
+      input.setRows((current) => [...current, createRow(entry?.isSkill ? "user" : "command", text)]);
     }
     if (!acquireTurn()) return;
     let userText = text;

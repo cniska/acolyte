@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { z } from "zod";
 import {
   CONFIG_SET_SCHEMAS,
   type Config,
@@ -11,7 +12,7 @@ import {
 } from "./config-contract";
 import { errorMessage } from "./error-contract";
 import { featureFlagsSchema, resolvedFeatureFlagsSchema } from "./feature-flags-contract";
-import { t } from "./i18n";
+import { formatChoices, t } from "./i18n";
 import { configDir, type Env } from "./paths";
 
 function createDefaultConfig() {
@@ -70,8 +71,11 @@ function resolvePaths(options?: ConfigOptions): {
   projectJsonPath: string;
   projectTomlPath: string;
 } {
+  const configEnv = options?.env ?? process.env;
   const userDataDir = configDir(options?.env);
-  const projectDataDir = join(options?.cwd ?? process.cwd(), ".acolyte");
+  // The project root is the working directory, overridable the way the user config
+  // directory already is, so a caller can be isolated from whatever tree it runs in.
+  const projectDataDir = join(options?.cwd ?? configEnv.ACOLYTE_PROJECT_DIR ?? process.cwd(), ".acolyte");
   return {
     userDataDir,
     userJsonPath: join(userDataDir, "config.json"),
@@ -241,6 +245,33 @@ function parseDottedKey(key: string): { section: keyof Config; subKey: string } 
   return { section, subKey };
 }
 
+// Zod's own messages are standalone English sentences, so they neither translate nor
+// complete the frame around them; the issue's structured fields carry the same facts.
+function invalidValueReason(issue: z.core.$ZodIssue): string {
+  switch (issue.code) {
+    case "invalid_value":
+      return t("cli.config.reason.one_of", { options: formatChoices(issue.values.map(String)) });
+    case "invalid_type":
+      if (issue.expected === "int" || issue.expected === "number") return t("cli.config.reason.whole_number");
+      if (issue.expected === "boolean") return t("cli.config.reason.boolean");
+      return t("cli.config.reason.valid");
+    case "too_small":
+      return t("cli.config.reason.at_least", { min: String(issue.minimum) });
+    case "too_big":
+      return t("cli.config.reason.at_most", { max: String(issue.maximum) });
+    case "custom":
+      return issue.message;
+    default:
+      return t("cli.config.reason.valid");
+  }
+}
+
+function invalidValueError(key: string, value: string, error: z.ZodError): Error {
+  const issue = error.issues[0];
+  const reason = issue ? invalidValueReason(issue) : t("cli.config.reason.valid");
+  return new Error(t("cli.config.invalid_value", { key, value, reason }));
+}
+
 export async function setConfigValue(key: string, value: string, options?: ConfigOptions): Promise<void> {
   const scope = options?.scope ?? "user";
   if (key === "embeddingBaseUrl" && scope === "project") {
@@ -254,10 +285,7 @@ export async function setConfigValue(key: string, value: string, options?: Confi
     const existing = (current[dotted.section] ?? {}) as Record<string, unknown>;
     const merged = { ...existing, [dotted.subKey]: value };
     const parsed = schema.safeParse(merged);
-    if (!parsed.success)
-      throw new Error(
-        t("cli.config.invalid_value", { key, reason: parsed.error.issues[0]?.message ?? parsed.error.message }),
-      );
+    if (!parsed.success) throw invalidValueError(key, value, parsed.error);
     const next: Config = { ...current, [dotted.section]: parsed.data };
     await writeConfig(next, { ...options, scope });
     return;
@@ -266,10 +294,7 @@ export async function setConfigValue(key: string, value: string, options?: Confi
   const topSchema = CONFIG_SET_SCHEMAS[topKey];
   if (!topSchema) throw new Error(t("cli.config.unknown_key", { key }));
   const parsed = topSchema.safeParse(value);
-  if (!parsed.success)
-    throw new Error(
-      t("cli.config.invalid_value", { key, reason: parsed.error.issues[0]?.message ?? parsed.error.message }),
-    );
+  if (!parsed.success) throw invalidValueError(key, value, parsed.error);
   const current = await readConfigForScope(scope, options);
   const next: Config = { ...current, [topKey]: parsed.data };
   await writeConfig(next, { ...options, scope });

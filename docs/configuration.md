@@ -4,7 +4,7 @@ Acolyte merges user and project configuration for models, providers, localizatio
 
 Paths (see [Paths](paths.md) for platform-specific details):
 - user: config dir + `config.toml`
-- project: `<cwd>/.acolyte/config.toml`
+- project: `<cwd>/.acolyte/config.toml`, where `ACOLYTE_PROJECT_DIR` replaces `<cwd>` when set
 
 ## Common commands
 
@@ -105,7 +105,7 @@ It is deliberately not project-scoped: a repository-controlled config must not r
 ## Localization
 
 - `locale` — active UI language (defaults to `en`).
-- English messages are defined in `src/i18n/en.ts`. Additional locales are loaded from `src/i18n/locales/*.json` at startup.
+- Messages are authored in `src/i18n/*.arb` and compiled into the binary; see [localization](localization.md) for adding a language.
 
 ## Logging
 

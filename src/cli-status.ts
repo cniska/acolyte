@@ -67,7 +67,7 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
         return;
       }
     }
-    const message = error instanceof Error ? error.message : t("unknown_error");
+    const message = error instanceof Error ? error.message : t("error.unknown");
     printError(message);
     process.exitCode = 1;
   }

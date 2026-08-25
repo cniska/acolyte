@@ -3,6 +3,7 @@ import { unreachable } from "./assert";
 import { type ChatRow, createRow } from "./chat-contract";
 import type { PickerState } from "./chat-picker";
 import { createModelPicker, createPicker, createResumePicker } from "./chat-picker-actions";
+import { skillRunPrompt } from "./chat-skill-activator";
 import { setConfigValue } from "./config";
 import { t } from "./i18n";
 import { createInputController } from "./input-controller";
@@ -37,7 +38,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   const openSkillsPanel = async (): Promise<void> => {
     const skills = await loadSkills();
     if (skills.length === 0) {
-      input.setRows((current) => [...current, createRow("system", t("chat.picker.skills.none"))]);
+      input.setRows((current) => [...current, createRow("system", t("tui.picker.skills.none"))]);
       return;
     }
     input.setPicker(
@@ -53,7 +54,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
   const openResumePanel = (): void => {
     const nextPicker = createResumePicker(input.sessionState);
     if (!nextPicker) {
-      input.setRows((current) => [...current, createRow("system", t("chat.picker.sessions.none"))]);
+      input.setRows((current) => [...current, createRow("system", t("tui.picker.sessions.none"))]);
       return;
     }
     input.setPicker(nextPicker);
@@ -94,7 +95,7 @@ export function createPickerHandlers(input: CreatePickerHandlersInput): {
             ]);
           } else {
             input.setPicker(null);
-            const runPrompt = t("chat.skill.run_prompt", { skill: selected.name });
+            const runPrompt = skillRunPrompt(selected.name);
             void input.startAssistantTurn(runPrompt);
             return;
           }

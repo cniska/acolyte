@@ -119,7 +119,7 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
       await attachFileToSession(session, filePath);
       printDim(t("run.file_context.attached", { filePath }));
     } catch (error) {
-      const message = error instanceof Error ? error.message : t("unknown_error");
+      const message = error instanceof Error ? error.message : t("error.unknown");
       printError(message);
       process.exitCode = 1;
       return;

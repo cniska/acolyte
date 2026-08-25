@@ -1,7 +1,18 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { setLocale } from "./i18n";
 import { createStatusOutput } from "./status-format";
 
 describe("status format", () => {
+  afterEach(() => {
+    setLocale("en");
+  });
+
+  test("labels follow the locale set after the module loads", () => {
+    setLocale("fi");
+    const pairs = createStatusOutput({ model: "gpt-5-mini" })?.sections[0] ?? [];
+    expect(pairs).toContainEqual(["Malli", "gpt-5-mini"]);
+  });
+
   test("maps known fields to labeled pairs", () => {
     const output = createStatusOutput({
       provider_auth: ["openai (api key)"],

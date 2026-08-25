@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -7,7 +7,9 @@ import {
   createAtReferenceSuggestion,
   createInputHistory,
   runAssistantTurn,
+  turnFooter,
 } from "./chat-turn";
+import { setLocale } from "./i18n";
 import type { Session } from "./session-contract";
 import { tempDir } from "./test-utils";
 
@@ -301,5 +303,24 @@ describe("chat turn helpers", () => {
     expect(typeof content).toBe("string");
     expect(content as string).toContain("↑52.0k ↓586");
     expect(content as string).not.toContain("52.0k/586");
+  });
+});
+
+describe("turn footer", () => {
+  afterEach(() => {
+    setLocale("en");
+  });
+
+  test("appends the detail block after the translated line, never inside it", () => {
+    setLocale("fi");
+    expect(turnFooter({ durationMs: 4200, toolCount: 1, usage: { inputTokens: 1200, outputTokens: 340 } })).toBe(
+      "Valmis, kesto 4.2s (1 työkalu · ↑1.2k ↓340)",
+    );
+  });
+
+  test("omits the block entirely when there is nothing to report", () => {
+    expect(turnFooter({ durationMs: 4200, toolCount: 0, usage: null, interrupted: true })).toBe(
+      "Interrupted after 4.2s",
+    );
   });
 });

@@ -20,7 +20,7 @@ export const messageSchema = z.object({
 
 export type ChatMessage = z.input<typeof messageSchema>;
 
-export const chatRowKindSchema = z.enum(["user", "assistant", "tool", "status", "task", "system"]);
+export const chatRowKindSchema = z.enum(["user", "assistant", "command", "tool", "status", "task", "system"]);
 
 export const rowOutcomeSchema = z.enum(["success", "warning", "error", "cancelled"]);
 export type RowOutcome = z.infer<typeof rowOutcomeSchema>;

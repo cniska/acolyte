@@ -17,7 +17,7 @@ function presentPicker(picker: ViewportPickerInput | null): ComposerPresentation
         items: picker.items,
         selected: picker.selected,
         scrollOffset: picker.scrollOffset,
-        hint: t("chat.picker.hint.model"),
+        hint: t("tui.picker.hint.model"),
         loading: picker.loading,
       };
     case "skills":
@@ -31,7 +31,7 @@ function presentPicker(picker: ViewportPickerInput | null): ComposerPresentation
         })),
         selected: picker.selected,
         scrollOffset: 0,
-        hint: t("chat.picker.hint.skills"),
+        hint: t("tui.picker.hint.skills"),
       };
     case "sessions":
       return {
@@ -44,7 +44,7 @@ function presentPicker(picker: ViewportPickerInput | null): ComposerPresentation
         })),
         selected: picker.selected,
         scrollOffset: picker.scrollOffset,
-        hint: t("chat.picker.hint.resume"),
+        hint: t("tui.picker.hint.resume"),
       };
   }
 }
@@ -76,7 +76,6 @@ export function createChatViewportPresentation(input: ChatViewportPresentationIn
     pending: input.pending,
     composer: {
       input: input.composer.input,
-      placeholder: t("chat.input.placeholder"),
       focus: true,
       caretVisible: true,
       revision: 0,

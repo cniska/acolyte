@@ -2,7 +2,8 @@ import { z } from "zod";
 import type { ChatRow } from "./chat-contract";
 import type { Client } from "./client-contract";
 import type { ConfigScope } from "./config-contract";
-import { featureFlagNameSchema } from "./feature-flags-contract";
+import type { FeatureFlagName } from "./feature-flags-contract";
+import type { PlainTranslationKey } from "./i18n";
 import type { addMemory, listArchivedMemories, listMemories, removeMemory } from "./memory-ops";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 
@@ -59,22 +60,21 @@ export function parseSlashCommand(text: string): ParsedCommand {
 export const commandSourceSchema = z.enum(["builtin", "project", "user", "bundled", "plugin"]);
 export type CommandSource = z.infer<typeof commandSourceSchema>;
 
-export const subcommandSpecSchema = z.object({
-  name: z.string(),
-  usage: z.string(),
-  helpKey: z.string(),
-});
+export type SubcommandSpec = {
+  name: string;
+  usage: string;
+  helpKey: PlainTranslationKey;
+};
 
-export const commandSpecSchema = z.object({
-  name: z.string(),
-  source: commandSourceSchema,
-  helpKey: z.string(),
-  flag: featureFlagNameSchema.optional(),
+export type CommandSpec = {
+  name: string;
+  source: CommandSource;
+  helpKey: PlainTranslationKey;
+  flag?: FeatureFlagName;
   /** Argument form of the bare root. Absent means the root takes none, and extra tokens are not this command. */
-  usage: z.string().optional(),
-  subcommands: z.array(subcommandSpecSchema),
-});
-export type CommandSpec = z.infer<typeof commandSpecSchema>;
+  usage?: string;
+  subcommands: SubcommandSpec[];
+};
 
 export type CommandHandler = (ctx: CommandContext, parsed: ParsedCommand) => Promise<CommandResult>;
 
@@ -83,4 +83,6 @@ export type CommandEntry = {
   /** Runs a bare root and any undeclared token, which arrives as the handler's first argument. */
   run: CommandHandler;
   runSub?: Record<string, CommandHandler>;
+  /** A skill carries a prompt to the model; every other command is control and stops here. */
+  isSkill?: boolean;
 };

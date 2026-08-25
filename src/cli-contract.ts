@@ -8,6 +8,6 @@ export type CliCommandHelp = {
 export type CliCommandHandler = (args: string[]) => Promise<void>;
 
 export type CliCommand = {
-  help: CliCommandHelp;
+  help: () => CliCommandHelp;
   handler: CliCommandHandler;
 };

@@ -44,11 +44,11 @@ export function formatRelativeTime(iso: string, now?: number): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
   const seconds = Math.floor(((now ?? Date.now()) - date.getTime()) / 1000);
-  if (seconds < 60) return t("chat.relative_time.just_now");
+  if (seconds < 60) return t("tui.relative_time.just_now");
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return t("chat.relative_time.minutes_ago", { count: minutes });
+  if (minutes < 60) return t("tui.relative_time.minutes_ago", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t("chat.relative_time.hours_ago", { count: hours });
+  if (hours < 24) return t("tui.relative_time.hours_ago", { count: hours });
   const days = Math.floor(hours / 24);
-  return t("chat.relative_time.days_ago", { count: days });
+  return t("tui.relative_time.days_ago", { count: days });
 }

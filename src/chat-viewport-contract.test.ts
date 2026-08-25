@@ -9,7 +9,6 @@ test("viewport contracts require semantic sections and renderer-independent comp
     pending: null,
     composer: {
       input: { text: "hello", cursor: 5 },
-      placeholder: "Ask",
       focus: true,
       caretVisible: true,
       revision: 0,

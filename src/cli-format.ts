@@ -2,9 +2,9 @@ import { relative } from "node:path";
 import { segmentAssistantContent, wrapAssistantContent, wrapCodeText } from "./chat-content";
 import { formatCompactNumber } from "./chat-format";
 import { GLYPH_FILLED } from "./chat-glyphs";
-import { t, tDynamic } from "./i18n";
+import { t } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-contract";
-import { toolLabelKey } from "./tool-output-format";
+import { resolveToolLabel, toolLabelKey } from "./tool-output-format";
 import { renderToolOutput } from "./tool-output-render";
 import { CLI_TOOL_OUTPUT_LIMITS } from "./tool-policy";
 import { dimText, printDim, printOutput, printToolHeader } from "./ui";
@@ -43,7 +43,7 @@ export function printToolResult(toolId: string, raw: string, detail?: string): v
   }
   const rendered = renderToolOutput(items, Math.max(24, process.stdout.columns ?? 120));
   const lines = rendered.split("\n");
-  if (lines[0]) printToolHeader(tDynamic(labelKey), detail);
+  if (lines[0]) printToolHeader(resolveToolLabel(labelKey), detail);
   for (const line of lines.slice(1)) {
     printDim(line);
   }

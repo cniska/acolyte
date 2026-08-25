@@ -1,52 +1,55 @@
-import type { EN_MESSAGES } from "./i18n/en";
-import { TRANSLATIONS, type TranslationLocale } from "./i18n/locales";
+import type { Part, PluralCategory } from "./i18n/catalog-contract";
+import { type MessageArgs, TRANSLATIONS } from "./i18n/generated/catalogs";
+import type { TranslationLocale } from "./i18n/locales";
 
 export type TranslationValue = string | number | boolean;
-export type TranslationKey = keyof typeof EN_MESSAGES;
+export type TranslationKey = keyof MessageArgs;
 
-type ExtractTemplateVars<T extends string> = T extends `${string}{${infer Name}}${infer Rest}`
-  ? Name | ExtractTemplateVars<Rest>
-  : never;
+/** Keys whose message takes no placeholders, so a caller holding one can render it without arguments. */
+export type PlainTranslationKey = {
+  [K in TranslationKey]: [MessageArgs[K]] extends [never] ? K : never;
+}[TranslationKey];
 
-type TranslationVarsFor<K extends TranslationKey> = [ExtractTemplateVars<(typeof EN_MESSAGES)[K]>] extends [never]
-  ? never
-  : {
-      [Name in ExtractTemplateVars<(typeof EN_MESSAGES)[K]>]: TranslationValue;
-    };
-
-type TranslationArgs<K extends TranslationKey> = [TranslationVarsFor<K>] extends [never] ? [] : [TranslationVarsFor<K>];
-
-function interpolate(template: string, vars?: Record<string, TranslationValue>): string {
-  if (!vars) return template;
-  return template.replace(/\{([A-Za-z0-9_]+)\}/g, (_match, name: string) => {
-    const value = vars[name];
-    return value === undefined ? `{${name}}` : String(value);
-  });
-}
-
-function translate(templates: Record<string, string>, key: string, vars?: Record<string, TranslationValue>): string {
-  if (vars && "count" in vars && Number(vars.count) === 1) {
-    const oneKey = `${key}.one`;
-    if (oneKey in templates) return interpolate(templates[oneKey], vars);
-  }
-  return interpolate(templates[key] ?? key, vars);
-}
+type TranslationArgs<K extends TranslationKey> = [MessageArgs[K]] extends [never] ? [] : [MessageArgs[K]];
 
 let activeLocale: TranslationLocale = "en";
+const pluralRules = new Map<string, Intl.PluralRules>();
+
+function rulesFor(locale: string): Intl.PluralRules {
+  const cached = pluralRules.get(locale);
+  if (cached) return cached;
+  const rules = new Intl.PluralRules(locale);
+  pluralRules.set(locale, rules);
+  return rules;
+}
+
+function render(parts: Part[], vars: Record<string, TranslationValue> | undefined, locale: string): string {
+  let out = "";
+  for (const part of parts) {
+    if (part.kind === "text") {
+      out += part.value;
+      continue;
+    }
+    if (part.kind === "arg") {
+      const value = vars?.[part.name];
+      out += value === undefined ? `{${part.name}}` : String(value);
+      continue;
+    }
+    const category = rulesFor(locale).select(Number(vars?.[part.name] ?? 0)) as PluralCategory;
+    out += render(part.arms[category] ?? part.arms.other ?? [], vars, locale);
+  }
+  return out;
+}
 
 export function setLocale(locale: TranslationLocale): void {
   activeLocale = locale;
 }
 
 export function t<K extends TranslationKey>(key: K, ...args: TranslationArgs<K>): string {
-  return translate(
-    TRANSLATIONS[activeLocale] ?? TRANSLATIONS.en,
-    key,
-    args[0] as Record<string, TranslationValue> | undefined,
-  );
+  return render(TRANSLATIONS[activeLocale][key], args[0] as Record<string, TranslationValue> | undefined, activeLocale);
 }
 
-/** Translate a dynamic key without compile-time key checking. Falls back to the key itself when not found. */
-export function tDynamic(key: string, vars?: Record<string, TranslationValue>): string {
-  return translate(TRANSLATIONS[activeLocale] ?? TRANSLATIONS.en, key, vars);
+/** Join alternatives the way the active language does, so a list of choices reads as one phrase. */
+export function formatChoices(items: string[]): string {
+  return new Intl.ListFormat(activeLocale, { type: "disjunction" }).format(items);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { gitStatus } from "./chat-layout";
+import { gitStatus, shortcutItems } from "./chat-layout";
 
 function streamFromText(text: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
@@ -108,4 +108,22 @@ describe("gitStatus", () => {
     );
     expect(result).toEqual({ repo: "mock-repo", worktree: null, branch: null, dirty: false, ahead: 0, behind: 0 });
   });
+});
+
+test("names the word-motion chord the way the platform labels it", () => {
+  const keyFor = (platform: string): string | undefined =>
+    shortcutItems(platform).find((item) => item.key.includes("← / →"))?.key;
+  expect(keyFor("darwin")).toBe("opt + ← / →");
+  expect(keyFor("linux")).toBe("alt + ← / →");
+  expect(keyFor("win32")).toBe("alt + ← / →");
+});
+
+test("keeps prose out of the key column so it can translate", () => {
+  // Anything a keyboard does not print is prose, and prose in the key column stays English forever.
+  const chordWords = new Set(["ctrl", "alt", "opt", "shift", "tab", "esc", "a", "c", "e", "u", "w"]);
+  for (const item of shortcutItems("darwin")) {
+    for (const word of item.key.match(/[a-z]+/gi) ?? []) {
+      expect(chordWords).toContain(word);
+    }
+  }
 });

@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { unreachable } from "./assert";
-import { t, tDynamic } from "./i18n";
+import { type TranslationKey, t } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-contract";
+import { resolveToolLabel } from "./tool-output-format";
 import { truncateMiddleToWidth, truncateToWidth } from "./truncate-text";
 
 export const segmentRoleSchema = z.enum([
@@ -35,12 +36,12 @@ export type ResolvedHeader = { label: string; detail?: string; meta?: Record<str
 export function resolveHeader(content: ToolOutputPart): ResolvedHeader | null {
   switch (content.kind) {
     case "tool-header": {
-      const label = tDynamic(content.labelKey);
+      const label = resolveToolLabel(content.labelKey);
       const detail = content.detail && content.detail !== "." ? content.detail : undefined;
       return { label, detail };
     }
     case "file-header": {
-      const label = tDynamic(content.labelKey);
+      const label = resolveToolLabel(content.labelKey);
       const detail =
         content.count === 1 && content.targets.length === 1
           ? content.targets[0]
@@ -48,7 +49,7 @@ export function resolveHeader(content: ToolOutputPart): ResolvedHeader | null {
       return { label, detail };
     }
     case "scope-header": {
-      const label = tDynamic(content.labelKey);
+      const label = resolveToolLabel(content.labelKey);
       const scopeSuffix = content.scope !== "workspace" ? ` in ${content.scope}` : "";
       const detail =
         content.patterns.length === 1
@@ -57,7 +58,7 @@ export function resolveHeader(content: ToolOutputPart): ResolvedHeader | null {
       return { label, detail };
     }
     case "edit-header": {
-      const label = tDynamic(content.labelKey);
+      const label = resolveToolLabel(content.labelKey);
       const path = content.path === "." ? undefined : content.path;
       return { label, detail: path, meta: { added: content.added, removed: content.removed } };
     }
@@ -66,15 +67,16 @@ export function resolveHeader(content: ToolOutputPart): ResolvedHeader | null {
   }
 }
 
-const TRUNCATED_UNIT_KEYS: Record<string, string> = {
+const TRUNCATED_UNIT_KEYS = {
   lines: "unit.line",
   matches: "unit.match",
   files: "unit.file",
-};
+} as const satisfies Record<string, TranslationKey>;
 
 function truncatedText(count: number | undefined, unit: string | undefined): string {
   if (!count) return "…";
-  const text = tDynamic(TRUNCATED_UNIT_KEYS[unit ?? ""] ?? "unit.more", { count });
+  const key = TRUNCATED_UNIT_KEYS[unit as keyof typeof TRUNCATED_UNIT_KEYS] ?? "unit.more";
+  const text = t(key, { count });
   return `… +${text}`;
 }
 

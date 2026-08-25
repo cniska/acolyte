@@ -4,7 +4,6 @@ import { composerPresentationContractSchema } from "./chat-viewport-contract";
 test("composer contract preserves picker, suggestions, and help semantics", () => {
   const parsed = composerPresentationContractSchema.safeParse({
     input: { text: "/mo", cursor: 3 },
-    placeholder: "Ask",
     focus: true,
     caretVisible: true,
     revision: 1,

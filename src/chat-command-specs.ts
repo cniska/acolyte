@@ -59,7 +59,7 @@ export const RESUME_SPEC: CommandSpec = {
   name: "resume",
   source: "builtin",
   helpKey: "chat.slash.help.resume",
-  usage: "/resume <session-id-prefix>",
+  usage: "/resume <id-prefix>",
   subcommands: [],
 };
 
@@ -69,7 +69,7 @@ export const MEMORY_SPEC: CommandSpec = {
   helpKey: "chat.slash.help.memory",
   subcommands: [
     { name: "add", usage: "/memory add [--user|--project] <memory text>", helpKey: "chat.slash.help.memory.add" },
-    { name: "rm", usage: "/memory rm <id-prefix>", helpKey: "chat.slash.help.memory.rm" },
+    { name: "rm", usage: "/memory rm <id>", helpKey: "chat.slash.help.memory.rm" },
     { name: "list", usage: "/memory list [all|user|project] [--archived]", helpKey: "chat.slash.help.memory.list" },
   ],
 };

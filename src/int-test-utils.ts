@@ -20,6 +20,9 @@ export function testEnvForHome(
     XDG_CONFIG_HOME: undefined,
     XDG_DATA_HOME: undefined,
     XDG_STATE_HOME: undefined,
+    // The preload pins this so the suite ignores a developer's project config, but a spawned
+    // process gets its own project directory as cwd and must read the config written there.
+    ACOLYTE_PROJECT_DIR: undefined,
     ...extra,
   };
 }

@@ -1,5 +1,6 @@
 import type { CommandContext, CommandHandler, CommandResult } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
+import { skillRunPrompt } from "./chat-skill-activator";
 import { t } from "./i18n";
 import type { SkillMeta } from "./skill-contract";
 
@@ -22,7 +23,7 @@ async function activateSkill(ctx: CommandContext, skill: SkillMeta, args: string
     ctx.setRows((current) => [...current, createRow("system", t("chat.skill.failed", { skill: skill.name }))]);
     return { stop: true, userText: ctx.text };
   }
-  const runPrompt = args || t("chat.skill.run_prompt", { skill: skill.name });
+  const runPrompt = args || skillRunPrompt(skill.name);
   if (ctx.startAssistantTurn) {
     void ctx.startAssistantTurn(runPrompt);
     return { stop: true, userText: ctx.text };

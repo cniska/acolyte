@@ -1,6 +1,6 @@
 import { resolveCommandRegistry } from "./chat-command-registry";
 import type { CommandSource } from "./chat-commands-contract";
-import { tDynamic } from "./i18n";
+import { t } from "./i18n";
 
 export type SlashCommandRow = {
   /** What the user types to reach it, and what the completion menu offers. */
@@ -17,9 +17,9 @@ export function slashCommandRows(): SlashCommandRow[] {
   for (const entry of resolveCommandRegistry()) {
     const command = `/${entry.spec.name}`;
     const source = entry.spec.source;
-    rows.push({ command, usage: entry.spec.usage ?? command, help: tDynamic(entry.spec.helpKey), source });
+    rows.push({ command, usage: entry.spec.usage ?? command, help: t(entry.spec.helpKey), source });
     for (const sub of entry.spec.subcommands) {
-      rows.push({ command: `${command} ${sub.name}`, usage: sub.usage, help: tDynamic(sub.helpKey), source });
+      rows.push({ command: `${command} ${sub.name}`, usage: sub.usage, help: t(sub.helpKey), source });
     }
   }
   return rows;

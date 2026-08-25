@@ -361,14 +361,14 @@ describe("config store", () => {
     const home = createDir("acolyte-config-home-");
     const project = createDir("acolyte-config-project-");
     await expect(setConfigValue("port", "not-a-number", { env: { HOME: home }, cwd: project })).rejects.toThrow(
-      "Invalid value for port",
+      "Invalid port: not-a-number. Use a whole number.",
     );
 
     await expect(setConfigValue("reasoning", "extreme", { env: { HOME: home }, cwd: project })).rejects.toThrow(
-      "Invalid value for reasoning",
+      "Invalid reasoning: extreme. Use low, medium, or high.",
     );
     await expect(setConfigValue("locale", "xx", { env: { HOME: home }, cwd: project })).rejects.toThrow(
-      "Invalid value for locale",
+      "Invalid locale: xx. Use en, fi, or sv.",
     );
   });
 

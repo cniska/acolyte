@@ -2,7 +2,7 @@ import { fullUsage, MEMORY_SPEC, subcommandUsage } from "./chat-command-specs";
 import type { CommandContext, CommandHandler, CommandResult, ParsedCommand } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
 import { formatUsage } from "./cli-help";
-import { t } from "./i18n";
+import { type TranslationKey, t } from "./i18n";
 import { formatDisposition, type MemoryScope } from "./memory-contract";
 import { addMemory, listArchivedMemories, listMemories, removeMemory } from "./memory-ops";
 
@@ -13,6 +13,24 @@ const ARCHIVED_FLAG = "--archived";
 function isMemoryContextScope(value: string): value is MemoryContextScope {
   return value === "all" || value === "user" || value === "project";
 }
+
+const NONE_KEYS = {
+  all: "chat.memory.none.all",
+  project: "chat.memory.none.project",
+  user: "chat.memory.none.user",
+} as const satisfies Record<MemoryContextScope, TranslationKey>;
+
+const SAVED_KEYS = {
+  project: "chat.remember.saved.project",
+  user: "chat.remember.saved.user",
+  session: "chat.remember.saved.session",
+} as const satisfies Record<MemoryScope, TranslationKey>;
+
+const REMOVED_KEYS = {
+  project: "chat.memory.rm.removed.project",
+  user: "chat.memory.rm.removed.user",
+  session: "chat.memory.rm.removed.session",
+} as const satisfies Record<MemoryScope, TranslationKey>;
 
 function scopeLabel(scope: MemoryContextScope): string {
   if (scope === "user") return t("chat.scope.user");
@@ -54,7 +72,7 @@ async function handleMemoryRemove(
     }
     ctx.setRows((current) => [
       ...current,
-      createRow("system", t("chat.memory.rm.removed", { scope: removed.entry.scope, id: removed.entry.id })),
+      createRow("system", t(REMOVED_KEYS[removed.entry.scope], { id: removed.entry.id })),
     ]);
   } catch (error) {
     ctx.setRows((current) => [
@@ -109,8 +127,7 @@ async function renderMemoryList(
   const { text } = ctx;
   const memories = await memoryApi.listMemories({ scope: resolvedScope });
   if (memories.length === 0) {
-    const emptyLabel = scope === "all" ? "" : `${scope} `;
-    ctx.setRows((current) => [...current, createRow("system", t("chat.memory.none", { scope: emptyLabel }))]);
+    ctx.setRows((current) => [...current, createRow("system", t(NONE_KEYS[scope]))]);
     return { stop: true, userText: text };
   }
   const list = memories
@@ -173,10 +190,7 @@ async function handleMemoryAdd(
   }
   try {
     const entry = await memoryApi.addMemory(content, { scope });
-    ctx.setRows((current) => [
-      ...current,
-      createRow("system", t("chat.remember.saved", { scope: entry.scope, content })),
-    ]);
+    ctx.setRows((current) => [...current, createRow("system", t(SAVED_KEYS[entry.scope], { content }))]);
   } catch (error) {
     ctx.setRows((current) => [
       ...current,

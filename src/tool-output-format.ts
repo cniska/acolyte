@@ -1,5 +1,4 @@
 import { isAbsolute, relative } from "node:path";
-import type { TranslationKey } from "./i18n";
 import { t } from "./i18n";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { compactPatternLabels, type SearchSummaryStats, summarizeUnifiedDiff } from "./tool-output-parse";
@@ -12,7 +11,7 @@ export type ToolOutputListener = (event: {
   transient?: boolean;
 }) => void;
 
-const TOOL_LABEL_KEYS: Record<string, TranslationKey> = {
+const TOOL_LABEL_KEYS: Record<string, string> = {
   "file-find": "tool.label.file_find",
   "file-search": "tool.label.file_search",
   "file-read": "tool.label.file_read",
@@ -43,6 +42,46 @@ const TOOL_LABEL_KEYS: Record<string, TranslationKey> = {
   "memory-remove": "tool.label.memory_remove",
 };
 
+/**
+ * Display text for a tool row. Not localized: the row's detail is always a path,
+ * a command, or an identifier, and unmapped tools already render their raw English id,
+ * so a translated label would show a seam the reader cannot account for.
+ */
+const TOOL_LABELS: Record<string, string> = {
+  "tool.label.code_edit": "Edit (Code)",
+  "tool.label.code_scan": "Scan Code",
+  "tool.label.file_create": "Create",
+  "tool.label.file_delete": "Delete",
+  "tool.label.file_edit": "Edit",
+  "tool.label.file_find": "Find",
+  "tool.label.file_read": "Read",
+  "tool.label.file_search": "Search",
+  "tool.label.gh_issue_create": "Create Issue",
+  "tool.label.gh_issue_list": "List Issues",
+  "tool.label.gh_pr_create": "Create PR",
+  "tool.label.gh_pr_edit": "Edit PR",
+  "tool.label.gh_pr_view": "PR",
+  "tool.label.git_add": "Git Add",
+  "tool.label.git_commit": "Git Commit",
+  "tool.label.git_diff": "Git Diff",
+  "tool.label.git_log": "Git Log",
+  "tool.label.git_show": "Git Show",
+  "tool.label.git_status": "Git Status",
+  "tool.label.memory_add": "Add (Memory)",
+  "tool.label.memory_remove": "Remove (Memory)",
+  "tool.label.memory_search": "Search (Memory)",
+  "tool.label.shell_run": "Run",
+  "tool.label.skill_activate": "Skill",
+  "tool.label.skill_deactivate": "Skill",
+  "tool.label.test_run": "Run (Test)",
+  "tool.label.web_fetch": "Web Fetch",
+  "tool.label.web_search": "Web Search",
+};
+
+/** Resolves a tool-header label id, falling back to the id for tools with no entry. */
+export function resolveToolLabel(labelKey: string): string {
+  return TOOL_LABELS[labelKey] ?? labelKey;
+}
 export function toolLabelKey(toolId: string): string {
   return TOOL_LABEL_KEYS[toolId] ?? toolId;
 }

@@ -125,14 +125,6 @@ test("user layout preserves leading indent and internal whitespace runs", () => 
   expect(rows.some((row) => row.includes("return    x"))).toBe(true);
 });
 
-test("user layout gives whitespace the band fill so an indented line has no hole", () => {
-  const scene = layoutTranscriptMessage({ text: "  indented", kind: "user", columns: 40 });
-  const blankUserSpans = scene.lines
-    .flatMap((line) => line.spans)
-    .filter((span) => span.role === "user" && !/\S/.test(span.text));
-  expect(blankUserSpans).toEqual([]);
-});
-
 test("user layout styles inline code, bold, path, and @-ref markup", () => {
   const scene = layoutTranscriptMessage({
     text: "run `build` on **main** in src/foo.ts see @lib/x.ts",
@@ -150,14 +142,17 @@ test("user layout styles inline code, bold, path, and @-ref markup", () => {
   );
 });
 
-test("user layout renders a blank interior line as a solid band row with no hole", () => {
+test("user layout renders a blank interior line as an empty framed row", () => {
   const scene = layoutTranscriptMessage({ text: "first\n\nlast", kind: "user", columns: 30 });
   const blank = scene.lines[2];
-  expect(blank?.spans.some((span) => span.role === "user")).toBe(false);
   expect(blank).toEqual({
     spans: [
       { text: " ", role: "plain" },
-      { text: " ".repeat(28), role: "user-fill" },
+      { text: "│", role: "composer-border" },
+      { text: " ", role: "plain" },
+      { text: " ".repeat(24), role: "plain" },
+      { text: " ", role: "plain" },
+      { text: "│", role: "composer-border" },
     ],
   });
 });

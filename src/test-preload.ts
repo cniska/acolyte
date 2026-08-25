@@ -1,6 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setLocale } from "./i18n";
 import { setLogSink } from "./log";
 import {
   DEFAULT_ANTHROPIC_BASE_URL,
@@ -18,6 +19,15 @@ process.env.HOME = isolatedHome;
 process.env.XDG_CONFIG_HOME = isolatedHome;
 process.env.XDG_DATA_HOME = isolatedHome;
 process.env.XDG_STATE_HOME = isolatedHome;
+// Project config lives beside the working directory rather than under home, so the
+// isolation above misses it: without this a developer's .acolyte in the tree under test
+// would set the locale, model or ports the suite asserts against.
+process.env.ACOLYTE_PROJECT_DIR = isolatedHome;
+
+// Pin the locale: the suite asserts English copy, and project config (.acolyte in the
+// working directory) is outside the home isolation above, so a developer's `locale`
+// setting would otherwise rewrite every user-facing string the tests compare against.
+setLocale("en");
 
 // Prevent real API calls in tests. Unit tests must use mocks.
 delete process.env.OPENAI_API_KEY;
