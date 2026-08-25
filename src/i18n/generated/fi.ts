@@ -25,7 +25,6 @@ export const FI_MESSAGES = {
     { kind: "text", value: "Tuntematon alikomento: " },
     { kind: "arg", name: "subcommand" },
   ],
-  "chat.input.placeholder": [{ kind: "text", value: "Kysy mitä tahansa…" }],
   "chat.interrupted": [
     { kind: "text", value: "Keskeytetty, kesto " },
     { kind: "arg", name: "duration" },

@@ -5,7 +5,6 @@
   "agent.status.working": "Arbetar…",
   "chat.command.unknown": "Okänt kommando: {command}",
   "chat.command.unknown_subcommand": "Okänt underkommando: {subcommand}",
-  "chat.input.placeholder": "Fråga vad som helst…",
   "chat.interrupted": "Avbruten, tid {duration}{suffix}",
   "chat.memory.archive.header.all": "Arkiverat minne {count}",
   "chat.memory.archive.header.scope": "Arkiverat minne: {scope} {count}",

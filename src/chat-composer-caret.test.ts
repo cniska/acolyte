@@ -44,7 +44,7 @@ test("the cursor style role is inverse", () => {
   expect(terminalTheme.styles.cursor.inverse).toBe(true);
 });
 
-test("empty input renders the caret on the placeholder first character", () => {
+test("empty input renders a single caret", () => {
   const carets = caretSpans(composerScene("", 0));
   expect(carets).toHaveLength(1);
   expect(carets[0]?.text.length).toBe(1);

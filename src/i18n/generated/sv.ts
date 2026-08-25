@@ -25,7 +25,6 @@ export const SV_MESSAGES = {
     { kind: "text", value: "Okänt underkommando: " },
     { kind: "arg", name: "subcommand" },
   ],
-  "chat.input.placeholder": [{ kind: "text", value: "Fråga vad som helst…" }],
   "chat.interrupted": [
     { kind: "text", value: "Avbruten, tid " },
     { kind: "arg", name: "duration" },

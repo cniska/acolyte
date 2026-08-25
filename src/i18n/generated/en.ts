@@ -20,7 +20,6 @@ export const EN_MESSAGES = {
     { kind: "text", value: "Unknown subcommand: " },
     { kind: "arg", name: "subcommand" },
   ],
-  "chat.input.placeholder": [{ kind: "text", value: "Ask anything…" }],
   "chat.interrupted": [
     { kind: "text", value: "Interrupted after " },
     { kind: "arg", name: "duration" },

@@ -5,7 +5,6 @@
   "agent.status.working": "Työstetään…",
   "chat.command.unknown": "Tuntematon komento: {command}",
   "chat.command.unknown_subcommand": "Tuntematon alikomento: {subcommand}",
-  "chat.input.placeholder": "Kysy mitä tahansa…",
   "chat.interrupted": "Keskeytetty, kesto {duration}{suffix}",
   "chat.memory.archive.header.all": "Arkistoitu muisti {count}",
   "chat.memory.archive.header.scope": "Arkistoitu muisti: {scope} {count}",

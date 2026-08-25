@@ -17,7 +17,6 @@ export type MessageArgs = {
   "agent.status.working": never;
   "chat.command.unknown": { command: string | number };
   "chat.command.unknown_subcommand": { subcommand: string | number };
-  "chat.input.placeholder": never;
   "chat.interrupted": { duration: string | number; suffix: string | number };
   "chat.memory.archive.header.all": { count: number };
   "chat.memory.archive.header.scope": { count: number; scope: string | number };

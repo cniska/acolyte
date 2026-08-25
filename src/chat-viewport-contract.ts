@@ -66,7 +66,6 @@ export const composerSuggestionsSchema = z.discriminatedUnion("kind", [
 export const composerHelpEntrySchema = z.object({ key: z.string(), description: z.string() });
 export const composerPresentationContractSchema = z.object({
   input: inputControllerStateSchema,
-  placeholder: z.string(),
   focus: z.boolean(),
   caretVisible: z.boolean(),
   revision: z.number().int().nonnegative(),

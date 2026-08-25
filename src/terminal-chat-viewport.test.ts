@@ -12,7 +12,6 @@ function layoutTranscript(transcript: TranscriptRow[]): TerminalScene {
       pending: null,
       composer: {
         input: { text: "", cursor: 0 },
-        placeholder: "Ask",
         focus: true,
         caretVisible: true,
         revision: 0,
@@ -59,7 +58,6 @@ test("viewport layout orders finalized transcript before mutable pending and com
       pending: { state: { kind: "running" }, frame: 0, startedAt: 0, queuedMessages: [], runningUsage: null },
       composer: {
         input: { text: "ask", cursor: 3 },
-        placeholder: "Ask",
         focus: true,
         caretVisible: true,
         revision: 0,

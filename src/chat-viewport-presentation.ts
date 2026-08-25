@@ -76,7 +76,6 @@ export function createChatViewportPresentation(input: ChatViewportPresentationIn
     pending: input.pending,
     composer: {
       input: input.composer.input,
-      placeholder: t("chat.input.placeholder"),
       focus: true,
       caretVisible: true,
       revision: 0,
