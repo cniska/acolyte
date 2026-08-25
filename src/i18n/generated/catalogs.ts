@@ -17,7 +17,7 @@ export type MessageArgs = {
   "agent.status.working": never;
   "chat.command.unknown": { command: string | number };
   "chat.command.unknown_subcommand": { subcommand: string | number };
-  "chat.interrupted": { duration: string | number; suffix: string | number };
+  "chat.interrupted": { duration: string | number };
   "chat.memory.archive.header.all": { count: number };
   "chat.memory.archive.header.scope": { count: number; scope: string | number };
   "chat.memory.archive.none": never;
@@ -84,7 +84,7 @@ export type MessageArgs = {
   "chat.usage.metric.tools": never;
   "chat.usage.metric.total": never;
   "chat.usage.none": never;
-  "chat.worked": { duration: string | number; suffix: string | number };
+  "chat.worked": { duration: string | number };
   "chat.workspaces.create_failed": { reason: string | number };
   "chat.workspaces.created": { name: string | number };
   "chat.workspaces.header": { count: number };

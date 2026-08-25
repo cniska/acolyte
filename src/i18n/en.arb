@@ -30,14 +30,11 @@
       }
     }
   },
-  "chat.interrupted": "Interrupted after {duration}{suffix}",
+  "chat.interrupted": "Interrupted after {duration}",
   "@chat.interrupted": {
-    "description": "Chat footer replacing chat.worked when the user cancelled the turn. {duration} is a formatted elapsed time such as '4.2s'. {suffix} is either empty or a parenthesized detail list built at chat-turn.ts:136, for example ' (3 tools · ↑1.2k ↓340)' — it already carries its own leading space and brackets, so it must sit at the very end of the message.",
+    "description": "Chat footer replacing chat.worked when the user cancelled the turn. {duration} is a formatted elapsed time such as '4.2s'. A parenthesized tool and token summary is appended after this message when the turn has one, so nothing may follow {duration} here.",
     "placeholders": {
       "duration": {
-        "type": "String"
-      },
-      "suffix": {
         "type": "String"
       }
     }
@@ -420,14 +417,11 @@
   "@chat.usage.none": {
     "description": "Shown by /usage before any prompt has been sent, so no counts exist yet. Two short sentences: the state, then what to do."
   },
-  "chat.worked": "Worked for {duration}{suffix}",
+  "chat.worked": "Worked for {duration}",
   "@chat.worked": {
-    "description": "Chat footer shown after a turn completes normally. {duration} is a formatted elapsed time such as '4.2s'. {suffix} is either empty or a parenthesized detail list built at chat-turn.ts:136, for example ' (3 tools · ↑1.2k ↓340)' — it already carries its own leading space and brackets, so it must sit at the very end of the message.",
+    "description": "Chat footer closing a completed turn. {duration} is a formatted elapsed time such as '4.2s'. A parenthesized tool and token summary is appended after this message when the turn has one, so nothing may follow {duration} here.",
     "placeholders": {
       "duration": {
-        "type": "String"
-      },
-      "suffix": {
         "type": "String"
       }
     }

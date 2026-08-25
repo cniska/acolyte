@@ -23,7 +23,6 @@ export const EN_MESSAGES = {
   "chat.interrupted": [
     { kind: "text", value: "Interrupted after " },
     { kind: "arg", name: "duration" },
-    { kind: "arg", name: "suffix" },
   ],
   "chat.memory.archive.header.all": [
     { kind: "text", value: "Retired memory " },
@@ -169,7 +168,6 @@ export const EN_MESSAGES = {
   "chat.worked": [
     { kind: "text", value: "Worked for " },
     { kind: "arg", name: "duration" },
-    { kind: "arg", name: "suffix" },
   ],
   "chat.workspaces.create_failed": [
     { kind: "text", value: "Failed to create workspace: " },

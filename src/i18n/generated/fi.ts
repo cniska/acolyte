@@ -28,7 +28,6 @@ export const FI_MESSAGES = {
   "chat.interrupted": [
     { kind: "text", value: "Keskeytetty, kesto " },
     { kind: "arg", name: "duration" },
-    { kind: "arg", name: "suffix" },
   ],
   "chat.memory.archive.header.all": [
     { kind: "text", value: "Arkistoitu muisti " },
@@ -175,7 +174,6 @@ export const FI_MESSAGES = {
   "chat.worked": [
     { kind: "text", value: "Valmis, kesto " },
     { kind: "arg", name: "duration" },
-    { kind: "arg", name: "suffix" },
   ],
   "chat.workspaces.create_failed": [
     { kind: "text", value: "Työtilan luonti epäonnistui: " },

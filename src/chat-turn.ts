@@ -133,9 +133,9 @@ export function turnFooter(params: {
         output: formatCompactNumber(outputTokens),
       }),
     );
-  const suffix = details.length > 0 ? ` (${details.join(" · ")})` : "";
   const duration = formatDuration(params.durationMs);
-  return params.interrupted ? t("chat.interrupted", { duration, suffix }) : t("chat.worked", { duration, suffix });
+  const line = params.interrupted ? t("chat.interrupted", { duration }) : t("chat.worked", { duration });
+  return details.length > 0 ? `${line} (${details.join(" · ")})` : line;
 }
 
 export async function runAssistantTurn(params: RunAssistantTurnParams): Promise<{

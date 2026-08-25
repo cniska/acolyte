@@ -28,7 +28,6 @@ export const SV_MESSAGES = {
   "chat.interrupted": [
     { kind: "text", value: "Avbruten, tid " },
     { kind: "arg", name: "duration" },
-    { kind: "arg", name: "suffix" },
   ],
   "chat.memory.archive.header.all": [
     { kind: "text", value: "Arkiverat minne " },
@@ -177,7 +176,6 @@ export const SV_MESSAGES = {
   "chat.worked": [
     { kind: "text", value: "Klar, tid " },
     { kind: "arg", name: "duration" },
-    { kind: "arg", name: "suffix" },
   ],
   "chat.workspaces.create_failed": [
     { kind: "text", value: "Kunde inte skapa arbetsytan: " },
