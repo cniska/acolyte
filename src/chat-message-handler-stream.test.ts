@@ -191,7 +191,7 @@ describe("chat-message-handler-stream", () => {
       toolName: "file-search",
       content: { kind: "text", text: "a.ts [needle@1]" },
     });
-    // Output after the row's first part is revealed on the drip tick, not on arrival.
+    // A mutation's rows after the first are revealed on the drip tick, not on arrival.
     jest.advanceTimersByTime(DRAIN_ALL_MS);
     expect(isToolOutput(rows[0]?.content) && rows[0].content.parts).toHaveLength(2);
     expect(isToolOutput(rows[0]?.content) && rows[0].content.parts[1]).toEqual({
@@ -233,6 +233,32 @@ describe("chat-message-handler-stream", () => {
 
     jest.advanceTimersByTime(DRAIN_ALL_MS);
     expect(parts()).toBe(13);
+    state.dispose();
+  });
+
+  // Only a mutation is paced. A command's rows already appeared as the process printed them, and
+  // every other tool knows its output in full when it returns — pacing either invents an arrival
+  // and makes the reader wait for a tick they never asked for.
+  test("a command's rows render on arrival, not on a tick", () => {
+    jest.useFakeTimers();
+    const { rows, setRows } = createRowsHarness();
+    const state = createMessageStreamState({ setRows, surface: "transcript" });
+    const parts = (): number => (isToolOutput(rows[0]?.content) ? rows[0].content.parts.length : 0);
+
+    state.onOutput({
+      toolCallId: "call_1",
+      toolName: "shell-run",
+      content: { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "bun test" },
+    });
+    for (const text of ["one", "two", "three"]) {
+      state.onOutput({
+        toolCallId: "call_1",
+        toolName: "shell-run",
+        content: { kind: "shell-output", stream: "stdout", text },
+      });
+    }
+    // No timer has advanced. A paced call would still be showing its header alone.
+    expect(parts()).toBe(4);
     state.dispose();
   });
 
