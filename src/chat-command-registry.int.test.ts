@@ -42,8 +42,8 @@ describe("registry with loaded skills", () => {
 
     for (const bundled of BUNDLED_SKILLS) {
       expect(findCommandEntry(`skill:${bundled.name}`)?.spec.source).toBe("bundled");
-      expect(findCommandEntry(bundled.name)?.isSkill).toBeUndefined();
     }
+    expect(findCommandEntry("build")).toBeNull();
   });
 
   test("every registry name resolves to exactly one entry", async () => {

@@ -54,7 +54,7 @@ describe("mergeSkills", () => {
     expect(sourceOf(merged, "build")).toBe("user");
   });
 
-  test("a skill named after a builtin command loads from any source", () => {
+  test("a plugin skill named after a builtin command loads", () => {
     const merged = mergeSkills([], [skill("status", "plugin", "acme.tools")], [], createEmptySkillLoadDiagnostics());
     expect(sourceOf(merged, "status")).toBe("plugin");
   });
