@@ -35,11 +35,11 @@ The compiler rejects a catalog that omits a key, adds an unknown one, uses a pla
 
 A key held in a field rather than written at the call site is typed as a `PlainTranslationKey`, so a name no catalog carries is a compile error instead of a blank surface. Prose belongs in the message, never in the literal beside it: a chord rendered as `ctrl + c twice` keeps that “twice” in English in every language, while `ctrl + c` plus a translated “twice to exit” reads everywhere.
 
-Call `t()` inside the function that renders, never at module scope. `setLocale` runs at the entrypoints (`cli.ts`, `server.ts`), so a string built while a module evaluates keeps the locale that happened to be active at import. A table of labels or help text is a thunk or a table of keys, resolved on read. Nothing enforces this — a frozen string is a half-translated screen, not an error — so a table that must hold rendered text is covered by a test that switches locale after import and asserts the new language.
+Call `t()` inside the function that renders, never at module scope. `setLocale` runs at the entrypoints (`cli.ts`, `server.ts`) and again on the daemon for each turn, so a string built while a module evaluates keeps the locale that happened to be active at import. A table of labels or help text is a thunk or a table of keys, resolved on read. Nothing enforces this — a frozen string is a half-translated screen, not an error — so a table that must hold rendered text is covered by a test that switches locale after import and asserts the new language.
 
 ## Selecting a language
 
-`acolyte config set locale <id>` chooses the interface language, writing user scope so the choice follows the person across projects. The value is validated against the bundled locales, and a wrong one is answered with the full list. The language applies from the next launch.
+`acolyte config set locale <id>` chooses the interface language, writing user scope so the choice follows the person across projects. The value is validated against the bundled locales, and a wrong one is answered with the full list. The language applies to the next command, and the daemon adopts it on the next turn: it resolves the locale from the same configuration the client did, so a long-running daemon never answers in the language it started with.
 
 ## Message syntax
 
