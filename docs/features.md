@@ -39,6 +39,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - proactive token budgeting with system prompt reservation and priority-based allocation
 - step budget enforcement for cost protection
 - streaming progress output with real-time token usage
+- tool output revealed a row at a time as the result lands, collapsing to one line once the call settles
 - inline tasklist for multi-step tasks
 
 ## Tools
