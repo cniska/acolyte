@@ -89,12 +89,17 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   if (parts[0].length < 3) return [];
 
   if (parts.length === 1) {
-    // Single token: fuzzy-match against root commands, expand to include subcommands
-    const fuzzy = rootCommands(all)
+    // Single token: fuzzy-match against root commands, expand to include subcommands. Only the
+    // closest tier is offered, since every skill shares the `skill:` prefix and would otherwise
+    // score inside the threshold on that prefix alone.
+    const scored = rootCommands(all)
       .map((root) => ({ root, distance: fuzzyDistance(candidate, root) }))
-      .filter((item) => item.distance <= SUGGEST_MAX_DISTANCE)
-      .sort((a, b) => a.distance - b.distance);
-    return fuzzy.flatMap((item) => commandWithSubs(all, item.root)).slice(0, max);
+      .filter((item) => item.distance <= SUGGEST_MAX_DISTANCE);
+    const best = Math.min(...scored.map((item) => item.distance));
+    return scored
+      .filter((item) => item.distance === best)
+      .flatMap((item) => commandWithSubs(all, item.root))
+      .slice(0, max);
   }
 
   // Multi-token: match first token against roots, second against subcommand words

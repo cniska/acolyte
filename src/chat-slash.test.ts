@@ -48,13 +48,13 @@ describe("chat-slash helpers", () => {
   test("suggestSlashCommands fuzzy-matches root and expands subcommands", () => {
     const restore = setWorkspacesEnabled(true);
     try {
-      expect(suggestSlashCommands("/mov")).toEqual([
-        "/model",
+      expect(suggestSlashCommands("/wokspaces")).toEqual([
         "/workspaces",
         "/workspaces list",
         "/workspaces new",
         "/workspaces switch",
       ]);
+      expect(suggestSlashCommands("/mov")).toEqual(["/model"]);
     } finally {
       restore();
     }

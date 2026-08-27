@@ -39,12 +39,12 @@ describe("chat-slash with loaded skills", () => {
     expect(suggestions.every((command) => command.startsWith("/skill:"))).toBe(true);
   });
 
-  test("a skill's own name ranks its prefixed command first", async () => {
+  test("a skill's own name offers its prefixed command alone", async () => {
     const tmpDir = createDir("acolyte-slash-name-");
     writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
     await loadSkills(tmpDir);
 
-    expect(suggestSlashCommands("/dogfood")[0]).toBe("/skill:dogfood");
+    expect(suggestSlashCommands("/dogfood", 20)).toEqual(["/skill:dogfood"]);
   });
 
   test("a builtin name is never answered by a skill of that name", async () => {
