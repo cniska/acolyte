@@ -76,14 +76,34 @@ test("footer omits effort when absent", () => {
   expect(render({ ...base, effort: null }, 100)).toBe("acolyte · main · gpt-5.2");
 });
 
-test("footer right-justifies skills against the terminal width", () => {
-  expect(render({ ...base, skills: ["build", "debug"] }, 60)).toBe(
-    `acolyte · main · gpt-5.2 medium${" ".repeat(16)}build · debug`,
+test("footer trails active skills after the status segments", () => {
+  expect(render({ ...base, skills: ["build", "debug"] }, 60)).toBe("acolyte · main · gpt-5.2 medium · build debug");
+});
+
+test("footer wraps the whole skill part once it no longer fits", () => {
+  expect(render({ ...base, skills: ["build", "debug"] }, 40)).toBe("acolyte · main · gpt-5.2 medium\nbuild debug");
+});
+
+test("footer keeps a model and its effort together across a wrap", () => {
+  expect(render(base, 20)).toBe("acolyte · main\ngpt-5.2 medium");
+});
+
+test("footer keeps the branch state markers when the name is too wide", () => {
+  expect(render({ ...base, repo: "", branch: "a-really-quite-long-branch-name", dirty: true, ahead: 2 }, 24)).toBe(
+    "a-really-quite-long…* ↑2\ngpt-5.2 medium",
   );
 });
 
-test("footer stacks skills on their own indented row when they do not fit", () => {
-  expect(render({ ...base, skills: ["build", "debug"] }, 40)).toBe("acolyte · main · gpt-5.2 medium\nbuild · debug");
+test("footer keeps the effort when the model name is too wide", () => {
+  expect(render({ ...base, repo: "", branch: null, model: "provider/very-long-model-id" }, 20)).toBe(
+    "provider/ver… medium",
+  );
+});
+
+test("footer holds the terminal width when a part must be cut", () => {
+  expect(render({ ...base, repo: "", worktree: null, branch: null, model: "provider/very-long-model-id" }, 12)).toBe(
+    "prov… medium",
+  );
 });
 
 test("viewport layout carries the semantic footer onto the final scene line", () => {

@@ -1,5 +1,5 @@
-import { resolveCommandRegistry } from "./chat-command-registry";
-import type { CommandSource } from "./chat-commands-contract";
+import { resolveCommandRegistry, SKILL_COMMAND_PREFIX } from "./chat-command-registry";
+import type { CommandHelp, CommandSource } from "./chat-commands-contract";
 import { t } from "./i18n";
 
 export type SlashCommandRow = {
@@ -12,14 +12,18 @@ export type SlashCommandRow = {
 };
 
 /** Every reachable command string, derived from the registry so the menu can only offer what dispatch owns. */
+function helpText(help: CommandHelp): string {
+  return "key" in help ? t(help.key) : help.text;
+}
+
 export function slashCommandRows(): SlashCommandRow[] {
   const rows: SlashCommandRow[] = [];
   for (const entry of resolveCommandRegistry()) {
     const command = `/${entry.spec.name}`;
     const source = entry.spec.source;
-    rows.push({ command, usage: entry.spec.usage ?? command, help: t(entry.spec.helpKey), source });
+    rows.push({ command, usage: entry.spec.usage ?? command, help: helpText(entry.spec.help), source });
     for (const sub of entry.spec.subcommands) {
-      rows.push({ command: `${command} ${sub.name}`, usage: sub.usage, help: t(sub.helpKey), source });
+      rows.push({ command: `${command} ${sub.name}`, usage: sub.usage, help: helpText(sub.help), source });
     }
   }
   return rows;
@@ -66,6 +70,14 @@ function commandWithSubs(commands: string[], root: string): string[] {
   return commands.filter((command) => command === root || command.startsWith(`${root} `));
 }
 
+/** A skill is remembered by its name, so it scores against both `/skill:build` and `/build`. */
+function fuzzyDistance(candidate: string, root: string): number {
+  const full = truncatedEditDistance(candidate, root);
+  if (!root.startsWith(`/${SKILL_COMMAND_PREFIX}`)) return full;
+  const bare = `/${root.slice(SKILL_COMMAND_PREFIX.length + 1)}`;
+  return Math.min(full, truncatedEditDistance(candidate, bare));
+}
+
 export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   const value = inputValue.trim();
   if (!value.startsWith("/")) return [];
@@ -81,12 +93,17 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   if (parts[0].length < 3) return [];
 
   if (parts.length === 1) {
-    // Single token: fuzzy-match against root commands, expand to include subcommands
-    const fuzzy = rootCommands(all)
-      .map((root) => ({ root, distance: truncatedEditDistance(candidate, root) }))
-      .filter((item) => item.distance <= SUGGEST_MAX_DISTANCE)
-      .sort((a, b) => a.distance - b.distance);
-    return fuzzy.flatMap((item) => commandWithSubs(all, item.root)).slice(0, max);
+    // Single token: fuzzy-match against root commands, expand to include subcommands. Only the
+    // closest tier is offered, since every skill shares the `skill:` prefix and would otherwise
+    // score inside the threshold on that prefix alone.
+    const scored = rootCommands(all)
+      .map((root) => ({ root, distance: fuzzyDistance(candidate, root) }))
+      .filter((item) => item.distance <= SUGGEST_MAX_DISTANCE);
+    const best = Math.min(...scored.map((item) => item.distance));
+    return scored
+      .filter((item) => item.distance === best)
+      .flatMap((item) => commandWithSubs(all, item.root))
+      .slice(0, max);
   }
 
   // Multi-token: match first token against roots, second against subcommand words

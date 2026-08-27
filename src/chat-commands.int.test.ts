@@ -49,13 +49,13 @@ describe("chat-commands", () => {
       cleanupDirs();
     });
 
-    test("/skillname with args continues to agent turn", async () => {
+    test("/skill:name with args continues to agent turn", async () => {
       const tmpDir = createDir("acolyte-cmd-skill-");
       writeSkill(tmpDir, "demo", "---\nname: demo\ndescription: Demo\n---", "# Demo");
       await loadSkills(tmpDir);
 
       const activated: string[] = [];
-      const result = await runCommand("/demo run tests", {
+      const result = await runCommand("/skill:demo run tests", {
         activateSkill: async (name, args) => {
           activated.push(name, args);
           return true;
@@ -65,13 +65,13 @@ describe("chat-commands", () => {
       expect(activated).toEqual(["demo", "run tests"]);
     });
 
-    test("/skillname without args starts assistant turn directly", async () => {
+    test("/skill:name without args starts assistant turn directly", async () => {
       const tmpDir = createDir("acolyte-cmd-skill-");
       writeSkill(tmpDir, "demo", "---\nname: demo\ndescription: Demo\n---", "# Demo");
       await loadSkills(tmpDir);
 
       const assistantTurnTexts: string[] = [];
-      const result = await runCommand("/demo", {
+      const result = await runCommand("/skill:demo", {
         activateSkill: async () => true,
         startAssistantTurn: async (text) => {
           assistantTurnTexts.push(text);
@@ -86,7 +86,7 @@ describe("chat-commands", () => {
       writeSkill(tmpDir, "demo", "---\nname: demo\ndescription: Demo\n---", "# Demo");
       await loadSkills(tmpDir);
 
-      expect(findCommandEntry("demo")?.isSkill).toBe(true);
+      expect(findCommandEntry("skill:demo")?.isSkill).toBe(true);
       expect(findCommandEntry("status")?.isSkill).toBeUndefined();
     });
 

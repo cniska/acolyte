@@ -54,16 +54,9 @@ describe("mergeSkills", () => {
     expect(sourceOf(merged, "build")).toBe("user");
   });
 
-  test("a plugin skill never claims a built-in command name", () => {
-    const diagnostics = createEmptySkillLoadDiagnostics();
-    const merged = mergeSkills([], [skill("status", "plugin", "acme.tools")], [], diagnostics);
-    expect(merged).toEqual([]);
-    expect(diagnostics.builtinCollisions).toBe(1);
-  });
-
-  test("a hand-placed skill may claim a built-in command name", () => {
-    const merged = mergeSkills([], [], [skill("status", "project")], createEmptySkillLoadDiagnostics());
-    expect(sourceOf(merged, "status")).toBe("project");
+  test("a plugin skill named after a builtin command loads", () => {
+    const merged = mergeSkills([], [skill("status", "plugin", "acme.tools")], [], createEmptySkillLoadDiagnostics());
+    expect(sourceOf(merged, "status")).toBe("plugin");
   });
 });
 

@@ -142,7 +142,6 @@ export const SV_MESSAGES = {
   "chat.slash.help.new": [{ kind: "text", value: "starta ny session" }],
   "chat.slash.help.resume": [{ kind: "text", value: "återuppta session" }],
   "chat.slash.help.sessions": [{ kind: "text", value: "visa sessioner" }],
-  "chat.slash.help.skill": [{ kind: "text", value: "kör färdighetskommando" }],
   "chat.slash.help.skills": [{ kind: "text", value: "visa färdighetsväljaren" }],
   "chat.slash.help.status": [{ kind: "text", value: "visa serverstatus" }],
   "chat.slash.help.usage": [{ kind: "text", value: "visa tokenanvändning" }],

@@ -60,6 +60,19 @@ test("ghost text shows the prefix remainder in its own role, distinct from typed
   expect(ghost?.role).toBe("ghost");
 });
 
+test("a prefixed skill command ghosts its remainder", () => {
+  const scene = layoutComposerStatus({
+    presentation: {
+      ...base,
+      input: { text: "/skill:dog", cursor: 10 },
+      suggestions: { kind: "slash", candidates: [{ command: "/skill:dogfood" }], selected: 0 },
+    },
+    constraints: { columns: 80, rows: 20 },
+  });
+  const promptLine = scene.lines.find((line) => line.spans.some((span) => span.role === "ghost"));
+  expect(promptLine?.spans.find((span) => span.text === "ood")?.role).toBe("ghost");
+});
+
 test("a bare trigger ghosts nothing until a fragment is typed", () => {
   // Typing just `/` or `@` must not guess (and must not pin the caret on the trigger char).
   for (const input of ["/", "@"] as const) {

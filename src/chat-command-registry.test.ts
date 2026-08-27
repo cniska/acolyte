@@ -23,8 +23,8 @@ function createProbeEntry(seen: { parsed: ParsedCommand | null; handler: string 
     spec: {
       name: "probe",
       source: "builtin",
-      helpKey: "chat.slash.help.memory",
-      subcommands: [{ name: "rm", usage: "/probe rm <id>", helpKey: "chat.slash.help.memory.rm" }],
+      help: { key: "chat.slash.help.memory" },
+      subcommands: [{ name: "rm", usage: "/probe rm <id>", help: { key: "chat.slash.help.memory.rm" } }],
     },
     run: record("root"),
     runSub: { rm: record("rm") },
@@ -58,7 +58,7 @@ describe("runCommandEntry", () => {
 
 describe("runCommandEntry argument arity", () => {
   const createBareEntry = (usage?: string): CommandEntry => ({
-    spec: { name: "bare", source: "builtin", helpKey: "chat.slash.help.new", usage, subcommands: [] },
+    spec: { name: "bare", source: "builtin", help: { key: "chat.slash.help.new" }, usage, subcommands: [] },
     run: async () => ({ stop: true, userText: "ran" }),
   });
 

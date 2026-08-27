@@ -111,6 +111,11 @@ describe("composer suggestion clipping", () => {
     expect(rows.some((row) => row.includes("› /model"))).toBe(false);
   });
 
+  test("shows a long skill command in full instead of ellipsizing it", () => {
+    const rows = composerRows({ kind: "slash", candidates: ["/skill:architecture-review", "/model"], selected: 1 }, 80);
+    expect(rows.some((row) => row.includes("/skill:architecture-review"))).toBe(true);
+  });
+
   test("clips overflowing slash-command suggestions to the terminal width", () => {
     const widths = composerRowWidths(
       { kind: "slash", candidates: ["/some-really-long-slash-command-name-that-overflows", "/help"], selected: 0 },

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { BUNDLED_SKILLS } from "./bundled-skills";
 import { findCommandEntry, resolveCommandRegistry } from "./chat-command-registry";
-import { getSkillLoadDiagnostics, loadSkills, resetSkillCache } from "./skill-ops";
+import { loadSkills, resetSkillCache } from "./skill-ops";
 import { tempDir, writeSkill } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
@@ -18,14 +18,13 @@ afterEach(() => {
 });
 
 describe("registry with loaded skills", () => {
-  test("a project skill takes a builtin name", async () => {
+  test("a project skill named after a builtin leaves the builtin reachable", async () => {
     const cwd = createDir("acolyte-registry-shadow-");
     writeSkill(cwd, "new", "---\nname: new\ndescription: Mine\n---", "# Mine");
     await loadSkills(cwd);
 
-    const entry = findCommandEntry("new");
-    expect(entry?.spec.source).toBe("project");
-    expect(resolveCommandRegistry().filter((item) => item.spec.name === "new")).toHaveLength(1);
+    expect(findCommandEntry("new")?.spec.source).toBe("builtin");
+    expect(findCommandEntry("skill:new")?.spec.source).toBe("project");
   });
 
   test("a user skill is reachable as a command", async () => {
@@ -34,18 +33,17 @@ describe("registry with loaded skills", () => {
     writeSkill(home, "globaldemo", "---\nname: globaldemo\ndescription: User scope\n---", "# User");
     await loadSkills(createDir("acolyte-registry-cwd-"));
 
-    expect(findCommandEntry("globaldemo")?.spec.source).toBe("user");
+    expect(findCommandEntry("skill:globaldemo")?.spec.source).toBe("user");
+    expect(findCommandEntry("globaldemo")).toBeNull();
   });
 
-  test("a bundled skill never takes a builtin name", async () => {
+  test("every bundled skill answers under the skill prefix", async () => {
     await loadSkills(createDir("acolyte-registry-bundled-"));
 
     for (const bundled of BUNDLED_SKILLS) {
-      const entry = findCommandEntry(bundled.name);
-      if (entry) expect(entry.spec.source).toBe("bundled");
+      expect(findCommandEntry(`skill:${bundled.name}`)?.spec.source).toBe("bundled");
     }
-    expect(findCommandEntry("new")?.spec.source).toBe("builtin");
-    expect(getSkillLoadDiagnostics().builtinCollisions).toBe(0);
+    expect(findCommandEntry("build")).toBeNull();
   });
 
   test("every registry name resolves to exactly one entry", async () => {

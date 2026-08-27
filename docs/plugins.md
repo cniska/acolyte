@@ -52,7 +52,7 @@ A plugin skill joins the roster like any other, and the model activates it by na
 | 4 | user plugin skill |
 | 5 | bundled skill |
 
-A hand-placed skill may replace a built-in command of the same name; a plugin skill never does. When two plugins claim one skill name, the plugin whose directory sorts first wins — project scope before user scope — and the loss is counted in `acolyte status`.
+When two plugins claim one skill name, the plugin whose directory sorts first wins — project scope before user scope — and the loss is counted in `acolyte status`.
 
 ## MCP servers from plugins
 

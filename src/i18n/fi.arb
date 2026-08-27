@@ -48,7 +48,6 @@
   "chat.slash.help.new": "aloita uusi istunto",
   "chat.slash.help.resume": "jatka istuntoa",
   "chat.slash.help.sessions": "näytä istunnot",
-  "chat.slash.help.skill": "suorita taitokomento",
   "chat.slash.help.skills": "näytä taitovalitsin",
   "chat.slash.help.status": "näytä palvelimen tila",
   "chat.slash.help.usage": "näytä tokenien käyttö",

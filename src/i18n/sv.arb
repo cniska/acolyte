@@ -48,7 +48,6 @@
   "chat.slash.help.new": "starta ny session",
   "chat.slash.help.resume": "återuppta session",
   "chat.slash.help.sessions": "visa sessioner",
-  "chat.slash.help.skill": "kör färdighetskommando",
   "chat.slash.help.skills": "visa färdighetsväljaren",
   "chat.slash.help.status": "visa serverstatus",
   "chat.slash.help.usage": "visa tokenanvändning",

@@ -47,13 +47,21 @@ const BUILTIN_COMMANDS: CommandEntry[] = [
   { spec: EXIT_SPEC, run: runExit },
 ];
 
+/** Skills answer to `skill:` so only builtins own a bare name and neither can shadow the other. */
+export const SKILL_COMMAND_PREFIX = "skill:";
+
+function skillCommandName(skillName: string): string {
+  return `${SKILL_COMMAND_PREFIX}${skillName}`;
+}
+
 function skillEntry(skill: SkillMeta): CommandEntry {
+  const command = skillCommandName(skill.name);
   return {
     spec: {
-      name: skill.name,
+      name: command,
       source: skill.source,
-      helpKey: "chat.slash.help.skill",
-      usage: `/${skill.name} [prompt]`,
+      help: { text: skill.description },
+      usage: `/${command} [prompt]`,
       subcommands: [],
     },
     run: createSkillHandler(skill),
@@ -61,15 +69,11 @@ function skillEntry(skill: SkillMeta): CommandEntry {
   };
 }
 
-/** A project or user skill takes a builtin's name: the user wrote it deliberately, so their authority wins. */
 export function resolveCommandRegistry(): CommandEntry[] {
-  const skills = getLoadedSkills().map(skillEntry);
-  const shadowing = new Set(skills.filter((entry) => entry.spec.source !== "bundled").map((entry) => entry.spec.name));
   const builtins = BUILTIN_COMMANDS.filter(
-    (entry) =>
-      (entry.spec.flag === undefined || appConfig.features[entry.spec.flag]) && !shadowing.has(entry.spec.name),
+    (entry) => entry.spec.flag === undefined || appConfig.features[entry.spec.flag],
   );
-  return [...builtins, ...skills];
+  return [...builtins, ...getLoadedSkills().map(skillEntry)];
 }
 
 export function findCommandEntry(name: string): CommandEntry | null {

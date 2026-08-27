@@ -1,7 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { BUNDLED_SKILLS } from "./bundled-skills";
-import { isBuiltinCommandName } from "./chat-command-specs";
 import { readResolvedConfigSync } from "./config";
 import { resolveHomeDir } from "./paths";
 import { collectPluginSkills, loadPlugins } from "./plugin-ops";
@@ -49,7 +48,7 @@ function loadBundledSkills(): { skills: SkillMeta[]; contentByName: Map<string, 
 
 /**
  * Resolves the roster across every source: a hand-placed skill outranks one that arrived inside a
- * plugin, which outranks a bundled skill. Only hand-placed skills may claim a built-in command name.
+ * plugin, which outranks a bundled skill.
  */
 export function mergeSkills(
   bundled: SkillMeta[],
@@ -65,19 +64,12 @@ export function mergeSkills(
       diagnostics.overrides += 1;
       continue;
     }
-    if (isBuiltinCommandName(skill.name)) {
-      diagnostics.builtinCollisions += 1;
-      continue;
-    }
     claimed.add(skill.name);
     pluginKept.push(skill);
   }
 
-  const unshadowed = bundled.filter((s) => !claimed.has(s.name));
-  diagnostics.overrides += bundled.length - unshadowed.length;
-  // A bundled name colliding with a builtin is a packaging mistake, not user authority.
-  const kept = unshadowed.filter((s) => !isBuiltinCommandName(s.name));
-  diagnostics.builtinCollisions += unshadowed.length - kept.length;
+  const kept = bundled.filter((s) => !claimed.has(s.name));
+  diagnostics.overrides += bundled.length - kept.length;
 
   const merged = [...scanned, ...pluginKept, ...kept];
   merged.sort((a, b) => a.name.localeCompare(b.name));
