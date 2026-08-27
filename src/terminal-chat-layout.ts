@@ -633,6 +633,31 @@ function prStateRole(state: PrState): TerminalStyleRole {
   }
 }
 
+const FOOTER_SEPARATOR: TerminalSpan = { text: " · ", role: "faint" };
+
+/** A footer item wraps whole: unlike prose, a model name or a skill name must not split across lines. */
+function packFooterItems(items: TerminalSpan[][], columns: number): TerminalLine[] {
+  const lines: TerminalSpan[][] = [];
+  let current: TerminalSpan[] = [];
+  let currentWidth = 0;
+  for (const item of items) {
+    const itemWidth = item.reduce((total, span) => total + width(span.text), 0);
+    if (current.length > 0 && currentWidth + width(FOOTER_SEPARATOR.text) + itemWidth > columns) {
+      lines.push(current);
+      current = [];
+      currentWidth = 0;
+    }
+    if (current.length > 0) {
+      current.push(FOOTER_SEPARATOR);
+      currentWidth += width(FOOTER_SEPARATOR.text);
+    }
+    current.push(...item);
+    currentWidth += itemWidth;
+  }
+  lines.push(current);
+  return lines.map((spans) => ({ spans }));
+}
+
 export function layoutFooterStatus(status: FooterStatus, columns: number): TerminalScene {
   const names: string[] = [];
   for (const name of [status.repo, status.worktree, status.branch]) {
@@ -642,52 +667,41 @@ export function layoutFooterStatus(status: FooterStatus, columns: number): Termi
   // Two recessed gray tiers matching ~/.claude/statusline.sh (names/model brighter, the rest
   // faint); the PR number is the one state-colored accent, since a merged/closed PR on the branch
   // is actionable — its `PR` label stays faint like the other labels.
-  const segments: TerminalSpan[] = [];
-  const separate = (): void => {
-    if (segments.length > 0) segments.push({ text: " · ", role: "faint" });
+  const items: TerminalSpan[][] = [];
+  const add = (spans: TerminalSpan[]): void => {
+    items.push(spans);
   };
   for (const name of names) {
-    separate();
-    segments.push({ text: name, role: "subtle" });
-    if (name === status.branch && suffix) segments.push({ text: suffix, role: "faint" });
+    const spans: TerminalSpan[] = [{ text: name, role: "subtle" }];
+    if (name === status.branch && suffix) spans.push({ text: suffix, role: "faint" });
+    add(spans);
   }
-  separate();
-  segments.push({ text: status.model, role: "subtle" });
-  if (status.effort) segments.push({ text: ` ${status.effort}`, role: "faint" });
+  const model: TerminalSpan[] = [{ text: status.model, role: "subtle" }];
+  if (status.effort) model.push({ text: ` ${status.effort}`, role: "faint" });
+  add(model);
   if (status.inputTokens || status.outputTokens) {
-    separate();
-    segments.push({
-      text: t("unit.token.arrows", {
-        input: formatCompactNumber(status.inputTokens),
-        output: formatCompactNumber(status.outputTokens),
-      }),
-      role: "faint",
-    });
+    add([
+      {
+        text: t("unit.token.arrows", {
+          input: formatCompactNumber(status.inputTokens),
+          output: formatCompactNumber(status.outputTokens),
+        }),
+        role: "faint",
+      },
+    ]);
   }
   if (status.pr) {
-    separate();
-    segments.push({ text: "PR ", role: "faint" });
-    segments.push({ text: `#${status.pr.number}`, role: prStateRole(status.pr.state) });
+    add([
+      { text: "PR ", role: "faint" },
+      { text: `#${status.pr.number}`, role: prStateRole(status.pr.state) },
+    ]);
   }
-  const text = segments.map((segment) => segment.text).join("");
-  const statusWidth = width(text);
-  if (status.skills.length === 0) {
-    if (statusWidth <= columns) return { lines: [{ spans: segments }] };
-    return {
-      lines: wrapTerminalProse(text, columns).map((line) => ({
-        spans: [{ text: line, role: "faint" as const }],
-      })),
-    };
+  // Active skills trail the same chain rather than sitting right-justified, where a wide terminal
+  // puts them out of sight.
+  if (status.skills.length > 0) {
+    add([{ text: truncateToWidth(status.skills.join(" "), columns), role: "faint" }]);
   }
-  const skillSegment = status.skills.join(" · ");
-  // Skills sit right-justified on the status row, and stack onto their own row once they no longer fit.
-  if (statusWidth + 2 + width(skillSegment) <= columns) {
-    const gap = columns - statusWidth - width(skillSegment);
-    return { lines: [{ spans: [...segments, { text: `${" ".repeat(gap)}${skillSegment}`, role: "faint" }] }] };
-  }
-  return {
-    lines: [{ spans: segments }, { spans: [{ text: truncateToWidth(skillSegment, columns), role: "faint" }] }],
-  };
+  return { lines: packFooterItems(items, columns) };
 }
 
 const TASKLIST_VISIBLE_LIMIT = 5;

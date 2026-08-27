@@ -76,14 +76,16 @@ test("footer omits effort when absent", () => {
   expect(render({ ...base, effort: null }, 100)).toBe("acolyte · main · gpt-5.2");
 });
 
-test("footer right-justifies skills against the terminal width", () => {
-  expect(render({ ...base, skills: ["build", "debug"] }, 60)).toBe(
-    `acolyte · main · gpt-5.2 medium${" ".repeat(16)}build · debug`,
-  );
+test("footer trails active skills after the status segments", () => {
+  expect(render({ ...base, skills: ["build", "debug"] }, 60)).toBe("acolyte · main · gpt-5.2 medium · build debug");
 });
 
-test("footer stacks skills on their own indented row when they do not fit", () => {
-  expect(render({ ...base, skills: ["build", "debug"] }, 40)).toBe("acolyte · main · gpt-5.2 medium\nbuild · debug");
+test("footer wraps the whole skill part once it no longer fits", () => {
+  expect(render({ ...base, skills: ["build", "debug"] }, 40)).toBe("acolyte · main · gpt-5.2 medium\nbuild debug");
+});
+
+test("footer keeps a model and its effort together across a wrap", () => {
+  expect(render(base, 20)).toBe("acolyte · main\ngpt-5.2 medium");
 });
 
 test("viewport layout carries the semantic footer onto the final scene line", () => {
