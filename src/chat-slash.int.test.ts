@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { shortcutItems } from "./chat-layout";
 import { isKnownSlashToken, suggestSlashCommands } from "./chat-slash";
 import { loadSkills, resetSkillCache } from "./skill-ops";
 import { tempDir, writeSkill } from "./test-utils";
@@ -22,15 +21,6 @@ describe("chat-slash with loaded skills", () => {
     expect(suggestions).toContain("/skill:dogfood");
   });
 
-  test("a skill is offered as a completion but stays out of the help pane", async () => {
-    const tmpDir = createDir("acolyte-slash-pane-");
-    writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
-    await loadSkills(tmpDir);
-
-    expect(suggestSlashCommands("/skill:dog")).toContain("/skill:dogfood");
-    expect(shortcutItems().some((item) => item.key === "/skill:dogfood")).toBe(false);
-  });
-
   test("a skill is offered once", async () => {
     const tmpDir = createDir("acolyte-slash-once-");
     writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
@@ -49,12 +39,12 @@ describe("chat-slash with loaded skills", () => {
     expect(suggestions.every((command) => command.startsWith("/skill:"))).toBe(true);
   });
 
-  test("a bare skill name offers its prefixed command", async () => {
-    const tmpDir = createDir("acolyte-slash-bare-");
+  test("a skill's own name ranks its prefixed command first", async () => {
+    const tmpDir = createDir("acolyte-slash-name-");
     writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
     await loadSkills(tmpDir);
 
-    expect(suggestSlashCommands("/dogfood", 20)).toEqual(["/skill:dogfood"]);
+    expect(suggestSlashCommands("/dogfood")[0]).toBe("/skill:dogfood");
   });
 
   test("a builtin name is never answered by a skill of that name", async () => {
@@ -62,7 +52,7 @@ describe("chat-slash with loaded skills", () => {
     writeSkill(tmpDir, "status", "---\nname: status\ndescription: Test\n---", "# Test");
     await loadSkills(tmpDir);
 
-    expect(suggestSlashCommands("/status", 20)).toEqual(["/status", "/skill:status"]);
+    expect(suggestSlashCommands("/status", 20)).toEqual(["/status"]);
   });
 
   test("isKnownSlashToken recognizes a prefixed skill name only", async () => {

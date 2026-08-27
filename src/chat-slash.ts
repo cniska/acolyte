@@ -66,11 +66,12 @@ function commandWithSubs(commands: string[], root: string): string[] {
   return commands.filter((command) => command === root || command.startsWith(`${root} `));
 }
 
-/** A bare skill name offers the prefixed command, so remembering the skill's name is enough to reach it. */
-function bareSkillMatches(all: string[], candidate: string): string[] {
-  const typed = candidate.slice(1);
-  if (typed.length === 0 || typed.includes(" ") || typed.startsWith(SKILL_COMMAND_PREFIX)) return [];
-  return all.filter((command) => command.startsWith(`/${SKILL_COMMAND_PREFIX}${typed}`));
+/** A skill is remembered by its name, so it scores against both `/skill:build` and `/build`. */
+function fuzzyDistance(candidate: string, root: string): number {
+  const full = truncatedEditDistance(candidate, root);
+  if (!root.startsWith(`/${SKILL_COMMAND_PREFIX}`)) return full;
+  const bare = `/${root.slice(SKILL_COMMAND_PREFIX.length + 1)}`;
+  return Math.min(full, truncatedEditDistance(candidate, bare));
 }
 
 export function suggestSlashCommands(inputValue: string, max = 5): string[] {
@@ -80,10 +81,7 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   const all = slashCommandRows().map((row) => row.command);
 
   // Prefix matching (fast path)
-  const prefixMatches = [
-    ...all.filter((command) => command.startsWith(candidate)),
-    ...bareSkillMatches(all, candidate),
-  ];
+  const prefixMatches = all.filter((command) => command.startsWith(candidate));
   if (prefixMatches.length > 0) return prefixMatches.slice(0, max);
 
   // Require at least 2 chars after "/" for fuzzy matching
@@ -93,7 +91,7 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   if (parts.length === 1) {
     // Single token: fuzzy-match against root commands, expand to include subcommands
     const fuzzy = rootCommands(all)
-      .map((root) => ({ root, distance: truncatedEditDistance(candidate, root) }))
+      .map((root) => ({ root, distance: fuzzyDistance(candidate, root) }))
       .filter((item) => item.distance <= SUGGEST_MAX_DISTANCE)
       .sort((a, b) => a.distance - b.distance);
     return fuzzy.flatMap((item) => commandWithSubs(all, item.root)).slice(0, max);
