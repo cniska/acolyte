@@ -318,7 +318,7 @@
   },
   "chat.slash.help.skill": "run skill command",
   "@chat.slash.help.skill": {
-    "description": "Help text for a skill registered as its own slash command (chat-command-registry.ts:55). Lowercase verb phrase, no trailing period."
+    "description": "Help text for a skill registered as its own slash command (chat-command-registry.ts:63). Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.skills": "show skills picker",
   "@chat.slash.help.skills": {

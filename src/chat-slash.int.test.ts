@@ -18,8 +18,8 @@ describe("chat-slash with loaded skills", () => {
     writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
     await loadSkills(tmpDir);
 
-    const suggestions = suggestSlashCommands("/dog");
-    expect(suggestions).toContain("/dogfood");
+    const suggestions = suggestSlashCommands("/skill:dog");
+    expect(suggestions).toContain("/skill:dogfood");
   });
 
   test("a skill is offered as a completion but stays out of the help pane", async () => {
@@ -27,8 +27,8 @@ describe("chat-slash with loaded skills", () => {
     writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
     await loadSkills(tmpDir);
 
-    expect(suggestSlashCommands("/dog")).toContain("/dogfood");
-    expect(shortcutItems().some((item) => item.key === "/dogfood")).toBe(false);
+    expect(suggestSlashCommands("/skill:dog")).toContain("/skill:dogfood");
+    expect(shortcutItems().some((item) => item.key === "/skill:dogfood")).toBe(false);
   });
 
   test("a skill is offered once", async () => {
@@ -36,15 +36,41 @@ describe("chat-slash with loaded skills", () => {
     writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
     await loadSkills(tmpDir);
 
-    expect(suggestSlashCommands("/dogfood", 20)).toEqual(["/dogfood"]);
+    expect(suggestSlashCommands("/skill:dogfood", 20)).toEqual(["/skill:dogfood"]);
   });
 
-  test("isKnownSlashToken recognizes skill names", async () => {
+  test("the skill prefix alone offers every skill and no builtin", async () => {
+    const tmpDir = createDir("acolyte-slash-namespace-");
+    writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
+    await loadSkills(tmpDir);
+
+    const suggestions = suggestSlashCommands("/skill:", 50);
+    expect(suggestions).toContain("/skill:dogfood");
+    expect(suggestions.every((command) => command.startsWith("/skill:"))).toBe(true);
+  });
+
+  test("a bare skill name offers its prefixed command", async () => {
+    const tmpDir = createDir("acolyte-slash-bare-");
+    writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
+    await loadSkills(tmpDir);
+
+    expect(suggestSlashCommands("/dogfood", 20)).toEqual(["/skill:dogfood"]);
+  });
+
+  test("a builtin name is never answered by a skill of that name", async () => {
+    const tmpDir = createDir("acolyte-slash-builtin-");
+    writeSkill(tmpDir, "status", "---\nname: status\ndescription: Test\n---", "# Test");
+    await loadSkills(tmpDir);
+
+    expect(suggestSlashCommands("/status", 20)).toEqual(["/status", "/skill:status"]);
+  });
+
+  test("isKnownSlashToken recognizes a prefixed skill name only", async () => {
     const tmpDir = createDir("acolyte-slash-known-");
     writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Test\n---", "# Test");
     await loadSkills(tmpDir);
 
-    expect(isKnownSlashToken("/dogfood")).toBe(true);
-    expect(isKnownSlashToken("/nonexistent")).toBe(false);
+    expect(isKnownSlashToken("/skill:dogfood")).toBe(true);
+    expect(isKnownSlashToken("/dogfood")).toBe(false);
   });
 });

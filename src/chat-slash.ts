@@ -1,4 +1,4 @@
-import { resolveCommandRegistry } from "./chat-command-registry";
+import { resolveCommandRegistry, SKILL_COMMAND_PREFIX } from "./chat-command-registry";
 import type { CommandSource } from "./chat-commands-contract";
 import { t } from "./i18n";
 
@@ -66,6 +66,13 @@ function commandWithSubs(commands: string[], root: string): string[] {
   return commands.filter((command) => command === root || command.startsWith(`${root} `));
 }
 
+/** A bare skill name offers the prefixed command, so remembering the skill's name is enough to reach it. */
+function bareSkillMatches(all: string[], candidate: string): string[] {
+  const typed = candidate.slice(1);
+  if (typed.length === 0 || typed.includes(" ") || typed.startsWith(SKILL_COMMAND_PREFIX)) return [];
+  return all.filter((command) => command.startsWith(`/${SKILL_COMMAND_PREFIX}${typed}`));
+}
+
 export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   const value = inputValue.trim();
   if (!value.startsWith("/")) return [];
@@ -73,7 +80,10 @@ export function suggestSlashCommands(inputValue: string, max = 5): string[] {
   const all = slashCommandRows().map((row) => row.command);
 
   // Prefix matching (fast path)
-  const prefixMatches = all.filter((command) => command.startsWith(candidate));
+  const prefixMatches = [
+    ...all.filter((command) => command.startsWith(candidate)),
+    ...bareSkillMatches(all, candidate),
+  ];
   if (prefixMatches.length > 0) return prefixMatches.slice(0, max);
 
   // Require at least 2 chars after "/" for fuzzy matching

@@ -105,24 +105,3 @@ export function subcommandUsage(spec: CommandSpec, name: string): string {
   if (!sub) throw new Error(`${spec.name} declares no subcommand ${name}`);
   return sub.usage;
 }
-
-const BUILTIN_COMMAND_NAMES = new Set(
-  [
-    NEW_SPEC,
-    CLEAR_SPEC,
-    MODEL_SPEC,
-    STATUS_SPEC,
-    SESSIONS_SPEC,
-    WORKSPACES_SPEC,
-    SKILLS_SPEC,
-    RESUME_SPEC,
-    MEMORY_SPEC,
-    USAGE_SPEC,
-    EXIT_SPEC,
-  ].map((spec) => spec.name),
-);
-
-/** Flag-independent: a flagged command still owns its name while the flag is off. */
-export function isBuiltinCommandName(name: string): boolean {
-  return BUILTIN_COMMAND_NAMES.has(name);
-}
