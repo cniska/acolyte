@@ -148,11 +148,11 @@ test("user layout renders a blank interior line as an empty framed row", () => {
   expect(blank).toEqual({
     spans: [
       { text: " ", role: "plain" },
-      { text: "│", role: "composer-border" },
+      { text: "│", role: "message-border" },
       { text: " ", role: "plain" },
       { text: " ".repeat(24), role: "plain" },
       { text: " ", role: "plain" },
-      { text: "│", role: "composer-border" },
+      { text: "│", role: "message-border" },
     ],
   });
 });

@@ -9,6 +9,10 @@ describe("terminalTheme legacy-palette fidelity", () => {
     expect(terminalTheme.styles["composer-border"]).toEqual({ foreground: palette.brand, dim: true });
   });
 
+  test("a sent message's frame stays neutral, apart from the composer's brand border", () => {
+    expect(terminalTheme.styles["message-border"]).toEqual({ foreground: palette.dim });
+  });
+
   test("composer prompt marker is plain, as the legacy Text was", () => {
     expect(terminalTheme.styles["composer-prompt"]).toEqual({});
   });

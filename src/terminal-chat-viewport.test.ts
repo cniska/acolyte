@@ -153,3 +153,28 @@ test("the prompt marker sits in one column across commands, messages, and the co
   expect(columns.length).toBe(3);
   expect(new Set(columns).size).toBe(1);
 });
+
+test("a sent message frames itself apart from the composer's accented border", () => {
+  const scene = layoutTranscript([
+    { id: "row_sent", kind: "user", status: "complete", content: { kind: "message", text: "hello" } },
+  ]);
+  const section = scene.sections?.find((s) => s.id === "row_sent");
+  const messageRoles = new Set(
+    scene.lines
+      .slice(section?.lineStart ?? 0, section?.lineEnd ?? 0)
+      .flatMap((line) => line.spans)
+      .filter((span) => /[│╭╮╰╯─]/.test(span.text))
+      .map((span) => span.role),
+  );
+  expect([...messageRoles]).toEqual(["message-border"]);
+
+  const composer = scene.sections?.find((s) => s.id === "composer");
+  const composerRoles = new Set(
+    scene.lines
+      .slice(composer?.lineStart ?? 0, composer?.lineEnd ?? 0)
+      .flatMap((line) => line.spans)
+      .filter((span) => /[│╭╮╰╯─]/.test(span.text))
+      .map((span) => span.role),
+  );
+  expect([...composerRoles]).toEqual(["composer-border"]);
+});

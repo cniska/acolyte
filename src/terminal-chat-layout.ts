@@ -166,7 +166,7 @@ function composerGhost(presentation: ChatViewportPresentation["composer"]): stri
 
 // Interior rows are padded to the content width so the right border is column-stable, and the
 // interior cursor is translated by the same constant that draws the padding, so they cannot drift.
-function frameScene(interior: TerminalScene, columns: number): TerminalScene {
+function frameScene(interior: TerminalScene, columns: number, borderRole: TerminalStyleRole): TerminalScene {
   const inner = contentWidth(columns);
   const gutter = " ".repeat(GUTTER);
   // The rule spans the interior the body rows pad to, so the corners meet the vertical borders at
@@ -175,7 +175,7 @@ function frameScene(interior: TerminalScene, columns: number): TerminalScene {
   const horizontal = (left: string, right: string): TerminalLine => ({
     spans: [
       { text: gutter, role: "plain" },
-      { text: `${left}${rule}${right}`, role: "composer-border" },
+      { text: `${left}${rule}${right}`, role: borderRole },
     ],
   });
   const frame = (line: TerminalLine): TerminalLine => {
@@ -184,12 +184,12 @@ function frameScene(interior: TerminalScene, columns: number): TerminalScene {
       ...line,
       spans: [
         { text: gutter, role: "plain" },
-        { text: "│", role: "composer-border" },
+        { text: "│", role: borderRole },
         { text: " ".repeat(BOX_PAD), role: "plain" },
         ...line.spans,
         ...(pad > 0 ? [{ text: " ".repeat(pad), role: "plain" as const }] : []),
         { text: " ".repeat(BOX_PAD), role: "plain" },
-        { text: "│", role: "composer-border" },
+        { text: "│", role: borderRole },
       ],
     };
   };
@@ -259,7 +259,7 @@ export function layoutTranscriptMessage(input: {
         : { spans: [{ text: index === 0 ? marker : "  ", role }, ...spans] },
     ),
   };
-  return frameScene(interior, input.columns);
+  return frameScene(interior, input.columns, "message-border");
 }
 
 export function layoutTranscriptText(input: {
@@ -502,6 +502,7 @@ export function layoutComposerStatus(input: {
         cursor: { row: 0, column: labelColumn },
       },
       terminalWidth,
+      "composer-border",
     );
   }
   const caretRole: TerminalStyleRole = presentation.caretVisible ? "cursor" : "plain";
@@ -554,7 +555,11 @@ export function layoutComposerStatus(input: {
       });
     }
   }
-  const boxed = frameScene({ lines: promptLines, cursor: { row: caretRow, column: caretColumn } }, terminalWidth);
+  const boxed = frameScene(
+    { lines: promptLines, cursor: { row: caretRow, column: caretColumn } },
+    terminalWidth,
+    "composer-border",
+  );
   const attached: TerminalLine[] = [];
   if (presentation.showHelp) {
     const rows = Math.ceil(presentation.helpEntries.length / HELP_COLUMNS);

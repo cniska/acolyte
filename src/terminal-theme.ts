@@ -38,6 +38,7 @@ export const terminalStyleRoleSchema = z.enum([
   "diff-added",
   "diff-removed",
   "composer-border",
+  "message-border",
   "composer-prompt",
   "ghost",
   "selected",
@@ -112,6 +113,11 @@ export const terminalTheme: TerminalTheme = Object.freeze({
     "diff-added": { foreground: "#4a9a4a", background: "#042208" },
     "diff-removed": { foreground: "#9a4a4a", background: "#2a0606" },
     "composer-border": { foreground: "#A56EFF", dim: true },
+    // A sent message keeps the composer's frame but not its accent: the purple belongs to the live
+    // input, and a transcript full of it competes with the content. An explicit gray over ANSI dim,
+    // so the frame sits below the composer's border at a fixed weight rather than one the terminal
+    // picks for it.
+    "message-border": { foreground: "#666666" },
     "composer-prompt": {},
     ghost: { foreground: "#666666" },
     selected: { foreground: "#A56EFF" },
