@@ -732,13 +732,21 @@ function taskItemGlyph(status: TasklistItemStatus, pulseFilled: boolean): string
 }
 
 // Display-only bounded view: the semantic tasklist keeps every item; done collapses into the count.
-export function layoutTranscriptTasklist(output: TasklistOutput, contentWidth: number, now: number): TerminalScene {
+// `animating` gates the pulse on a running turn: the only clock that re-renders this scene is the
+// pending indicator's, so with no turn in flight `now` stops advancing and the active item has to
+// settle on its steady marker rather than freeze on whichever phase the last render sampled.
+export function layoutTranscriptTasklist(
+  output: TasklistOutput,
+  contentWidth: number,
+  now: number,
+  animating: boolean,
+): TerminalScene {
   const sorted = [...output.items].sort((a, b) => a.order - b.order);
   const { done, total } = tasklistProgress(sorted);
   const notDone = sorted.filter((item) => item.status !== "done");
   const visible = notDone.slice(0, TASKLIST_VISIBLE_LIMIT);
   const overflow = notDone.length - visible.length;
-  const pulseFilled = Math.floor(now / TASKLIST_PULSE_MS) % 2 === 0;
+  const pulseFilled = !animating || Math.floor(now / TASKLIST_PULSE_MS) % 2 === 0;
   const count = ` ${done}/${total}`;
   const lines: TerminalLine[] = [
     {
@@ -968,7 +976,12 @@ export function layoutChatViewport(input: {
       row.id,
       false,
       insetScene(
-        layoutTranscriptTasklist((row.content as { output: TasklistOutput }).output, cw, input.now),
+        layoutTranscriptTasklist(
+          (row.content as { output: TasklistOutput }).output,
+          cw,
+          input.now,
+          input.presentation.pending !== null,
+        ),
         CONTENT_COLUMN,
       ),
     );

@@ -5,11 +5,11 @@ import { TerminalSceneRender } from "./terminal-scene-render";
 import { dedent } from "./test-utils";
 import { renderPlain } from "./tui/test-utils";
 
-function renderTasklist(tasklists: TasklistOutput[], columns = 96): string {
+function renderTasklist(tasklists: TasklistOutput[], columns = 96, now = 0, animating = false): string {
   // Match the viewport: a 2-space gutter on every tasklist line, a blank line between rows.
   const contentWidth = Math.max(24, columns - 2);
   const lines = tasklists.flatMap((content, i) => {
-    const scene = layoutTranscriptTasklist(content, contentWidth, 0);
+    const scene = layoutTranscriptTasklist(content, contentWidth, now, animating);
     const indented = scene.lines.map((line) => ({
       spans: [{ text: "  ", role: "plain" as const }, ...line.spans],
     }));
@@ -201,5 +201,50 @@ describe("tasklist TUI rendering", () => {
         },
       ]),
     ).toBe(expected(`Done 2/2`));
+  });
+
+  test("the active item settles on its steady marker with no turn running", () => {
+    const group: TasklistOutput = {
+      groupId: "g1",
+      groupTitle: "Steps",
+      items: [
+        { id: "s1", label: "active", status: "in_progress", order: 0 },
+        { id: "s2", label: "waiting", status: "pending", order: 1 },
+      ],
+    };
+    for (const now of [0, 500, 1000, 1500]) {
+      expect(renderTasklist([group], 96, now)).toBe(
+        expected(`
+          Steps 0/2
+            ◈ active
+            ◇ waiting
+        `),
+      );
+    }
+  });
+
+  test("the pulse alternates the active item's glyph while a turn runs", () => {
+    const group: TasklistOutput = {
+      groupId: "g1",
+      groupTitle: "Steps",
+      items: [
+        { id: "s1", label: "active", status: "in_progress", order: 0 },
+        { id: "s2", label: "waiting", status: "pending", order: 1 },
+      ],
+    };
+    expect(renderTasklist([group], 96, 0, true)).toBe(
+      expected(`
+        Steps 0/2
+          ◈ active
+          ◇ waiting
+      `),
+    );
+    expect(renderTasklist([group], 96, 500, true)).toBe(
+      expected(`
+        Steps 0/2
+          ◇ active
+          ◇ waiting
+      `),
+    );
   });
 });
