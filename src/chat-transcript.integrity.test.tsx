@@ -66,6 +66,7 @@ function transcriptScene(rows: ChatRow[]): TerminalScene {
     },
   });
   const scene = layoutChatViewport({
+    held: new Set(),
     presentation,
     constraints: { columns: COLUMNS, rows: 1000 },
     theme: terminalTheme,

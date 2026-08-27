@@ -86,10 +86,10 @@ describe("localization baseline", () => {
   });
 
   test("tool output content renders marker tokens", () => {
-    expect(renderToolOutput({ kind: "truncated", count: 3, unit: "lines" })).toBe("… +3 lines");
-    expect(renderToolOutput({ kind: "truncated", count: 1, unit: "lines" })).toBe("… +1 line");
-    expect(renderToolOutput({ kind: "truncated", count: 5, unit: "matches" })).toBe("… +5 matches");
-    expect(renderToolOutput({ kind: "truncated", count: 1, unit: "matches" })).toBe("… +1 match");
+    expect(renderToolOutput({ kind: "truncated", count: 3, unit: "lines" })).toBe("⋮ +3 lines");
+    expect(renderToolOutput({ kind: "truncated", count: 1, unit: "lines" })).toBe("⋮ +1 line");
+    expect(renderToolOutput({ kind: "truncated", count: 5, unit: "matches" })).toBe("⋮ +5 matches");
+    expect(renderToolOutput({ kind: "truncated", count: 1, unit: "matches" })).toBe("⋮ +1 match");
     expect(renderToolOutput({ kind: "no-output" })).toBe("(No output)");
   });
 });

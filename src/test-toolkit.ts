@@ -2,7 +2,9 @@ import { z } from "zod";
 import { parseExitCode, runShellCommand } from "./shell-ops";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
-import { emitParts, shellHeadTailParts } from "./tool-output-format";
+import { createProcessOutput } from "./tool-live-output";
+import { emitParts, shellTailParts } from "./tool-output-format";
+import { OUTPUT_WINDOW_ROWS } from "./tool-policy";
 import { formatWorkspaceCommand, resolveCommandFiles } from "./workspace-profile";
 
 function createRunTestsTool(input: ToolkitInput) {
@@ -40,18 +42,22 @@ function createRunTestsTool(input: ToolkitInput) {
           content: { kind: "tool-header", labelKey: "tool.label.test_run", detail: command },
           toolCallId: callId,
         });
-        const streamed: Array<{ stream: "stdout" | "stderr"; text: string }> = [];
+        // A test run is the other long-lived process: show its tail while it runs so a hanging
+        // or failing suite is visible before it finishes. The preview below replaces these.
+        const live = createProcessOutput({ toolName: "test-run", toolCallId: callId, onOutput });
+        // A rejected process leaves a batched flush pending, which would put a live row on a call
+        // that already failed.
         const { output: rawResult } = await runShellCommand(
           input.workspace,
           commandSpec,
           toolInput.timeoutMs ?? 60_000,
-          ({ stream, text }) => {
-            for (const line of text.split("\n").filter(Boolean)) {
-              streamed.push({ stream, text: line });
-            }
-          },
-        );
-        const previewParts = shellHeadTailParts(streamed);
+          ({ stream, text }) => live.chunk(stream, text),
+        ).catch((error) => {
+          live.finish();
+          throw error;
+        });
+        const streamed = live.finish();
+        const previewParts = shellTailParts(streamed, OUTPUT_WINDOW_ROWS);
         emitParts(previewParts, "test-run", onOutput, callId);
 
         return { kind: "test-run" as const, command, exitCode: parseExitCode(rawResult), output: rawResult };

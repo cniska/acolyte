@@ -40,7 +40,13 @@ function renderTranscript(rows: ChatRow[], columns = DEFAULT_TERMINAL_WIDTH): st
       footer,
     },
   });
-  const scene = layoutChatViewport({ presentation, constraints: { columns, rows: 200 }, theme: terminalTheme, now: 0 });
+  const scene = layoutChatViewport({
+    presentation,
+    held: new Set(),
+    constraints: { columns, rows: 200 },
+    theme: terminalTheme,
+    now: 0,
+  });
   const header = scene.sections?.find((section) => section.id === "header");
   const composer = scene.sections?.find((section) => section.id === "composer");
   const lines = scene.lines.slice(header?.lineEnd, composer?.lineStart);

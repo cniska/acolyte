@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
-import { emitParts, webSearchSummaryParts } from "./tool-output-format";
+import { webSearchSummary } from "./tool-output-format";
 import { fetchWeb, searchWeb } from "./web-ops";
 
 const WEB_SEARCH_MAX_RESULTS = 5;
@@ -34,7 +34,16 @@ function createWebSearchTool(input: ToolkitInput) {
           toolCallId: callId,
         });
         const result = await searchWeb(toolInput.query, toolInput.maxResults ?? WEB_SEARCH_MAX_RESULTS);
-        emitParts(webSearchSummaryParts(result), "web-search", input.onOutput, callId);
+        input.onOutput({
+          toolName: "web-search",
+          content: {
+            kind: "tool-header",
+            labelKey: "tool.label.web_search",
+            detail: `"${toolInput.query}"`,
+            summary: webSearchSummary(result),
+          },
+          toolCallId: callId,
+        });
         return { kind: "web-search" as const, query: toolInput.query, output: result };
       });
     },

@@ -7,7 +7,7 @@ export type ToolOutputListener = (event: {
   toolName: string;
   content: ToolOutputPart;
   toolCallId?: string;
-  /** Output from a tool still running. Replaced by the parts emitted when it settles. */
+  /** Output from a tool still running. Replaced by the parts emitted when it finishes. */
   transient?: boolean;
 }) => void;
 
@@ -100,72 +100,41 @@ export function diffSummaryParts(path: string, rawResult: string, labelKey: stri
   return [{ kind: "edit-header", labelKey, path, added, removed }];
 }
 
-function mapHeadTailParts<T>(
-  items: T[],
-  toPart: (item: T) => ToolOutputPart,
-  omittedPart: (count: number) => ToolOutputPart,
-  headRows: number,
-  tailRows: number,
-): ToolOutputPart[] {
-  if (items.length === 0) return [{ kind: "no-output" }];
-  if (items.length > headRows + tailRows) {
-    return [
-      ...items.slice(0, headRows).map(toPart),
-      omittedPart(items.length - (headRows + tailRows)),
-      ...items.slice(-tailRows).map(toPart),
-    ];
-  }
-  return items.map(toPart);
+/** The content a tool wrote, verbatim — indentation and blank lines are the content, so nothing
+ *  here trims and nothing is left out: the transcript is the only record of what Acolyte changed. */
+export function contentParts(content: string): ToolOutputPart[] {
+  const body = content.replace(/\n$/, "");
+  if (body.length === 0) return [];
+  return body.split("\n").map((text, index) => ({ kind: "content", lineNumber: index + 1, text }) as ToolOutputPart);
 }
 
 function omittedLinesPart(count: number): ToolOutputPart {
-  return { kind: "text", text: `⋮ +${t("unit.line", { count })}` };
+  return { kind: "truncated", count, unit: "lines" };
 }
 
 export type ShellLine = { stream: "stdout" | "stderr"; text: string };
 
-// Keep thin domain wrappers so toolkit call sites deal in native inputs,
-// while the head/tail implementation stays single-sourced.
-export function shellHeadTailParts(
-  lines: ShellLine[],
-  options?: { headRows?: number; tailRows?: number },
-): ToolOutputPart[] {
-  return mapHeadTailParts(
-    lines,
-    (entry) => ({ kind: "shell-output", stream: entry.stream, text: entry.text }),
-    omittedLinesPart,
-    options?.headRows ?? 2,
-    options?.tailRows ?? 2,
-  );
+/** A command is read for how it ended: its first rows are the runner starting up, and the answer —
+ *  a summary, a failure — is at the bottom. So a command's preview is a tail, headed by the count of
+ *  what came before it. */
+export function shellTailParts(lines: ShellLine[], tailRows: number): ToolOutputPart[] {
+  if (lines.length === 0) return [{ kind: "no-output" }];
+  const tail: ToolOutputPart[] = lines
+    .slice(-tailRows)
+    .map((entry) => ({ kind: "shell-output", stream: entry.stream, text: entry.text }));
+  if (lines.length <= tailRows) return tail;
+  return [omittedLinesPart(lines.length - tailRows), ...tail];
 }
 
-export function textHeadTailParts(
-  rawText: string,
-  options?: { headRows?: number; tailRows?: number },
-): ToolOutputPart[] {
-  const lines = rawText
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  return mapHeadTailParts(
-    lines,
-    (line) => ({ kind: "text", text: line }),
-    omittedLinesPart,
-    options?.headRows ?? 2,
-    options?.tailRows ?? 2,
-  );
-}
-
-export function resultChunkParts(result: string, maxLines = 80): ToolOutputPart[] {
-  const allLines = result
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  const parts: ToolOutputPart[] = allLines.slice(0, maxLines).map((text) => ({ kind: "text", text }));
-  if (allLines.length > maxLines) {
-    parts.push({ kind: "truncated", count: allLines.length - maxLines, unit: "lines" });
-  }
-  return parts;
+/** A listing, a log, or a diff is read from the top down, so its preview is a head and the count of
+ *  what follows. Lines are kept verbatim: a status column and a diff's indentation are content. */
+export function textHeadParts(rawText: string, headRows: number): ToolOutputPart[] {
+  const body = rawText.replace(/\n$/, "");
+  if (body.length === 0) return [{ kind: "no-output" }];
+  const lines = body.split("\n");
+  const head: ToolOutputPart[] = lines.slice(0, headRows).map((text) => ({ kind: "text", text }));
+  if (lines.length <= headRows) return head;
+  return [...head, omittedLinesPart(lines.length - headRows)];
 }
 
 export function findSummaryParts(filePaths: string[], patterns: string[], labelKey: string): ToolOutputPart[] {
@@ -173,14 +142,20 @@ export function findSummaryParts(filePaths: string[], patterns: string[], labelK
   if (unique.length === 0) return [];
   const labels = compactPatternLabels(patterns);
   return [
-    { kind: "scope-header", labelKey, scope: "workspace", patterns: labels, matches: unique.length },
-    { kind: "text", text: t("unit.file", { count: unique.length }) },
+    {
+      kind: "scope-header",
+      labelKey,
+      scope: "workspace",
+      patterns: labels,
+      matches: unique.length,
+      summary: t("unit.file", { count: unique.length }),
+    },
   ];
 }
 
-export function webSearchSummaryParts(result: string): ToolOutputPart[] {
+export function webSearchSummary(result: string): string {
   const count = result.split("\n").filter((line) => /^\d+\.\s+\S/.test(line.trimEnd())).length;
-  return [{ kind: "text", text: t("unit.result", { count }) }];
+  return t("unit.result", { count });
 }
 
 function toDisplayPath(path: string, workspace?: string): string {
@@ -230,7 +205,13 @@ export function searchSummaryParts(
     scope = "workspace";
   }
   return [
-    { kind: "scope-header", labelKey, scope, patterns: labels, matches: stats.files },
-    { kind: "text", text: `${t("unit.match", { count: stats.matches })} in ${t("unit.file", { count: stats.files })}` },
+    {
+      kind: "scope-header",
+      labelKey,
+      scope,
+      patterns: labels,
+      matches: stats.files,
+      summary: `${t("unit.match", { count: stats.matches })} in ${t("unit.file", { count: stats.files })}`,
+    },
   ];
 }

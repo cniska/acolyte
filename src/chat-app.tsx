@@ -23,6 +23,7 @@ function ChatApp(props: ChatAppProps) {
   const constraints = { columns, rows: process.stdout.rows ?? DEFAULT_ROWS };
   const scene = layoutChatViewport({
     presentation: createChatViewportPresentation(state.presentationInput),
+    held: state.heldRowIds,
     constraints,
     theme: terminalTheme,
     now: Date.now(),

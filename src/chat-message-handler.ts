@@ -33,6 +33,7 @@ type CreateMessageHandlerInput = {
   setCurrentSession: (next: Session) => void;
   setRows: (updater: (current: ChatRow[]) => ChatRow[]) => void;
   setTranscriptPresentation?: (updater: (current: TranscriptRow[]) => TranscriptRow[]) => void;
+  setHeldRowIds?: (updater: (current: ReadonlySet<string>) => ReadonlySet<string>) => void;
   setShowHelp: (next: boolean | ((current: boolean) => boolean)) => void;
   setValue: (next: string) => void;
   persist: () => Promise<void>;
@@ -111,6 +112,8 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
     const streamState = createMessageStreamState({
       setRows: input.setRows,
       setTranscriptPresentation: input.setTranscriptPresentation,
+      setHeldRowIds: input.setHeldRowIds,
+      surface: "transcript",
     });
 
     await input.persist();
@@ -237,6 +240,10 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           signal: followupController.signal,
         });
         if (startedFollowup) {
+          // The stream is over even though the turn is not: the followup reports from here on.
+          // Detaching without finalizing would leave this turn's tool rows reading as live, and a
+          // live row front-anchors promotion for the rest of the session.
+          streamState.finalize();
           input.setInterrupt(() => followupController.abort());
           cleanup = "none";
           return;

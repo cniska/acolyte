@@ -5,6 +5,7 @@ import type { ChatRow } from "./chat-contract";
 import { isCommandOutput, isToolOutput } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
 import { resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
+import type { TranscriptRow } from "./chat-transcript-contract";
 import type { StreamEvent } from "./client-contract";
 import {
   createClient,
@@ -953,6 +954,74 @@ describe("chat message handler", () => {
     // Interrupt handler must still be registered so the user can Ctrl+C
     // to cancel the remote task polling.
     expect(interruptHandler).not.toBeNull();
+  });
+
+  // Handing the turn to a remote-task followup ends the stream. A tool row left reading as live
+  // front-anchors promotion, so every row after it is repainted for the rest of the session.
+  test("a remote task followup settles the turn's unresolved tool rows", async () => {
+    const session = createSession({ id: "sess_test" });
+    const sessionState = createSessionState({ activeSessionId: session.id, sessions: [session] });
+    const presentation: TranscriptRow[] = [];
+
+    const { handleSubmit } = createMessageHandler({
+      client: createClient({
+        replyStream: async (input) => {
+          input.onEvent({
+            type: "tool-output",
+            toolCallId: "call_1",
+            toolName: "shell-run",
+            content: { kind: "tool-header", labelKey: "tool.label.shell_run" },
+          });
+          const error = new Error("Remote task") as Error & { taskId: string };
+          error.taskId = "task_abc";
+          throw error;
+        },
+        taskStatus: async () => ({
+          id: "task_abc",
+          state: "running" as const,
+          createdAt: "2026-02-20T00:00:00.000Z",
+          updatedAt: "2026-02-20T00:00:00.000Z",
+        }),
+      }),
+      sessionState,
+      currentSession: session,
+      setCurrentSession: () => {},
+      setRows: (updater) => {
+        updater([]);
+      },
+      setTranscriptPresentation: (updater) => {
+        presentation.splice(0, presentation.length, ...updater(presentation));
+      },
+      setShowHelp: () => {},
+      setValue: () => {},
+      persist: async () => {},
+      exit: () => {},
+      openSkillsPanel: async () => {},
+      activateSkill: async () => true,
+      openResumePanel: () => {},
+      openModelPanel: () => {},
+      tokenUsage: [],
+      isPending: () => false,
+      requeueMessage: () => {},
+      setInputHistory: () => {},
+      setInputHistoryIndex: () => {},
+      setInputHistoryDraft: () => {},
+      onStartPending: () => {},
+      onStopPending: () => {},
+      setPendingState: () => {},
+      setRunningUsage: () => {},
+      setTokenUsage: () => {},
+      createMessage,
+      nowIso: () => "2026-02-20T00:00:00.000Z",
+      setInterrupt: () => {},
+      resumeTranscript: () => {},
+      clearTranscript: () => {},
+    });
+
+    await handleSubmit("test remote");
+
+    const toolRow = presentation.find((row) => row.content.kind === "tool-output");
+    expect(toolRow?.status).toBe("cancelled");
   });
 
   test("a completed turn keeps its user and assistant rows in the transcript", async () => {

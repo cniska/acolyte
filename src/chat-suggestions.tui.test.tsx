@@ -39,7 +39,13 @@ function composerRows(
       footer,
     },
   });
-  const scene = layoutChatViewport({ presentation, constraints: { columns, rows: 40 }, theme: terminalTheme, now: 0 });
+  const scene = layoutChatViewport({
+    presentation,
+    held: new Set(),
+    constraints: { columns, rows: 40 },
+    theme: terminalTheme,
+    now: 0,
+  });
   return scene.lines.map((line) => line.spans.map((span) => span.text).join(""));
 }
 
@@ -60,7 +66,13 @@ function composerRowWidths(
       footer,
     },
   });
-  const scene = layoutChatViewport({ presentation, constraints: { columns, rows: 40 }, theme: terminalTheme, now: 0 });
+  const scene = layoutChatViewport({
+    presentation,
+    held: new Set(),
+    constraints: { columns, rows: 40 },
+    theme: terminalTheme,
+    now: 0,
+  });
   const raw = withTerminalWidth(columns, () => renderToString(<TerminalSceneRender scene={scene} />));
   return raw.split("\n").map((line) => stripAnsiLength(line));
 }

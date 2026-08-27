@@ -38,7 +38,13 @@ function sceneFor(activeTranscript: TranscriptRow[]) {
       footer,
     },
   });
-  return layoutChatViewport({ presentation, constraints: { columns, rows: 60 }, theme: terminalTheme, now: 0 });
+  return layoutChatViewport({
+    presentation,
+    held: new Set(),
+    constraints: { columns, rows: 60 },
+    theme: terminalTheme,
+    now: 0,
+  });
 }
 
 // A promoted slice must render byte-for-byte the same as it did in the live frame it was

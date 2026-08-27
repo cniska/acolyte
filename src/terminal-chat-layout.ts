@@ -728,12 +728,12 @@ export function layoutTranscriptTasklist(output: TasklistOutput, contentWidth: n
     },
     ...visible.map((item) => ({
       spans: [
-        { text: `  ${taskItemGlyph(item.status, pulseFilled)} `, role: taskItemRole(item.status) },
-        { text: truncateToWidth(item.label, Math.max(1, contentWidth - 4)), role: "muted" as const },
+        { text: `${taskItemGlyph(item.status, pulseFilled)} `, role: taskItemRole(item.status) },
+        { text: truncateToWidth(item.label, Math.max(1, contentWidth - 2)), role: "muted" as const },
       ],
     })),
   ];
-  if (overflow > 0) lines.push({ spans: [{ text: `  +${overflow} pending`, role: "muted" }] });
+  if (overflow > 0) lines.push({ spans: [{ text: `+${overflow} pending`, role: "muted" }] });
   return { lines };
 }
 
@@ -742,16 +742,17 @@ function toolRole(role: string): TerminalStyleRole | null {
   if (role === "meta-add") return "tool-meta-add";
   if (role === "meta-remove") return "tool-meta-remove";
   if (role === "diff-text") return "plain";
+  if (role === "summary") return "faint";
   if (role === "stream-tag") return null;
   return "muted";
 }
 
-// A diff line's segment role once its band is known: text takes the band color, the gutter takes
+// A changed line's segment role once its band is known: text takes the band color, the gutter takes
 // the matching meta tint, everything else keeps its base role.
-function diffSpanRole(role: string, fill: TerminalStyleRole | undefined, base: TerminalStyleRole): TerminalStyleRole {
-  if (!fill) return base;
-  if (role === "diff-text") return fill;
-  if (role === "diff-gutter") return fill === "diff-added" ? "tool-meta-add" : "tool-meta-remove";
+function bandSpanRole(role: string, band: TerminalStyleRole | undefined, base: TerminalStyleRole): TerminalStyleRole {
+  if (!band) return base;
+  if (role === "diff-text") return band;
+  if (role === "diff-gutter") return band === "diff-added" ? "tool-meta-add" : "tool-meta-remove";
   return base;
 }
 
@@ -809,23 +810,22 @@ export function layoutTranscriptTool(input: {
         { ...line, segments: line.segments.filter((segment) => segment.role !== "stream-tag") },
         contentWidth,
       );
-      const fill =
-        fitted.fill === "diff-add" ? "diff-added" : fitted.fill === "diff-remove" ? "diff-removed" : undefined;
+      const band = fitted.change === "added" ? "diff-added" : fitted.change === "removed" ? "diff-removed" : undefined;
       const spans = fitted.segments.flatMap((segment) => {
         const base = toolRole(segment.role);
         if (!base) return [];
         // Removed lines stay flat red: the code is being discarded, so highlighting it is just noise.
-        if (segment.role === "diff-text" && diffLang && fill !== "diff-removed") {
+        if (segment.role === "diff-text" && diffLang && fitted.change !== "removed") {
           const [lineSpans = []] = highlightCode(segment.text, diffLang);
           return lineSpans;
         }
-        return [{ text: segment.text, role: diffSpanRole(segment.role, fill, base) }];
+        return [{ text: segment.text, role: bandSpanRole(segment.role, band, base) }];
       });
-      const padding = fill
+      const padding = band
         ? " ".repeat(Math.max(0, contentWidth - fitted.indent - segmentsWidth(fitted.segments)))
         : "";
       return {
-        fill,
+        fill: band,
         spans: [
           { text: index === 0 ? marker : " ".repeat(fitted.indent + 2), role: markerRole },
           ...spans,
@@ -838,6 +838,9 @@ export function layoutTranscriptTool(input: {
 
 export function layoutChatViewport(input: {
   presentation: ChatViewportPresentation;
+  /** Rows whose tool output is still on screen ahead of the header that replaces it. The outcome is
+   *  already on the row; promoting it now would commit output the replacement takes away. */
+  held: ReadonlySet<string>;
   constraints: TerminalConstraints;
   theme: TerminalTheme;
   now: number;
@@ -858,7 +861,7 @@ export function layoutChatViewport(input: {
     if (row.content.kind === "tool-output") {
       append(
         row.id,
-        row.status !== "active",
+        row.status !== "active" && !input.held.has(row.id),
         insetScene(
           layoutTranscriptTool({ parts: row.content.output.parts, status: row.status, columns: cw }),
           CONTENT_COLUMN,

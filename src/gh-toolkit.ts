@@ -13,7 +13,8 @@ import {
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
-import { emitParts, textHeadTailParts } from "./tool-output-format";
+import { emitParts, textHeadParts } from "./tool-output-format";
+import { OUTPUT_WINDOW_ROWS } from "./tool-policy";
 
 function createGhPrViewTool(input: ToolkitInput) {
   return createTool({
@@ -188,7 +189,7 @@ function createGhIssueListTool(input: ToolkitInput) {
           limit: toolInput.limit,
         });
         const lines = issues.map((i) => `#${i.number} ${i.state} ${i.title}`).join("\n");
-        emitParts(textHeadTailParts(lines || "no issues"), "gh-issue-list", input.onOutput, callId);
+        emitParts(textHeadParts(lines || "no issues", OUTPUT_WINDOW_ROWS), "gh-issue-list", input.onOutput, callId);
         return { kind: "gh-issue-list" as const, issues };
       });
     },

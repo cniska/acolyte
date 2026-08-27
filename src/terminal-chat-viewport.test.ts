@@ -6,6 +6,7 @@ import { terminalTheme } from "./terminal-theme";
 
 function layoutTranscript(transcript: TranscriptRow[]): TerminalScene {
   return layoutChatViewport({
+    held: new Set(),
     presentation: {
       header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
       transcript,
@@ -52,6 +53,7 @@ test("status and task rows render a muted body with an outcome-colored marker", 
 
 test("viewport layout orders finalized transcript before mutable pending and composer sections", () => {
   const scene = layoutChatViewport({
+    held: new Set(),
     presentation: {
       header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
       transcript: [{ id: "row_1", kind: "assistant", status: "complete", content: { kind: "message", text: "hello" } }],

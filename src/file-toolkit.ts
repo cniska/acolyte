@@ -3,7 +3,7 @@ import { z } from "zod";
 import { deleteTextFile, editFile, findFiles, readFileContent, searchFiles, writeTextFile } from "./file-ops";
 import { createTool, type ToolkitInput } from "./tool-contract";
 import { runTool } from "./tool-execution";
-import { diffSummaryParts, emitParts, findSummaryParts, searchSummaryParts } from "./tool-output-format";
+import { contentParts, diffSummaryParts, emitParts, findSummaryParts, searchSummaryParts } from "./tool-output-format";
 import {
   findResultPaths,
   numberedUnifiedDiffLines,
@@ -147,6 +147,17 @@ function createReadFileTool(input: ToolkitInput) {
           offset: toolInput.offset,
           limit: toolInput.limit,
         });
+        input.onOutput({
+          toolName: "file-read",
+          content: {
+            kind: "file-header",
+            labelKey: "tool.label.file_read",
+            count: 1,
+            targets: [toDisplayPath(readInput.path, input.workspace)],
+            summary: `${read.startLine}-${read.endLine}`,
+          },
+          toolCallId: callId,
+        });
         return {
           kind: "file-read" as const,
           path: toolInput.path,
@@ -243,9 +254,8 @@ function createCreateFileTool(input: ToolkitInput) {
           content: toolInput.content,
         });
         const summaryParts = diffSummaryParts(toolInput.path, rawResult, "tool.label.file_create");
-        const diffParts = numberedUnifiedDiffLines(rawResult);
         emitParts(summaryParts, "file-create", input.onOutput, callId);
-        emitParts(diffParts, "file-create", input.onOutput, callId);
+        emitParts(contentParts(toolInput.content), "file-create", input.onOutput, callId);
         const totals = summarizeUnifiedDiff(rawResult);
         return {
           kind: "file-create" as const,

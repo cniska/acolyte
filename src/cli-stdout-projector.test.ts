@@ -25,7 +25,7 @@ describe("run mode tool output", () => {
   test("a streaming tool prints its settled output once, with no duplicated lines", () => {
     const written = captureStdout(() => {
       const projector = createStdoutRowProjector();
-      const state = createMessageStreamState({ setRows: projector.setRows, appendOnlyRows: true });
+      const state = createMessageStreamState({ setRows: projector.setRows, surface: "stream" });
       const emit = (content: ToolOutputPart, transient?: boolean) =>
         state.onOutput({ toolCallId: "tc_1", toolName: "shell-run", content, transient });
 
