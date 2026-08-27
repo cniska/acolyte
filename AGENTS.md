@@ -43,8 +43,8 @@ Format: `type(scope): description` — types: `feat`, `fix`, `refactor`, `docs`,
 
 ## Pull requests
 
-- Open a `/pr` for anything behavior-affecting, release-gating, or touching a load-bearing subsystem (memory, lifecycle, renderer, transcript); push direct to `main` only for releases and changes that alter no behavior (typos, comments, dead-code removal, pure refactors that keep `verify` green). Size is a tiebreaker, not the test.
-- Gate: run `/review` (multi-dimension, not `/code-review`) before opening, and fix all findings first.
+- Open a PR for anything behavior-affecting, release-gating, or touching a load-bearing subsystem (memory, lifecycle, renderer, transcript); push direct to `main` only for releases and changes that alter no behavior (typos, comments, dead-code removal, pure refactors that keep `verify` green). Size is a tiebreaker, not the test.
+- Gate: run the multi-dimension `review` skill (not `code-review`) before opening, and fix all findings first.
 - Title: `type(scope): description`, under 50 characters, no trailing period.
 - Body follows `.github/pull_request_template.md`: brief motivation (omit when obvious), then a flat summary bullet list. Cut anything a reviewer would infer from the diff.
 - End with `Fixes #N` when an issue matches the work.
