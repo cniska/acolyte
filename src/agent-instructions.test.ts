@@ -1,5 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { createInstructions } from "./agent-instructions";
+import { setLocale } from "./i18n";
 import { loadSoulPrompt } from "./soul";
 import { expectIntent } from "./test-utils";
 import { estimateTokens } from "./token-estimate";
@@ -131,5 +132,35 @@ describe("createInstructions", () => {
   test("omits the skills section when no skills are active", () => {
     const out = createInstructions("Soul.");
     expect(out).not.toContain("Active skill (");
+  });
+});
+
+// The prompt is authored and tuned in English; only the language the model writes its prose in
+// follows the configured interface language.
+describe("createInstructions reply language", () => {
+  afterEach(() => setLocale("en"));
+
+  test("names the interface language, and keeps what lands in the repository English", () => {
+    setLocale("sv");
+    const out = createInstructions("Soul.");
+    expectIntent(out, [["Reply in Swedish"], ["stays English", "commit messages"]]);
+  });
+
+  test("names each bundled language rather than its locale id", () => {
+    setLocale("fi");
+    expect(createInstructions("Soul.")).toContain("in Finnish");
+  });
+
+  test("says nothing when the interface is already English", () => {
+    setLocale("en");
+    const out = createInstructions("Soul.");
+    expect(out).not.toContain("Reply in");
+  });
+
+  test("carries the language inside the output contract, not as a section of its own", () => {
+    setLocale("sv");
+    const out = createInstructions("Soul.");
+    const contractEnd = out.indexOf("\n\n", out.indexOf("Format as plain text"));
+    expect(out.indexOf("Reply in Swedish")).toBeLessThan(contractEnd);
   });
 });

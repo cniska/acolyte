@@ -19,6 +19,12 @@ Acolyte keeps user-facing copy translatable while protocol methods, payload keys
 
 A new protocol or tool contract takes an identifier-style name rather than a natural-language label, so translating a surface never changes a contract.
 
+## Reply language
+
+The prompt is authored and tuned in English and stays that way; the interface language reaches the model only as the language it writes its prose in. The output contract names that language whenever the interface is not English, so a reply follows `locale` without any instruction being translated.
+
+What the model writes into the repository — code, identifiers, comments, commit messages, file contents — stays English at every locale.
+
 ## Authoring
 
 Messages are authored in ARB (`src/i18n/<locale>.arb`) and compiled into TypeScript by `bun run messages`. Nothing reads ARB at runtime.
