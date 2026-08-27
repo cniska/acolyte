@@ -54,12 +54,6 @@ export function createToolOutputState(options: { surface: ToolOutputSurface }): 
       dropped += part.kind === "truncated" ? (part.count ?? 0) : 1;
     }
     if (dropped === 0) return kept;
-    // A marker the window keeps stands in front of rows now dropped too: one count, not two.
-    const first = kept[0];
-    if (first?.kind === "truncated") {
-      dropped += first.count ?? 0;
-      kept.shift();
-    }
     return [{ kind: "truncated", count: dropped, unit: "lines" }, ...kept];
   }
 

@@ -114,7 +114,7 @@ describe("createToolOutputState", () => {
     expect(update?.items.map(text)).toEqual([undefined, "first", "second"]);
   });
 
-  test("a stream surface drops transient parts and keeps the settled ones", () => {
+  test("a stream surface drops transient parts and keeps the rest", () => {
     const state = createToolOutputState({ surface: "stream" });
     state.push({ toolCallId: "tc_1", content: { kind: "tool-header", labelKey: "tool.label.shell_run" } });
     expect(state.push({ toolCallId: "tc_1", content: shellLine("live"), transient: true })).toBeNull();
@@ -122,7 +122,7 @@ describe("createToolOutputState", () => {
     expect(update?.items.map(text)).toEqual([undefined, "settled"]);
   });
 
-  test("a settled part replaces every transient part before it", () => {
+  test("a kept part replaces every transient part before it", () => {
     const state = createToolOutputState({ surface: "transcript" });
     state.push({ toolCallId: "tc_1", content: { kind: "tool-header", labelKey: "tool.label.shell_run" } });
     state.push({ toolCallId: "tc_1", content: shellLine("live-1"), transient: true });
@@ -141,7 +141,7 @@ describe("createToolOutputState", () => {
     expect(text(update?.items[0])).toBe("line-4");
   });
 
-  test("settled output past the window keeps the header and the most recent rows", () => {
+  test("output past the window keeps the header and the most recent rows", () => {
     const { state } = setup();
     state.push({ toolCallId: "tc_1", content: { kind: "tool-header", labelKey: "tool.label.file_create" } });
     let update = null;
@@ -199,8 +199,9 @@ describe("createToolOutputState", () => {
     expect(update?.items).toHaveLength(OUTPUT_WINDOW_ROWS + 2);
   });
 
-  // Two markers stacked would each count only part of what is missing.
-  test("a preview trimmed further folds into one count", () => {
+  // A preview that already stated an omission is trimmed again by the window. The two counts must
+  // add up, or the reader is told less was withheld than was.
+  test("a preview trimmed further states every row it dropped", () => {
     const { state } = setup();
     state.push({ toolCallId: "tc_1", content: { kind: "tool-header", labelKey: "tool.label.file_create" } });
     state.push({ toolCallId: "tc_1", content: { kind: "text", text: "head" } });
@@ -234,7 +235,7 @@ describe("createToolOutputState", () => {
     expect(update?.items.filter((part) => part.kind === "truncated")).toHaveLength(0);
   });
 
-  test("a stream surface renders every settled row, unbounded", () => {
+  test("a stream surface renders every row, unbounded", () => {
     const state = createToolOutputState({ surface: "stream" });
     state.push({ toolCallId: "tc_1", content: { kind: "tool-header", labelKey: "tool.label.file_create" } });
     let update = null;
@@ -245,8 +246,8 @@ describe("createToolOutputState", () => {
     expect(text(update?.items[1])).toBe("line-1");
   });
 
-  // A create emits no rows at all: the header names the file and the file is on disk whole.
-  test("a create is its header alone", () => {
+  // A create's header states the path and the size; its content follows as its own rows.
+  test("a create with no content emitted is its header alone", () => {
     const { state } = setup();
     const update = state.push({
       toolCallId: "tc_1",
