@@ -60,7 +60,6 @@ export type MessageArgs = {
   "chat.slash.help.new": never;
   "chat.slash.help.resume": never;
   "chat.slash.help.sessions": never;
-  "chat.slash.help.skill": never;
   "chat.slash.help.skills": never;
   "chat.slash.help.status": never;
   "chat.slash.help.usage": never;

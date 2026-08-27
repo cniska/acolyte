@@ -1,5 +1,5 @@
 import { resolveCommandRegistry, SKILL_COMMAND_PREFIX } from "./chat-command-registry";
-import type { CommandSource } from "./chat-commands-contract";
+import type { CommandHelp, CommandSource } from "./chat-commands-contract";
 import { t } from "./i18n";
 
 export type SlashCommandRow = {
@@ -12,14 +12,18 @@ export type SlashCommandRow = {
 };
 
 /** Every reachable command string, derived from the registry so the menu can only offer what dispatch owns. */
+function helpText(help: CommandHelp): string {
+  return "key" in help ? t(help.key) : help.text;
+}
+
 export function slashCommandRows(): SlashCommandRow[] {
   const rows: SlashCommandRow[] = [];
   for (const entry of resolveCommandRegistry()) {
     const command = `/${entry.spec.name}`;
     const source = entry.spec.source;
-    rows.push({ command, usage: entry.spec.usage ?? command, help: t(entry.spec.helpKey), source });
+    rows.push({ command, usage: entry.spec.usage ?? command, help: helpText(entry.spec.help), source });
     for (const sub of entry.spec.subcommands) {
-      rows.push({ command: `${command} ${sub.name}`, usage: sub.usage, help: t(sub.helpKey), source });
+      rows.push({ command: `${command} ${sub.name}`, usage: sub.usage, help: helpText(sub.help), source });
     }
   }
   return rows;

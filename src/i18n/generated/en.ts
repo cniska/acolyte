@@ -136,7 +136,6 @@ export const EN_MESSAGES = {
   "chat.slash.help.new": [{ kind: "text", value: "start new session" }],
   "chat.slash.help.resume": [{ kind: "text", value: "resume session" }],
   "chat.slash.help.sessions": [{ kind: "text", value: "show sessions" }],
-  "chat.slash.help.skill": [{ kind: "text", value: "run skill command" }],
   "chat.slash.help.skills": [{ kind: "text", value: "show skills picker" }],
   "chat.slash.help.status": [{ kind: "text", value: "show server status" }],
   "chat.slash.help.usage": [{ kind: "text", value: "show token usage" }],

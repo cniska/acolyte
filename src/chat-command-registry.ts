@@ -60,7 +60,7 @@ function skillEntry(skill: SkillMeta): CommandEntry {
     spec: {
       name: command,
       source: skill.source,
-      helpKey: "chat.slash.help.skill",
+      help: { text: skill.description },
       usage: `/${command} [prompt]`,
       subcommands: [],
     },

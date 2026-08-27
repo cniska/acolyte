@@ -60,16 +60,19 @@ export function parseSlashCommand(text: string): ParsedCommand {
 export const commandSourceSchema = z.enum(["builtin", "project", "user", "bundled", "plugin"]);
 export type CommandSource = z.infer<typeof commandSourceSchema>;
 
+/** A builtin's help is ours to translate; a skill's is the author's own description, carried verbatim. */
+export type CommandHelp = { key: PlainTranslationKey } | { text: string };
+
 export type SubcommandSpec = {
   name: string;
   usage: string;
-  helpKey: PlainTranslationKey;
+  help: CommandHelp;
 };
 
 export type CommandSpec = {
   name: string;
   source: CommandSource;
-  helpKey: PlainTranslationKey;
+  help: CommandHelp;
   flag?: FeatureFlagName;
   /** Argument form of the bare root. Absent means the root takes none, and extra tokens are not this command. */
   usage?: string;

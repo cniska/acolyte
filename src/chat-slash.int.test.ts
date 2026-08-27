@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { isKnownSlashToken, suggestSlashCommands } from "./chat-slash";
+import { isKnownSlashToken, slashCommandHelp, suggestSlashCommands } from "./chat-slash";
 import { loadSkills, resetSkillCache } from "./skill-ops";
 import { tempDir, writeSkill } from "./test-utils";
 
@@ -45,6 +45,14 @@ describe("chat-slash with loaded skills", () => {
     await loadSkills(tmpDir);
 
     expect(suggestSlashCommands("/dogfood", 20)).toEqual(["/skill:dogfood"]);
+  });
+
+  test("a skill's row carries its own description as help", async () => {
+    const tmpDir = createDir("acolyte-slash-help-");
+    writeSkill(tmpDir, "dogfood", "---\nname: dogfood\ndescription: Drive the live chat TUI\n---", "# Test");
+    await loadSkills(tmpDir);
+
+    expect(slashCommandHelp("/skill:dogfood")).toBe("Drive the live chat TUI");
   });
 
   test("a builtin name is never answered by a skill of that name", async () => {

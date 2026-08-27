@@ -142,7 +142,6 @@ export const FI_MESSAGES = {
   "chat.slash.help.new": [{ kind: "text", value: "aloita uusi istunto" }],
   "chat.slash.help.resume": [{ kind: "text", value: "jatka istuntoa" }],
   "chat.slash.help.sessions": [{ kind: "text", value: "näytä istunnot" }],
-  "chat.slash.help.skill": [{ kind: "text", value: "suorita taitokomento" }],
   "chat.slash.help.skills": [{ kind: "text", value: "näytä taitovalitsin" }],
   "chat.slash.help.status": [{ kind: "text", value: "näytä palvelimen tila" }],
   "chat.slash.help.usage": [{ kind: "text", value: "näytä tokenien käyttö" }],
