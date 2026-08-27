@@ -88,6 +88,12 @@ test("footer keeps a model and its effort together across a wrap", () => {
   expect(render(base, 20)).toBe("acolyte · main\ngpt-5.2 medium");
 });
 
+test("footer clamps a part wider than the terminal", () => {
+  expect(render({ ...base, repo: "", worktree: null, branch: null, model: "provider/very-long-model-id" }, 12)).toBe(
+    "provider/ve…",
+  );
+});
+
 test("viewport layout carries the semantic footer onto the final scene line", () => {
   const footer: FooterStatus = { ...base, dirty: true, ahead: 2, behind: 1, inputTokens: 48600, outputTokens: 12400 };
   const presentation = createChatViewportPresentation({
