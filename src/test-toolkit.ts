@@ -45,12 +45,17 @@ function createRunTestsTool(input: ToolkitInput) {
         // A test run is the other long-lived process: show its tail while it runs so a hanging
         // or failing suite is visible before it finishes. The preview below replaces these.
         const live = createProcessOutput({ toolName: "test-run", toolCallId: callId, onOutput });
+        // A rejected process leaves a batched flush pending, which would put a live row on a call
+        // that already failed.
         const { output: rawResult } = await runShellCommand(
           input.workspace,
           commandSpec,
           toolInput.timeoutMs ?? 60_000,
           ({ stream, text }) => live.chunk(stream, text),
-        );
+        ).catch((error) => {
+          live.finish();
+          throw error;
+        });
         const streamed = live.finish();
         const previewParts = shellTailParts(streamed, OUTPUT_WINDOW_ROWS);
         emitParts(previewParts, "test-run", onOutput, callId);

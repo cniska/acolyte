@@ -57,12 +57,17 @@ function createRunCommandTool(input: ToolkitInput) {
             toolCallId: callId,
             onOutput: input.onOutput,
           });
+          // A rejected process leaves a batched flush pending, which would put a live row on a call
+          // that already failed.
           const { output: rawResult, timedOut } = await runShellCommand(
             input.workspace,
             { cmd: toolInput.cmd, args: toolInput.args ?? [] },
             timeoutMs,
             ({ stream, text }) => live.chunk(stream, text),
-          );
+          ).catch((error) => {
+            live.finish();
+            throw error;
+          });
           const streamed = live.finish();
           if (timedOut) {
             // Killing the process is the point; discarding what it printed first is not. The
