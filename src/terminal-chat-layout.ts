@@ -596,17 +596,20 @@ export function layoutComposerStatus(input: {
   } else if (presentation.suggestions.kind === "slash") {
     const selected = presentation.suggestions.selected;
     // Each command carries its help in a dim column (like the skills picker), so the whole list
-    // is legible at once instead of only the selected row's help on a line below.
+    // is legible at once instead of only the selected row's help on a line below. The column grows
+    // to the longest command offered, since an ellipsized candidate hides what the user must type.
+    const widest = Math.max(...presentation.suggestions.candidates.map((candidate) => width(candidate.command)));
+    const labelWidth = Math.max(1, Math.min(Math.max(PICKER_LABEL_WIDTH, widest), cw - 4));
     attached.push(
       ...presentation.suggestions.candidates.map((candidate, index) => {
-        const label = truncateToWidth(candidate.command, PICKER_LABEL_WIDTH).padEnd(PICKER_LABEL_WIDTH);
+        const label = truncateToWidth(candidate.command, labelWidth).padEnd(labelWidth);
         const help = candidate.help ?? "";
         if (index === selected)
           return { spans: [{ text: truncateToWidth(`› ${label} ${help}`, cw), role: "selected" as const }] };
         return {
           spans: [
             { text: `  ${label}`, role: "plain" as const },
-            { text: truncateToWidth(` ${help}`, Math.max(1, cw - 2 - PICKER_LABEL_WIDTH)), role: "muted" as const },
+            { text: truncateToWidth(` ${help}`, Math.max(1, cw - 2 - labelWidth)), role: "muted" as const },
           ],
         };
       }),
