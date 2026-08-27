@@ -231,29 +231,58 @@ function parseActiveFrame(writes: string[]): { cursorUp: number; live: string } 
  * a confusing cursor mismatch.
  */
 export function assertCursorAccounting(frames: string[][], columns: number, rows?: number): void {
-  let prevLive: string | null = null;
+  // The live region as it stands on screen. A frame rewrites a suffix of it — the whole region
+  // when everything changed, or the tail below the first changed line — so the region has to be
+  // tracked across frames rather than taken to be whatever the last frame wrote.
+  let region: string[] | null = null;
+
+  /** Lines of `region` the frame's cursor-up reaches, or null when it lands mid-line. */
+  const reachedSuffix = (lines: string[], cursorUp: number): number | null => {
+    let count = 0;
+    let height = 0;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      height += physicalRowCount(lines[i]?.replace(/\r/g, "") ?? "", columns) + 1;
+      count += 1;
+      if (height - 1 === cursorUp) return count;
+      if (height - 1 > cursorUp) return null;
+    }
+    return null;
+  };
+
   frames.forEach((frame, i) => {
     const parsed = parseActiveFrame(frame);
     if (!parsed) return;
-    if (prevLive === null) {
+    if (region === null) {
       if (parsed.cursorUp !== 0) throw new CursorAccountingError(i, parsed.cursorUp, 0, 0);
-    } else {
-      const oracleRow = replayTerminal([prevLive], CURSOR_ACCOUNTING_VT_ROWS, columns).row;
-      // A non-overflowing live region spans at most `rows - 1` physical rows, so its
-      // top-row index is at most `rows - 2`. Anything taller scrolled — the invariant
-      // no longer holds and the measurement would be meaningless.
-      if (rows !== undefined && oracleRow >= rows - 1) {
-        throw new Error(
-          `assertCursorAccounting precondition violated at frame ${i}: prior live region spans ` +
-            `${oracleRow + 1} rows, which overflows the ${rows}-row viewport. Use a taller viewport.`,
-        );
-      }
-      const renderRow = physicalRowCount(prevLive.replace(/\r/g, ""), columns);
-      if (parsed.cursorUp !== oracleRow || parsed.cursorUp !== renderRow) {
-        throw new CursorAccountingError(i, parsed.cursorUp, oracleRow, renderRow);
-      }
+      region = parsed.live.split("\n");
+      return;
     }
-    prevLive = parsed.live;
+    // An append moves the cursor down onto a fresh row instead of stepping up over stale ones,
+    // so it rewrites nothing and its distance is zero by construction.
+    const appends = parsed.cursorUp === 0 && parsed.live.startsWith("\n");
+    const payload = appends ? parsed.live.slice(1) : parsed.live;
+    const rewritten = appends ? 0 : reachedSuffix(region, parsed.cursorUp);
+    if (rewritten === null) {
+      const height = physicalRowCount(region.join("\n").replace(/\r/g, ""), columns);
+      throw new CursorAccountingError(i, parsed.cursorUp, height, height);
+    }
+    // A non-overflowing live region spans at most `rows - 1` physical rows, so its
+    // top-row index is at most `rows - 2`. Anything taller scrolled — the distance then covers
+    // only the bottom slice and the measurement would be meaningless.
+    const regionRow = replayTerminal([region.join("\n")], CURSOR_ACCOUNTING_VT_ROWS, columns).row;
+    if (rows !== undefined && regionRow >= rows - 1) {
+      throw new Error(
+        `assertCursorAccounting precondition violated at frame ${i}: prior live region spans ` +
+          `${regionRow + 1} rows, which overflows the ${rows}-row viewport. Use a taller viewport.`,
+      );
+    }
+    const replaced = region.slice(region.length - rewritten).join("\n");
+    const oracleRow = rewritten === 0 ? 0 : replayTerminal([replaced], CURSOR_ACCOUNTING_VT_ROWS, columns).row;
+    const renderRow = rewritten === 0 ? 0 : physicalRowCount(replaced.replace(/\r/g, ""), columns);
+    if (parsed.cursorUp !== oracleRow || parsed.cursorUp !== renderRow) {
+      throw new CursorAccountingError(i, parsed.cursorUp, oracleRow, renderRow);
+    }
+    region = [...region.slice(0, region.length - rewritten), ...payload.split("\n")];
   });
 }
 

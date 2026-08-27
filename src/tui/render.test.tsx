@@ -4,7 +4,7 @@ import { createElement as h, useEffect, useState, useSyncExternalStore } from "r
 import { reconciler } from "./reconciler";
 import { physicalRowCount } from "./render";
 import { ansi } from "./styles";
-import { frameWrites, renderCapture, renderScript } from "./test-utils";
+import { assertCursorAccounting, frameWrites, renderCapture, renderScript } from "./test-utils";
 import { replayTerminal } from "./vt";
 
 /** Mock process.stdin as a TTY so render() installs its focus-in handler.
@@ -1336,5 +1336,80 @@ describe("physicalRowCount", () => {
   test("multiline output sums physical rows", () => {
     // "hello" (5) in 80 cols = 1 row; "world" (5) in 80 cols = 1 row; total 2 rows - 1
     expect(physicalRowCount("hello\nworld", 80)).toBe(1);
+  });
+});
+
+describe("growing a live region", () => {
+  /** A tool row of `lines` committed rows with the composer pinned below it. */
+  function growingRow(lines: number) {
+    const rows = [];
+    for (let i = 1; i <= lines; i++)
+      rows.push(h("box", { key: `l${i}` }, h("text", null, `  ${i} + const value${i} = ${i};`)));
+    for (const [key, text] of [
+      ["a", "╭────────╮"],
+      ["b", "│ ❯      │"],
+      ["c", "╰────────╯"],
+    ] as const)
+      rows.push(h("box", { key }, h("text", null, text)));
+    return h("box", { flexDirection: "column" }, ...rows);
+  }
+
+  // A line appended to a row must not repaint the rows above it. Repainting the whole region on
+  // every reveal rewrites every row, background fills included, which is what reads as flicker.
+  test("appending a line repaints a constant number of rows, whatever the region's height", async () => {
+    const script = [];
+    for (let n = 1; n <= 12; n++) script.push(growingRow(n));
+    const frames = await renderScript(script, { columns: 80, rows: 40 });
+
+    const erasedRows = frames.slice(1).map((frame) => {
+      const up = cursorUpCounts(frame);
+      return up.length > 0 ? Math.max(...up) : 0;
+    });
+    // Three composer rows follow the appended line, so the reach is the same on every frame.
+    expect(erasedRows).toEqual(new Array(11).fill(2));
+  });
+
+  // The rows rewritten below the appended line are measured in physical rows, so one of them
+  // wrapping is what makes the distance width-sensitive. Without this the erase distance could be
+  // computed at the wrong width and every assertion would still pass.
+  test("a wrapping row below the appended line is measured at the real width", async () => {
+    const wide = "W".repeat(100); // wraps at 40 columns
+    const scene = (lines: number) => {
+      const rows = [];
+      for (let i = 1; i <= lines; i++) rows.push(h("box", { key: `l${i}` }, h("text", null, `${i} + value${i}`)));
+      rows.push(h("box", { key: "wrap" }, h("text", null, wide)));
+      rows.push(h("box", { key: "tail" }, h("text", null, "❯")));
+      return h("box", { flexDirection: "column" }, ...rows);
+    };
+    const script = [];
+    for (let n = 1; n <= 8; n++) script.push(scene(n));
+    const frames = await renderScript(script, { columns: 40, rows: 40 });
+    assertCursorAccounting(
+      frameWrites(frames.flat()).map((write) => [write]),
+      40,
+      40,
+    );
+
+    // The wrapping row plus the tail is three physical rows, so the reach is two on every frame.
+    const reach = frames.slice(1).map((frame) => {
+      const up = cursorUpCounts(frame);
+      return up.length > 0 ? Math.max(...up) : 0;
+    });
+    expect(reach).toEqual(new Array(7).fill(3));
+  });
+
+  test("the grown region is on screen exactly once", async () => {
+    const script = [];
+    for (let n = 1; n <= 12; n++) script.push(growingRow(n));
+    const frames = await renderScript(script, { columns: 80, rows: 40 });
+    const screen = replayTerminal(frames.flat(), 40, 80)
+      .screen.map((line) => line.trimEnd())
+      .filter(Boolean);
+    expect(screen).toEqual([
+      ...Array.from({ length: 12 }, (_, i) => `  ${i + 1} + const value${i + 1} = ${i + 1};`),
+      "╭────────╮",
+      "│ ❯      │",
+      "╰────────╯",
+    ]);
   });
 });

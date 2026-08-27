@@ -165,6 +165,9 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     const maxLiveRows = (stdout.rows ?? DEFAULT_ROWS) - 1;
     const forced = paintForced;
     paintForced = false;
+    const widthChanged = cols !== lastRenderColumns;
+    const frozenAtEntry = frozenLineCount;
+    const hadDebt = staleTail.length > 0 || pendingStaleTail.length > 0;
 
     // Erasing with a stale count is transcript loss. On a width change the terminal
     // may reflow the tail, so cursor-up would overshoot into promoted scrollback —
@@ -289,7 +292,31 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
       physRows = linePhysRows(liveLines[splitIdx] ?? "", cols);
     }
 
-    if (splitIdx > 0) {
+    // Rewriting rows that did not change is what a growing row looks like as flicker: a line
+    // appended to a tool row would erase and repaint the whole region, background fills included,
+    // on every reveal. The rows above the first change are already correct on screen, so repaint
+    // from that line down. Only the emitted bytes narrow — the row accounting below is unchanged —
+    // so this stays clear of the resize, freeze and debt paths.
+    const unchangedPrefix = ((): number => {
+      if (widthChanged || hadDebt || splitIdx > 0 || staticPrefix !== "" || forced) return 0;
+      if (frozenLineCount !== frozenAtEntry || lastActive === "") return 0;
+      const prevLive = lastActive.split("\n").slice(frozenLineCount);
+      let common = 0;
+      while (common < prevLive.length && common < liveLines.length && prevLive[common] === liveLines[common])
+        common += 1;
+      if (common === 0 || common === liveLines.length) return 0;
+      return common;
+    })();
+
+    if (unchangedPrefix > 0) {
+      const prevLive = lastActive.split("\n").slice(frozenLineCount);
+      const staleRows = prevLive.slice(unchangedPrefix).reduce((sum, line) => sum + linePhysRows(line, cols), 0);
+      // The cursor sits on the region's last row. With nothing stale below the prefix the new
+      // lines simply follow it; otherwise step up to the first stale row, return to column 0,
+      // and clear from there.
+      const reposition = staleRows > 0 ? `${ansi.cursorUp(staleRows - 1)}\r${ansi.eraseDown}` : "\n";
+      syncWrite(`${reposition}${liveLines.slice(unchangedPrefix).join("\n")}`);
+    } else if (splitIdx > 0) {
       // Write overflow + bottom-fitting slice atomically. The overflow lines scroll
       // into terminal scrollback naturally as the write pushes past the viewport top.
       const overflowLines = liveLines.slice(0, splitIdx);
