@@ -40,8 +40,8 @@ describe("tasklist TUI rendering", () => {
     ).toBe(
       expected(`
         Build pipeline 1/3
-          ◈ test
-          ◇ deploy
+        ◈ test
+        ◇ deploy
       `),
     );
   });
@@ -63,9 +63,9 @@ describe("tasklist TUI rendering", () => {
     ).toBe(
       expected(`
         Steps 1/4
-          ◈ active step
-          ◇ waiting step
-          ◆ broken step
+        ◈ active step
+        ◇ waiting step
+        ◆ broken step
       `),
     );
   });
@@ -86,8 +86,8 @@ describe("tasklist TUI rendering", () => {
     ).toBe(
       expected(`
         Steps 1/3
-          ◈ second
-          ◇ third
+        ◈ second
+        ◇ third
       `),
     );
   });
@@ -151,7 +151,7 @@ describe("tasklist TUI rendering", () => {
         Phase A 1/1
 
         Phase B 0/1
-          ◇ step B
+        ◇ step B
       `),
     );
   });
@@ -178,12 +178,12 @@ describe("tasklist TUI rendering", () => {
     ).toBe(
       expected(`
         Long 2/9
-          ◈ task one
-          ◇ task two
-          ◇ task three
-          ◇ task four
-          ◇ task five
-          +2 pending
+        ◈ task one
+        ◇ task two
+        ◇ task three
+        ◇ task four
+        ◇ task five
+        +2 pending
       `),
     );
   });

@@ -23,11 +23,11 @@ describe("layoutToolOutput", () => {
     expect(add?.segments[0]?.text).toBe(" 100 + ");
   });
 
-  test("marks add/remove lines with a fill and leaves context unfilled", () => {
+  test("marks added and removed lines as changed and leaves context unmarked", () => {
     const [, context, remove, add] = layoutToolOutput(DIFF_PARTS);
-    expect(context?.fill).toBeUndefined();
-    expect(remove?.fill).toBe("diff-remove");
-    expect(add?.fill).toBe("diff-add");
+    expect(context?.change).toBeUndefined();
+    expect(remove?.change).toBe("removed");
+    expect(add?.change).toBe("added");
   });
 
   test("fitLine with no width leaves every line untouched", () => {
@@ -64,5 +64,38 @@ describe("resolveHeader", () => {
       { role: "label", text: "Skill" },
       { role: "detail", text: " build" },
     ]);
+  });
+});
+
+describe("a new file's lines", () => {
+  const created = (lineNumber: number, text: string): ToolOutputPart[] => [
+    { kind: "edit-header", labelKey: "tool.label.file_create", path: "a.ts", added: 1, removed: 0 },
+    { kind: "content", lineNumber, text },
+  ];
+  const context = (lineNumber: number, text: string): ToolOutputPart[] => [
+    { kind: "edit-header", labelKey: "tool.label.file_edit", path: "a.ts", added: 1, removed: 1 },
+    { kind: "diff", lineNumber, marker: "context", text },
+  ];
+  const bodyOf = (parts: ToolOutputPart[]) => layoutToolOutput(parts)[1];
+
+  // A create is meant to read as the same kind of thing as an edit. Building its gutter separately
+  // lets the two drift apart by a column and nothing would catch it.
+  test("share a diff's gutter exactly", () => {
+    expect(bodyOf(created(9, "const a = 1;"))?.segments).toEqual(bodyOf(context(9, "const a = 1;"))?.segments);
+  });
+
+  // Nothing was changed, so nothing may carry a change's band.
+  test("carry no change, where a written line does", () => {
+    expect(bodyOf(created(1, "const a = 1;"))?.change).toBeUndefined();
+    expect(
+      bodyOf([
+        { kind: "edit-header", labelKey: "tool.label.file_edit", path: "a.ts", added: 1, removed: 0 },
+        { kind: "diff", lineNumber: 1, marker: "add", text: "const a = 1;" },
+      ])?.change,
+    ).toBe("added");
+  });
+
+  test("keep a blank line as a row of its own", () => {
+    expect(bodyOf(created(2, ""))?.segments.at(-1)).toEqual({ role: "diff-text", text: "" });
   });
 });

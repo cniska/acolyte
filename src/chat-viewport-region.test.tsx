@@ -52,6 +52,7 @@ function sceneTail(input: {
     },
   });
   const scene = layoutChatViewport({
+    held: new Set(),
     presentation,
     constraints: { columns, rows: 60 },
     theme: terminalTheme,
@@ -130,7 +131,7 @@ test("rows, pending, and tasklist live region renders in order with indent", () 
           ◆ Working… (5s · 1 tool)
 
           Plan 1/2
-            ◈ step two
+          ◈ step two
 
         ╭${"─".repeat(56)}╮
         │ ❯${" ".repeat(54)}│

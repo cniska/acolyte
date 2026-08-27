@@ -136,13 +136,13 @@ const CASES: ToolCase[] = [
       { kind: "diff", lineNumber: 10, marker: "add", text: "const y = 3;" },
     ],
     cli: dedent(`
-      Edit notes.ts (+1 -1)
+      Edit notes.ts · +1 -1
           9   const x = 1;
          10 - const y = 2;
          10 + const y = 3;
     `),
     chat: dedent(`
-      ◆ Edit notes.ts (+1 -1)
+      ◆ Edit notes.ts · +1 -1
             9   const x = 1;
            10 - const y = 2;
            10 + const y = 3;
@@ -159,7 +159,7 @@ const CASES: ToolCase[] = [
       { kind: "diff", lineNumber: 11, marker: "context", text: "const b = 4;" },
     ],
     cli: dedent(`
-      Edit notes.ts (+1 -1)
+      Edit notes.ts · +1 -1
           1   const a = 1;
           ⋮
          10 - const y = 2;
@@ -167,7 +167,7 @@ const CASES: ToolCase[] = [
          11   const b = 4;
     `),
     chat: dedent(`
-      ◆ Edit notes.ts (+1 -1)
+      ◆ Edit notes.ts · +1 -1
             1   const a = 1;
             ⋮
            10 - const y = 2;
@@ -184,13 +184,13 @@ const CASES: ToolCase[] = [
       { kind: "diff", lineNumber: 10, marker: "add", text: "const y = 3;" },
     ],
     cli: dedent(`
-      Edit notes.ts (+1 -1)
+      Edit notes.ts · +1 -1
           1   const a = 1;
           ⋮  +3 lines
          10 + const y = 3;
     `),
     chat: dedent(`
-      ◆ Edit notes.ts (+1 -1)
+      ◆ Edit notes.ts · +1 -1
             1   const a = 1;
             ⋮  +3 lines
            10 + const y = 3;
@@ -204,12 +204,12 @@ const CASES: ToolCase[] = [
       { kind: "diff", lineNumber: 2, marker: "add", text: "new" },
     ],
     cli: dedent(`
-      Edit notes.ts (+1 -1)
+      Edit notes.ts · +1 -1
          2 - old
          2 + new
     `),
     chat: dedent(`
-      ◆ Edit notes.ts (+1 -1)
+      ◆ Edit notes.ts · +1 -1
            2 - old
            2 + new
     `),
@@ -380,14 +380,14 @@ const CASES: ToolCase[] = [
       Git Log
         abc1234 first
         def5678 second
-        … +8 lines
+        ⋮ +8 lines
         ghi9012 last
     `),
     chat: dedent(`
       ◆ Git Log
           abc1234 first
           def5678 second
-          … +8 lines
+          ⋮ +8 lines
           ghi9012 last
     `),
   },
@@ -442,13 +442,13 @@ const CASES: ToolCase[] = [
       Git Add 8 files
         src/a.ts
         src/b.ts
-        … +6 files
+        ⋮ +6 files
     `),
     chat: dedent(`
       ◆ Git Add 8 files
           src/a.ts
           src/b.ts
-          … +6 files
+          ⋮ +6 files
     `),
   },
   {
@@ -487,13 +487,13 @@ const CASES: ToolCase[] = [
       Git Commit refactor: cleanup (def5678)
         Line 1
         Line 2
-        … +5 lines
+        ⋮ +5 lines
     `),
     chat: dedent(`
       ◆ Git Commit refactor: cleanup (def5678)
           Line 1
           Line 2
-          … +5 lines
+          ⋮ +5 lines
     `),
   },
   {
@@ -506,12 +506,12 @@ const CASES: ToolCase[] = [
     cli: dedent(`
       Find *.ts
         a.ts
-        … +5 matches
+        ⋮ +5 matches
     `),
     chat: dedent(`
       ◆ Find *.ts
           a.ts
-          … +5 matches
+          ⋮ +5 matches
     `),
   },
   {
@@ -569,7 +569,7 @@ describe("tool output TUI — CLI (renderToolOutput)", () => {
       { kind: "edit-header", labelKey: "tool.label.file_edit", path: "notes.ts", added: 1, removed: 0 },
       { kind: "diff", lineNumber: 1, marker: "add", text: "X".repeat(60) },
     ];
-    expect(renderToolOutput(items)).toBe(`Edit notes.ts (+1 -0)\n   1 + ${"X".repeat(60)}`);
+    expect(renderToolOutput(items)).toBe(`Edit notes.ts · +1\n   1 + ${"X".repeat(60)}`);
   });
 });
 
@@ -589,7 +589,7 @@ describe("tool output TUI — chat (Ink rendering)", () => {
     const diffLine = out.split("\n").find((line) => line.includes("X")) ?? "";
     expect(diffLine.endsWith("…")).toBe(true); // content was cut, not wrapped
     expect(Bun.stringWidth(diffLine)).toBeLessThanOrEqual(40);
-    expect(out).toContain("◆ Edit notes.ts (+1 -0)");
+    expect(out).toContain("◆ Edit notes.ts · +1");
   });
 
   test("tints the active-skill marker brand and the deactivate marker dim", () => {

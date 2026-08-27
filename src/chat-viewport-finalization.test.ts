@@ -33,7 +33,11 @@ const tasklist: TranscriptContent = {
   output: { groupId: "g1", groupTitle: "Plan", items: [{ id: "i1", label: "step", status: "in_progress", order: 0 }] },
 };
 
-function finalizedById(rows: TranscriptRow[], pending: PendingPresentation | null = null): Map<string, boolean> {
+function finalizedById(
+  rows: TranscriptRow[],
+  pending: PendingPresentation | null = null,
+  held: ReadonlySet<string> = new Set(),
+): Map<string, boolean> {
   const presentation = createChatViewportPresentation({
     header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
     activeTranscript: rows,
@@ -48,6 +52,7 @@ function finalizedById(rows: TranscriptRow[], pending: PendingPresentation | nul
     },
   });
   const scene = layoutChatViewport({
+    held,
     presentation,
     constraints: { columns: 80, rows: 40 },
     theme: terminalTheme,
@@ -105,6 +110,11 @@ describe("layoutChatViewport finalization eligibility", () => {
       expect(finalizedForRow(testCase.kind, testCase.status, testCase.content)).toBe(testCase.finalized);
     });
   }
+
+  test("a settled tool row still holding its output is not finalized", () => {
+    const rows: TranscriptRow[] = [{ id: "row_target", kind: "tool", status: "success", content: toolOutput }];
+    expect(finalizedById(rows, null, new Set(["row_target"])).get("row_target")).toBe(false);
+  });
 
   test("the header is always finalized", () => {
     expect(finalizedById([]).get("header")).toBe(true);

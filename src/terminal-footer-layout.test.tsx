@@ -102,6 +102,7 @@ test("viewport layout carries the semantic footer onto the final scene line", ()
     },
   });
   const scene = layoutChatViewport({
+    held: new Set(),
     presentation,
     constraints: { columns: 80, rows: 40 },
     theme: terminalTheme,

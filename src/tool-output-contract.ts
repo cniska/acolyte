@@ -11,13 +11,15 @@ export const toolOutputPartSchema = z.discriminatedUnion("kind", [
     labelKey: z.string().trim().min(1),
     detail: z.string().optional(),
     state: toolHeaderStateSchema.optional(),
+    summary: z.string().trim().min(1).optional(),
   }),
-  z.object({ kind: z.literal("text"), text: z.string().trim().min(1) }),
+  z.object({ kind: z.literal("text"), text: z.string() }),
   z.object({
     kind: z.literal("file-header"),
     labelKey: z.string().trim().min(1),
     count: z.number().int().nonnegative(),
     targets: z.array(z.string().trim().min(1)),
+    summary: z.string().trim().min(1).optional(),
   }),
   z.object({
     kind: z.literal("scope-header"),
@@ -25,6 +27,7 @@ export const toolOutputPartSchema = z.discriminatedUnion("kind", [
     scope: z.string().trim().min(1),
     patterns: z.array(z.string()),
     matches: z.number().int().nonnegative(),
+    summary: z.string().trim().min(1).optional(),
   }),
   z.object({
     kind: z.literal("edit-header"),
@@ -36,6 +39,11 @@ export const toolOutputPartSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("diff"),
     marker: toolOutputDiffMarkerSchema,
+    lineNumber: z.number().int().positive(),
+    text: z.string(),
+  }),
+  z.object({
+    kind: z.literal("content"),
     lineNumber: z.number().int().positive(),
     text: z.string(),
   }),
@@ -53,3 +61,10 @@ export const toolOutputPartSchema = z.discriminatedUnion("kind", [
 ]);
 
 export type ToolOutputPart = z.infer<typeof toolOutputPartSchema>;
+
+/** Where tool output is drawn. A `transcript` can revise a row it has already drawn, so it renders
+ *  a running call's live tail and reveals a mutation's rows one paint at a time; a `stream` cannot
+ *  take back a line it has printed, so it receives the parts a call keeps, all at once. */
+export const toolOutputSurfaceSchema = z.enum(["transcript", "stream"]);
+
+export type ToolOutputSurface = z.infer<typeof toolOutputSurfaceSchema>;

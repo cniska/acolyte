@@ -5,7 +5,8 @@ import { t } from "./i18n";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
 import { runTool } from "./tool-execution";
-import { emitParts, resultChunkParts, textHeadTailParts } from "./tool-output-format";
+import { emitParts, textHeadParts } from "./tool-output-format";
+import { OUTPUT_WINDOW_ROWS } from "./tool-policy";
 
 const DEFAULT_CONTEXT_LINES = 3;
 
@@ -109,7 +110,7 @@ function createGitStatusTool(git: GitOps, input: ToolkitInput) {
           toolCallId: callId,
         });
         const rawStatus = await git.statusShort();
-        const previewParts = textHeadTailParts(rawStatus);
+        const previewParts = textHeadParts(rawStatus, OUTPUT_WINDOW_ROWS);
         emitParts(previewParts, "git-status", input.onOutput, callId);
         return { kind: "git-status" as const, output: rawStatus };
       });
@@ -144,7 +145,7 @@ function createGitDiffTool(git: GitOps, input: ToolkitInput) {
           path: toolInput.path,
           contextLines: toolInput.contextLines ?? DEFAULT_CONTEXT_LINES,
         });
-        const previewParts = textHeadTailParts(rawDiff, { headRows: 2, tailRows: 2 });
+        const previewParts = textHeadParts(rawDiff, OUTPUT_WINDOW_ROWS);
         emitParts(previewParts, "git-diff", input.onOutput, callId);
         return {
           kind: "git-diff" as const,
@@ -181,7 +182,7 @@ function createGitLogTool(git: GitOps, input: ToolkitInput) {
           toolCallId: callId,
         });
         const rawLog = await git.log({ path: toolInput.path, limit: toolInput.limit });
-        const previewParts = resultChunkParts(rawLog, 4);
+        const previewParts = textHeadParts(rawLog, OUTPUT_WINDOW_ROWS);
         emitParts(previewParts, "git-log", input.onOutput, callId);
         return { kind: "git-log" as const, path: toolInput.path, limit: toolInput.limit, output: rawLog };
       });
@@ -220,7 +221,7 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
           contextLines: toolInput.contextLines ?? DEFAULT_CONTEXT_LINES,
         });
         const previewText = stripGitShowMetadataForPreview(rawShow);
-        const previewParts = textHeadTailParts(previewText);
+        const previewParts = textHeadParts(previewText, OUTPUT_WINDOW_ROWS);
         emitParts(previewParts, "git-show", input.onOutput, callId);
         return {
           kind: "git-show" as const,
@@ -262,7 +263,7 @@ function createGitAddTool(git: GitOps, input: ToolkitInput) {
         });
         const rawAdd = await git.add({ paths: toolInput.paths, all: toolInput.all });
         if (paths.length > 0) {
-          emitParts(textHeadTailParts(paths.join("\n")), "git-add", input.onOutput, callId);
+          emitParts(textHeadParts(paths.join("\n"), OUTPUT_WINDOW_ROWS), "git-add", input.onOutput, callId);
         }
         return { kind: "git-add" as const, all: toolInput.all, paths: toolInput.paths, output: rawAdd };
       });

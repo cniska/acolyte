@@ -48,7 +48,13 @@ function pickerScene(picker: PickerInput, columns: number) {
       footer,
     },
   });
-  const scene = layoutChatViewport({ presentation, constraints: { columns, rows: 40 }, theme: terminalTheme, now: 0 });
+  const scene = layoutChatViewport({
+    presentation,
+    held: new Set(),
+    constraints: { columns, rows: 40 },
+    theme: terminalTheme,
+    now: 0,
+  });
   const composer = scene.sections?.find((section) => section.id === "composer");
   return { lines: scene.lines.slice(composer?.lineStart, composer?.lineEnd) };
 }

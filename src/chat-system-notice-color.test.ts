@@ -38,6 +38,7 @@ function noticeTextRole(status: TranscriptStatus, text: string): TerminalStyleRo
     },
   });
   const scene = layoutChatViewport({
+    held: new Set(),
     presentation,
     constraints: { columns: 80, rows: 40 },
     theme: terminalTheme,

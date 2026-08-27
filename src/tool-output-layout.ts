@@ -14,31 +14,39 @@ export const segmentRoleSchema = z.enum([
   "diff-gutter",
   "diff-text",
   "dim",
+  "summary",
   "stream-tag",
 ]);
 
 export const layoutSegmentSchema = z.object({ role: segmentRoleSchema, text: z.string() });
 export type LayoutSegment = z.infer<typeof layoutSegmentSchema>;
 
-export const layoutFillSchema = z.enum(["diff-add", "diff-remove"]);
-export type LayoutFill = z.infer<typeof layoutFillSchema>;
+/** What happened to a line, where anything did. The theme decides what a change looks like; this
+ *  says only that there was one, so a line nothing happened to carries nothing. */
+const lineChangeSchema = z.enum(["added", "removed"]);
+type LineChange = z.infer<typeof lineChangeSchema>;
 
 export const layoutLineSchema = z.object({
   kind: z.enum(["header", "body"]),
   indent: z.number().int().nonnegative(),
   segments: z.array(layoutSegmentSchema),
-  fill: layoutFillSchema.optional(),
+  change: lineChangeSchema.optional(),
 });
 export type LayoutLine = z.infer<typeof layoutLineSchema>;
 
-export type ResolvedHeader = { label: string; detail?: string; meta?: Record<string, unknown> };
+export type ResolvedHeader = {
+  label: string;
+  detail?: string;
+  summary?: string;
+  meta?: { added: number; removed: number };
+};
 
 export function resolveHeader(content: ToolOutputPart): ResolvedHeader | null {
   switch (content.kind) {
     case "tool-header": {
       const label = resolveToolLabel(content.labelKey);
       const detail = content.detail && content.detail !== "." ? content.detail : undefined;
-      return { label, detail };
+      return { label, detail, summary: content.summary };
     }
     case "file-header": {
       const label = resolveToolLabel(content.labelKey);
@@ -46,7 +54,7 @@ export function resolveHeader(content: ToolOutputPart): ResolvedHeader | null {
         content.count === 1 && content.targets.length === 1
           ? content.targets[0]
           : t("unit.file", { count: content.count });
-      return { label, detail };
+      return { label, detail, summary: content.summary };
     }
     case "scope-header": {
       const label = resolveToolLabel(content.labelKey);
@@ -55,7 +63,7 @@ export function resolveHeader(content: ToolOutputPart): ResolvedHeader | null {
         content.patterns.length === 1
           ? `${content.patterns[0]}${scopeSuffix}`
           : `${t("unit.pattern", { count: content.patterns.length })}${scopeSuffix}`;
-      return { label, detail };
+      return { label, detail, summary: content.summary };
     }
     case "edit-header": {
       const label = resolveToolLabel(content.labelKey);
@@ -73,26 +81,30 @@ const TRUNCATED_UNIT_KEYS = {
   files: "unit.file",
 } as const satisfies Record<string, TranslationKey>;
 
+/** Lines left out are elided downward, so the marker is the vertical ellipsis. The horizontal one
+ *  belongs to a single line cut short at the right edge. */
 function truncatedText(count: number | undefined, unit: string | undefined): string {
-  if (!count) return "…";
+  if (!count) return "⋮";
   const key = TRUNCATED_UNIT_KEYS[unit as keyof typeof TRUNCATED_UNIT_KEYS] ?? "unit.more";
   const text = t(key, { count });
-  return `… +${text}`;
+  return `⋮ +${text}`;
 }
 
 function headerSegments(header: ResolvedHeader): LayoutSegment[] {
   const segments: LayoutSegment[] = [{ role: "label", text: header.label }];
   if (header.detail) segments.push({ role: "detail", text: ` ${header.detail}` });
   const meta = header.meta;
-  if (meta && "added" in meta && "removed" in meta) {
-    segments.push(
-      { role: "meta-punct", text: " (" },
-      { role: "meta-add", text: `+${meta.added}` },
-      { role: "meta-punct", text: " " },
-      { role: "meta-remove", text: `-${meta.removed}` },
-      { role: "meta-punct", text: ")" },
-    );
+  if (meta) {
+    // A count of zero states nothing: a new file removes nothing and an insertion removes nothing.
+    const counts: LayoutSegment[] = [];
+    if (meta.added > 0) counts.push({ role: "meta-add", text: `+${meta.added}` });
+    if (meta.removed > 0) {
+      if (counts.length > 0) counts.push({ role: "meta-punct", text: " " });
+      counts.push({ role: "meta-remove", text: `-${meta.removed}` });
+    }
+    if (counts.length > 0) segments.push({ role: "meta-punct", text: " · " }, ...counts);
   }
+  if (header.summary) segments.push({ role: "summary", text: ` · ${header.summary}` });
   return segments;
 }
 
@@ -103,10 +115,10 @@ export function inlineSegments(part: ToolOutputPart): LayoutSegment[] {
   switch (part.kind) {
     case "text":
       return [{ role: "dim", text: part.text }];
-    case "diff": {
-      const marker = part.marker === "add" ? "+" : part.marker === "remove" ? "-" : " ";
-      return [{ role: "dim", text: `${part.lineNumber} ${marker}${part.text}` }];
-    }
+    case "content":
+      return [{ role: "dim", text: `${part.lineNumber} ${NO_MARKER}${part.text}` }];
+    case "diff":
+      return [{ role: "dim", text: `${part.lineNumber} ${diffMarkerChar(part.marker)}${part.text}` }];
     case "shell-output":
       return [
         { role: "stream-tag", text: `${part.stream === "stdout" ? "out" : "err"} | ` },
@@ -126,29 +138,51 @@ export function inlineSegments(part: ToolOutputPart): LayoutSegment[] {
   }
 }
 
+const NO_MARKER = " ";
+
+function diffMarkerChar(marker: "add" | "remove" | "context"): string {
+  if (marker === "add") return "+";
+  if (marker === "remove") return "-";
+  return NO_MARKER;
+}
+
+/** One numbered body row: a right-aligned line number, a marker column, then the text. */
+function numberedBodyLine(
+  lineNumber: number,
+  marker: string,
+  text: string,
+  numWidth: number,
+  change?: LineChange,
+): LayoutLine {
+  const num = String(lineNumber).padStart(numWidth);
+  return {
+    kind: "body",
+    indent: 2,
+    segments: [
+      { role: "diff-gutter", text: ` ${num} ${marker} ` },
+      { role: "diff-text", text },
+    ],
+    change,
+  };
+}
+
 function bodyLine(part: ToolOutputPart, numWidth: number): LayoutLine {
   switch (part.kind) {
+    // A new file's lines carry a line number and no marker: the same geometry a diff uses, so the
+    // two read as one thing and the gutter cannot drift between them.
+    case "content":
+      return numberedBodyLine(part.lineNumber, NO_MARKER, part.text, numWidth);
     case "diff": {
-      const num = String(part.lineNumber).padStart(numWidth);
-      const marker = part.marker === "add" ? "+" : part.marker === "remove" ? "-" : " ";
-      const fill: LayoutFill | undefined =
-        part.marker === "add" ? "diff-add" : part.marker === "remove" ? "diff-remove" : undefined;
-      return {
-        kind: "body",
-        indent: 2,
-        segments: [
-          { role: "diff-gutter", text: ` ${num} ${marker} ` },
-          { role: "diff-text", text: part.text },
-        ],
-        fill,
-      };
+      const change: LineChange | undefined =
+        part.marker === "add" ? "added" : part.marker === "remove" ? "removed" : undefined;
+      return numberedBodyLine(part.lineNumber, diffMarkerChar(part.marker), part.text, numWidth, change);
     }
     case "truncated": {
       if (numWidth > 0) {
         const suffix = truncatedText(part.count, part.unit);
         const gutter = ` ${"⋮".padStart(numWidth)}`;
-        const segments: LayoutSegment[] = [{ role: "diff-gutter", text: suffix === "…" ? gutter : `${gutter}  ` }];
-        if (suffix !== "…") segments.push({ role: "dim", text: suffix.slice(2) });
+        const segments: LayoutSegment[] = [{ role: "diff-gutter", text: suffix === "⋮" ? gutter : `${gutter}  ` }];
+        if (suffix !== "⋮") segments.push({ role: "dim", text: suffix.slice(2) });
         return { kind: "body", indent: 2, segments };
       }
       return { kind: "body", indent: 2, segments: [{ role: "dim", text: truncatedText(part.count, part.unit) }] };
@@ -180,7 +214,8 @@ export function layoutToolOutput(parts: ToolOutputPart[]): LayoutLine[] {
   const [first, ...rest] = parts;
   if (!first) return [];
   const numWidth = rest.reduce(
-    (max, part) => (part.kind === "diff" ? Math.max(max, String(part.lineNumber).length) : max),
+    (max, part) =>
+      part.kind === "diff" || part.kind === "content" ? Math.max(max, String(part.lineNumber).length) : max,
     0,
   );
   const headerLine: LayoutLine = { kind: "header", indent: 0, segments: inlineSegments(first) };

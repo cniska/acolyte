@@ -47,6 +47,7 @@ export interface ChatAppProps {
 
 export interface ChatStateResult {
   promotedSlices: PromotedSceneSlice[];
+  heldRowIds: ReadonlySet<string>;
   commitPromotion: (slices: readonly PromotedSceneSlice[], committedRowIds: readonly string[]) => void;
   rows: ChatRow[];
   transcriptPresentation: TranscriptRow[];
@@ -97,6 +98,9 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     setTranscript((current) => ({ ...current, presentation: updater(current.presentation) }));
   }, []);
   const publishRows = useCallback(createTranscriptPublisher({ setTranscript }), []);
+  // Rows holding tool output that a later row will replace. Never persisted: the hold lasts as long
+  // as the output is on screen, and a resumed transcript carries only the header that replaced it.
+  const [heldRowIds, setHeldRowIds] = useState<ReadonlySet<string>>(() => new Set());
   const { rows, presentation: transcriptPresentation } = transcript;
 
   const {
@@ -305,6 +309,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     setCurrentSession: updateSession,
     setRows: publishRows,
     setTranscriptPresentation,
+    setHeldRowIds,
     setShowHelp,
     setValue,
     persist,
@@ -448,6 +453,7 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   return {
     promotedSlices,
     commitPromotion,
+    heldRowIds,
     rows,
     transcriptPresentation,
     activeTranscript,
