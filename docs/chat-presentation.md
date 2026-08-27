@@ -120,14 +120,14 @@ Everything else is bounded to a window of rows under its header, a larger result
 
 ## Key files
 
-- `chat-viewport-contract.ts` — the published input and derived presentation contracts.
-- `chat-viewport-presentation.ts` — the *present* stage: derives semantics from published state.
-- `terminal-chat-layout.ts` — the single geometry owner: presentation into a terminal scene.
-- `terminal-theme.ts` — the fixed style-role table.
-- `terminal-scene-contract.ts` — the scene: styled lines, cursor, sections, finalization.
-- `input-controller.ts` — logical text and cursor editing without terminal layout.
-- `tui/terminal-scene-viewport.tsx` — the shared scene-line renderer for live tail and frozen slices.
-- `tui/scene-viewport.ts` — fitting, finalization eligibility, and promotion planning.
+- `src/chat-viewport-contract.ts` — the published input and derived presentation contracts.
+- `src/chat-viewport-presentation.ts` — the *present* stage: derives semantics from published state.
+- `src/terminal-chat-layout.ts` — the single geometry owner: presentation into a terminal scene.
+- `src/terminal-theme.ts` — the fixed style-role table.
+- `src/terminal-scene-contract.ts` — the scene: styled lines, cursor, sections, finalization.
+- `src/input-controller.ts` — logical text and cursor editing without terminal layout.
+- `src/tui/terminal-scene-viewport.tsx` — the shared scene-line renderer for live tail and frozen slices.
+- `src/tui/scene-viewport.ts` — fitting, finalization eligibility, and promotion planning.
 
 ## Further reading
 
