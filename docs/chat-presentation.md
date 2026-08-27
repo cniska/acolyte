@@ -62,9 +62,11 @@ Content is revealed at the display's own pace, not the provider's, in the unit a
 |---|---|---|
 | Prose | a whole word, never a fragment of one | eight characters per frame, extended to where the word ends |
 | A mutation's rows — a diff, a new file | one row | one row per frame |
-| Everything else a tool prints | one row | one row every few frames |
+| Everything else a tool prints | — | not paced: shown as it arrives |
 
-A frame is the renderer's paint throttle, so one row per frame is the fastest anything can appear. A command's tail is short and bounded, so it arrives slowly enough to follow while the reader looks for how the command ended. A mutation is neither trimmed nor bounded, so it goes at the display's limit: visibly line by line, well past reading pace, so that a long change does not hold the transcript for long.
+A frame is the renderer's paint throttle, so one row per frame is the fastest anything can appear. A mutation goes at that limit: visibly line by line, well past reading pace. Nothing else is paced — a running command's rows already appeared as the process printed them, and every other tool knows its output in full when it returns, so animating either would invent an arrival that never happened.
+
+A mutation is neither trimmed nor bounded, so its reveal takes as long as it has rows, and a row opening after it waits: a very large write holds the transcript back for the length of its own reveal.
 
 More content than the pace can clear takes proportionally longer; nothing switches law or rate to catch up. A tail with no word boundary in reach is held only while deltas are still arriving — the next one may carry the word's end; a tick that sees none reveals the remainder, and a block's end reveals it at once. Otherwise the reveal is bounded only where correctness requires it:
 
