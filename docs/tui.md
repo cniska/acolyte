@@ -61,7 +61,7 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 
 Every command, its subcommands, and its help text come from one descriptor per command (`chat-command-specs.ts`), so the completion menu, the `?` pane, and dispatch cannot disagree. The menu offers a command and its declared subcommands; argument forms like `--archived` appear in the `?` pane rather than as completions.
 
-Skills load from `.agents/skills` in the workspace and in the home directory, and from installed plugins, and answer to `skill:`: typing `/skill:` offers every skill on the roster. A skill and a built-in command of the same name each keep their own address. The `/skills` picker names the scope each one resolved from.
+Skills load from `.agents/skills` in the workspace and in the home directory, and from installed plugins, and answer to `skill:`: typing `/skill:` offers every skill on the roster, and the completion menu also matches a skill by its own name, so `/build` offers `/skill:build`. A skill and a built-in command of the same name each keep their own address. The `/skills` picker names the scope each one resolved from.
 
 ## File attachments
 
