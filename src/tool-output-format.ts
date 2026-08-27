@@ -103,10 +103,9 @@ export function diffSummaryParts(path: string, rawResult: string, labelKey: stri
 /** The content a tool wrote, verbatim — indentation and blank lines are the content, so nothing
  *  here trims and nothing is left out: the transcript is the only record of what Acolyte changed. */
 export function contentParts(content: string): ToolOutputPart[] {
-  return content
-    .replace(/\n$/, "")
-    .split("\n")
-    .map((text, index) => ({ kind: "content", lineNumber: index + 1, text }) as ToolOutputPart);
+  const body = content.replace(/\n$/, "");
+  if (body.length === 0) return [];
+  return body.split("\n").map((text, index) => ({ kind: "content", lineNumber: index + 1, text }) as ToolOutputPart);
 }
 
 function omittedLinesPart(count: number): ToolOutputPart {
@@ -130,7 +129,9 @@ export function shellTailParts(lines: ShellLine[], tailRows: number): ToolOutput
 /** A listing, a log, or a diff is read from the top down, so its preview is a head and the count of
  *  what follows. Lines are kept verbatim: a status column and a diff's indentation are content. */
 export function textHeadParts(rawText: string, headRows: number): ToolOutputPart[] {
-  const lines = rawText.replace(/\n$/, "").split("\n");
+  const body = rawText.replace(/\n$/, "");
+  if (body.length === 0) return [{ kind: "no-output" }];
+  const lines = body.split("\n");
   const head: ToolOutputPart[] = lines.slice(0, headRows).map((text) => ({ kind: "text", text }));
   if (lines.length <= headRows) return head;
   return [...head, omittedLinesPart(lines.length - headRows)];

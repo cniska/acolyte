@@ -5,8 +5,11 @@ import { findResultPaths, numberedUnifiedDiffLines, searchResultSummaryStats } f
 import { renderToolOutput } from "./tool-output-render";
 
 describe("textHeadParts", () => {
-  test("empty input returns a single empty line", () => {
-    expect(textHeadParts("", 5)).toEqual([{ kind: "text", text: "" }]);
+  // A clean `git status` and a `git diff` with no changes both land here. A blank row reads as
+  // output that happened to be empty; nothing at all reads as a tool that failed to report.
+  test("empty output is stated as such", () => {
+    expect(textHeadParts("", 5)).toEqual([{ kind: "no-output" }]);
+    expect(textHeadParts("\n", 5)).toEqual([{ kind: "no-output" }]);
   });
 
   test("few lines within the head returns all of them", () => {
@@ -58,6 +61,10 @@ describe("contentParts", () => {
 
   test("a trailing newline is not counted as a line", () => {
     expect(contentParts("only\n")).toEqual([{ kind: "content", lineNumber: 1, text: "only" }]);
+  });
+
+  test("an empty file has no lines to show", () => {
+    expect(contentParts("")).toEqual([]);
   });
 });
 
