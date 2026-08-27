@@ -509,6 +509,60 @@ describe("render", () => {
     }
   });
 
+  test("a content change while width debt is outstanding still erases the stale copy", async () => {
+    // A width change strands a copy of the tail and carries its height as debt. The next
+    // same-width erase must reclaim it — including when that paint is an ordinary content change
+    // whose leading rows are untouched. Repainting only from the first changed row would leave the
+    // erase short by the debt and the stranded copy on screen for good.
+    const listeners = new Set<() => void>();
+    let tail = "gamma";
+    const store = {
+      get: () => tail,
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    function App() {
+      const last = useSyncExternalStore(store.subscribe, store.get);
+      return h(
+        "tui-box",
+        { flexDirection: "column" },
+        h("tui-text", { key: "a" }, "alpha"),
+        h("tui-text", { key: "b" }, "beta"),
+        h("tui-text", { key: "c" }, last),
+      );
+    }
+
+    const writes = await withMockedStdout(
+      async (captured) => {
+        const { render } = await import("./render");
+        const app = render(h(App));
+        await drainFrame(() => app.flush(), captured);
+        const before = captured.length;
+        Object.defineProperty(process.stdout, "columns", { value: 30, configurable: true });
+        process.stdout.emit("resize");
+        for (let attempt = 0; attempt < 300 && captured.length === before; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 2));
+        }
+        // An ordinary commit at the new width: the first two rows are identical, the last differs.
+        tail = "delta";
+        for (const listener of listeners) listener();
+        await drainFrame(() => app.flush(), captured);
+        app.unmount();
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 12 },
+    );
+
+    const vt = replayTerminal(frameWrites(writes), 12, 30);
+    const transcript = [...vt.scrollback, ...vt.screen];
+    for (const line of ["alpha", "beta", "delta"]) {
+      expect(transcript.filter((row) => row.includes(line)).length).toBe(1);
+    }
+    expect(transcript.filter((row) => row.includes("gamma")).length).toBe(0);
+  });
+
   test("consecutive width resizes do not strand accumulating stale tail copies", async () => {
     // Each width-change repaint skips its erase and strands a copy of the tail. The
     // debt survives only one transition, so a run of resizes (a slow drag, or an
