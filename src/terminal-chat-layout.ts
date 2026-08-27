@@ -638,20 +638,6 @@ function prStateRole(state: PrState): TerminalStyleRole {
 
 const FOOTER_SEPARATOR: TerminalSpan = { text: " · ", role: "faint" };
 
-/** Spans trimmed from the end so a line never exceeds the width the renderer accounted for. */
-function clampSpans(spans: TerminalSpan[], columns: number): TerminalSpan[] {
-  const clamped: TerminalSpan[] = [];
-  let used = 0;
-  for (const span of spans) {
-    const room = columns - used;
-    if (room <= 0) break;
-    const text = truncateToWidth(span.text, room);
-    clamped.push({ ...span, text });
-    used += width(text);
-  }
-  return clamped;
-}
-
 /** A footer item wraps whole: unlike prose, a model name or a skill name must not split across lines. */
 function packFooterItems(items: TerminalSpan[][], columns: number): TerminalLine[] {
   const lines: TerminalSpan[][] = [];
@@ -672,7 +658,7 @@ function packFooterItems(items: TerminalSpan[][], columns: number): TerminalLine
     currentWidth += itemWidth;
   }
   lines.push(current);
-  return lines.map((spans) => ({ spans: clampSpans(spans, columns) }));
+  return lines.map((spans) => ({ spans: clipSpans(spans, columns) }));
 }
 
 export function layoutFooterStatus(status: FooterStatus, columns: number): TerminalScene {
@@ -685,13 +671,21 @@ export function layoutFooterStatus(status: FooterStatus, columns: number): Termi
   // faint); the PR number is the one state-colored accent, since a merged/closed PR on the branch
   // is actionable — its `PR` label stays faint like the other labels.
   const items: TerminalSpan[][] = [];
+  // A name yields columns to the state that follows it: a clipped line would otherwise cut the
+  // dirty/ahead/behind markers and the effort level, which is where the line's meaning sits.
   for (const name of names) {
-    const spans: TerminalSpan[] = [{ text: name, role: "subtle" }];
-    if (name === status.branch && suffix) spans.push({ text: suffix, role: "faint" });
+    const marker = name === status.branch ? suffix : "";
+    const spans: TerminalSpan[] = [
+      { text: truncateToWidth(name, Math.max(1, columns - width(marker))), role: "subtle" },
+    ];
+    if (marker) spans.push({ text: marker, role: "faint" });
     items.push(spans);
   }
-  const model: TerminalSpan[] = [{ text: status.model, role: "subtle" }];
-  if (status.effort) model.push({ text: ` ${status.effort}`, role: "faint" });
+  const effort = status.effort ? ` ${status.effort}` : "";
+  const model: TerminalSpan[] = [
+    { text: truncateToWidth(status.model, Math.max(1, columns - width(effort))), role: "subtle" },
+  ];
+  if (effort) model.push({ text: effort, role: "faint" });
   items.push(model);
   if (status.inputTokens || status.outputTokens) {
     items.push([
