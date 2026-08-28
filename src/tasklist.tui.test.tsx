@@ -216,8 +216,8 @@ describe("tasklist TUI rendering", () => {
       expect(renderTasklist([group], 96, now)).toBe(
         expected(`
           Steps 0/2
-            ◈ active
-            ◇ waiting
+          ◈ active
+          ◇ waiting
         `),
       );
     }
@@ -235,15 +235,15 @@ describe("tasklist TUI rendering", () => {
     expect(renderTasklist([group], 96, 0, true)).toBe(
       expected(`
         Steps 0/2
-          ◈ active
-          ◇ waiting
+        ◈ active
+        ◇ waiting
       `),
     );
     expect(renderTasklist([group], 96, 500, true)).toBe(
       expected(`
         Steps 0/2
-          ◇ active
-          ◇ waiting
+        ◇ active
+        ◇ waiting
       `),
     );
   });
