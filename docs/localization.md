@@ -39,7 +39,7 @@ Call `t()` inside the function that renders, never at module scope. `setLocale` 
 
 ## Selecting a language
 
-`acolyte config set locale <id>` chooses the interface language, writing user scope so the choice follows the person across projects. The value is validated against the bundled locales, and a wrong one is answered with the full list. The language applies to the next command, and a running daemon adopts it on its next turn.
+`acolyte config set locale <id>` chooses the interface language. It is user-scoped, so the choice follows the person across projects and a repository cannot set it. The value is validated against the bundled locales, and a wrong one is answered with the full list. The language applies to the next command, and a running daemon adopts it on its next turn.
 
 ## Message syntax
 

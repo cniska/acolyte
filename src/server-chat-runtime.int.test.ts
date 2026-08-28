@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createMessagePayload, startFakeProviderServer } from "../scripts/fake-provider-server";
 import { appConfig } from "./app-config";
 import { setLocale } from "./i18n";
+import { configDir } from "./paths";
 import { logLifecycleDebugEntry, runChatRequest } from "./server-chat-runtime";
 import { tempDir } from "./test-utils";
 import { createTraceStore } from "./trace-store";
@@ -35,10 +36,12 @@ describe("server chat runtime", () => {
 });
 
 describe("turn language", () => {
-  test("a turn instructs the model in the workspace's configured language", async () => {
+  test("a turn instructs the model in the configured language", async () => {
     const workspace = createDir("acolyte-locale-srv-");
-    mkdirSync(join(workspace, ".acolyte"), { recursive: true });
-    writeFileSync(join(workspace, ".acolyte", "config.json"), JSON.stringify({ locale: "sv" }), "utf8");
+    const userConfig = join(configDir(), "config.json");
+    const savedConfig = existsSync(userConfig) ? readFileSync(userConfig, "utf8") : null;
+    mkdirSync(configDir(), { recursive: true });
+    writeFileSync(userConfig, JSON.stringify({ locale: "sv" }), "utf8");
 
     const savedBaseUrl = appConfig.openai.baseUrl;
     const savedApiKey = appConfig.openai.apiKey;
@@ -62,6 +65,8 @@ describe("turn language", () => {
       fake.stop();
       (appConfig.openai as { baseUrl: string }).baseUrl = savedBaseUrl;
       (appConfig.openai as { apiKey: string | undefined }).apiKey = savedApiKey;
+      if (savedConfig === null) rmSync(userConfig, { force: true });
+      else writeFileSync(userConfig, savedConfig, "utf8");
       setLocale("en");
     }
   });
