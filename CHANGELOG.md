@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.25.0 (2026-08-28)
+
+- docs(comparison): rebuild feature overview (`72f33a19`)
+- chore(docs): update benchmarks 3 August 2026 (`ccca690a`)
+- docs: regenerate README demo GIF (`9a6efeff`)
+- docs: regenerate demo GIF after capture fix (`abe7dadb`)
+- chore(deps): pin patched transitive versions (`402d50d3`)
+- feat(plugins): support Agent Plugins 1.0.0 (#398) (`e4698a91`)
+- fix(tui): buffer split key sequences (#399) (`7dd2a21b`)
+- docs(tui): add renderer module map (`6806c6eb`)
+- fix(cli): report our own version and commit (#400) (`ac321261`)
+- feat(i18n): localize the interface (#402) (`166e64a4`)
+- feat(tui): show tool output as it lands (#401) (`52eeab2d`)
+- feat(chat): address skills as /skill:<name> (#403) (`11a22185`)
+- test(tui): cover the width-debt erase on a content change (`1714565c`)
+- feat(i18n): write replies in the configured language (#404) (`b3fe1155`)
+- fix(tui): repaint incrementally past the viewport (#405) (`b448c957`)
+- fix(tui): settle tasklist pulse when no turn runs (`20f5be1e`)
+- fix(tui): recede the sent-message frame (`be6e360e`)
+- docs(tui): qualify key file paths (`06ef96a5`)
+- test(tui): match the tasklist indent convention (`ce400470`)
+- fix(chat): classify aborts by error name (`7aaf1e0c`)
+- fix(cli): confirm a locale change in the new language (`e13d6e0d`)
+- chore(docs): update benchmarks 28 August 2026 (`d850edfc`)
+- fix(release): give the version tag a message (`c40d2184`)
+
+
 ## 0.24.0 (2026-08-03)
 
 - docs(skills): use title-case labels (`ed91f9ec`)
