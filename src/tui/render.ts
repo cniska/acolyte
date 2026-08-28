@@ -298,7 +298,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     // from that line down. Only the emitted bytes narrow — the row accounting below is unchanged —
     // so this stays clear of the resize, freeze and debt paths.
     const unchangedPrefix = ((): number => {
-      if (widthChanged || hadDebt || splitIdx > 0 || staticPrefix !== "" || forced) return 0;
+      if (widthChanged || hadDebt || staticPrefix !== "" || forced) return 0;
       if (frozenLineCount !== frozenAtEntry || lastActive === "") return 0;
       const prevLive = lastActive.split("\n").slice(frozenLineCount);
       let common = 0;
@@ -315,6 +315,13 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
       // lines simply follow it; otherwise step up to the first stale row, return to column 0,
       // and clear from there.
       const reposition = staleRows > 0 ? `${ansi.cursorUp(staleRows - 1)}\r${ansi.eraseDown}` : "\n";
+      // The appended lines push the region past the viewport top, so the rows that scrolled away
+      // are frozen here exactly as the full-repaint path freezes them.
+      if (splitIdx > 0) {
+        frozenLineCount += splitIdx;
+        frozenScrollbackText = allLines.slice(0, frozenLineCount).join("\n");
+        frozenColumns = cols;
+      }
       syncWrite(`${reposition}${liveLines.slice(unchangedPrefix).join("\n")}`);
     } else if (splitIdx > 0) {
       // Write overflow + bottom-fitting slice atomically. The overflow lines scroll

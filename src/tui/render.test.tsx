@@ -622,6 +622,31 @@ describe("render", () => {
     const ROWS = 10;
     const COLS = 40;
     const tall = "x".repeat(COLS * (ROWS + 3));
+    // The line itself changes, so its rows are rewritten rather than left standing.
+    const edited = `y${tall.slice(1)}`;
+    const frames = await renderScript(
+      [
+        <tui-box key="a" flexDirection="column">
+          <tui-text>{tall}</tui-text>
+        </tui-box>,
+        <tui-box key="b" flexDirection="column">
+          <tui-text>{edited}</tui-text>
+          <tui-text>after</tui-text>
+        </tui-box>,
+      ],
+      { columns: COLS, rows: ROWS },
+    );
+    const vt = replayTerminal(frameWrites(frames.flat()), ROWS, COLS);
+    const painted = [...vt.scrollback, ...vt.screen].filter((row) => row.includes("x")).length;
+    // The repaint reclaims every row still on screen; only the rows that genuinely
+    // scrolled off the top survive as a stale prefix.
+    expect(painted).toBe(ROWS + 3 + (ROWS + 3 - ROWS));
+  });
+
+  test("a line appended below a viewport-taller line leaves it on screen once", async () => {
+    const ROWS = 10;
+    const COLS = 40;
+    const tall = "x".repeat(COLS * (ROWS + 3));
     const frames = await renderScript(
       [
         <tui-box key="a" flexDirection="column">
@@ -636,9 +661,7 @@ describe("render", () => {
     );
     const vt = replayTerminal(frameWrites(frames.flat()), ROWS, COLS);
     const painted = [...vt.scrollback, ...vt.screen].filter((row) => row.includes("x")).length;
-    // The repaint reclaims every row still on screen; only the rows that genuinely
-    // scrolled off the top survive as a stale prefix.
-    expect(painted).toBe(ROWS + 3 + (ROWS + 3 - ROWS));
+    expect(painted).toBe(ROWS + 3);
   });
 
   test("an edit above the fold repaints the tail without duplicating scrollback", async () => {
@@ -1450,6 +1473,74 @@ describe("growing a live region", () => {
       return up.length > 0 ? Math.max(...up) : 0;
     });
     expect(reach).toEqual(new Array(7).fill(3));
+  });
+
+  // Once the region outgrows the viewport every appended line used to erase and repaint the whole
+  // live region, which is the same flicker one viewport lower down.
+  test("appending a line past the viewport height still repaints a constant number of rows", async () => {
+    const script = [];
+    for (let n = 1; n <= 24; n++) script.push(growingRow(n));
+    const frames = await renderScript(script, { columns: 80, rows: 12 });
+
+    const erasedRows = frames.slice(1).map((frame) => {
+      const up = cursorUpCounts(frame);
+      return up.length > 0 ? Math.max(...up) : 0;
+    });
+    expect(erasedRows).toEqual(new Array(23).fill(2));
+  });
+
+  // The guard against the regression this test exists for: an appended line must cost the same
+  // repaint whatever the region's height and whichever side of the viewport it sits on. A future
+  // disqualifier in the incremental path (the overflow case was one) shows up here as a reach that
+  // grows with the region.
+  test.each([
+    [40, 80],
+    [12, 80],
+    [8, 40],
+    [6, 20],
+  ])("an appended line costs a constant repaint at %i rows and %i columns", async (rows, columns) => {
+    const script = [];
+    for (let n = 1; n <= rows * 2; n++) script.push(growingRow(n));
+    const frames = await renderScript(script, { columns, rows });
+
+    const reach = frames.slice(1).map((frame) => {
+      const up = cursorUpCounts(frame);
+      return up.length > 0 ? Math.max(...up) : 0;
+    });
+    // Three composer rows follow the appended line at every width used here.
+    expect(new Set(reach)).toEqual(new Set([2]));
+    // One appended line plus those three rows — never the whole region.
+    const painted = frames.slice(1).map((frame) => frame.join("").split("\n").length);
+    expect(new Set(painted)).toEqual(new Set([4]));
+  });
+
+  // Splitting a frame across writes presents the erase without its repaint, which is the same
+  // flicker from the other direction — and the VT harness cannot see it.
+  test("every frame of a growing region is one synchronized write", async () => {
+    const script = [];
+    for (let n = 1; n <= 24; n++) script.push(growingRow(n));
+    const frames = await renderScript(script, { columns: 80, rows: 12 });
+
+    for (const frame of frames.slice(1)) {
+      expect(frame).toHaveLength(1);
+      expect(frame[0]?.startsWith(ansi.syncStart)).toBe(true);
+      expect(frame[0]?.endsWith(ansi.syncEnd)).toBe(true);
+    }
+  });
+
+  test("the tail of an overflowing region is on screen exactly once", async () => {
+    const script = [];
+    for (let n = 1; n <= 24; n++) script.push(growingRow(n));
+    const frames = await renderScript(script, { columns: 80, rows: 12 });
+    const screen = replayTerminal(frames.flat(), 12, 80)
+      .screen.map((line) => line.trimEnd())
+      .filter(Boolean);
+    expect(screen).toEqual([
+      ...Array.from({ length: 9 }, (_, i) => `  ${i + 16} + const value${i + 16} = ${i + 16};`),
+      "╭────────╮",
+      "│ ❯      │",
+      "╰────────╯",
+    ]);
   });
 
   test("the grown region is on screen exactly once", async () => {
