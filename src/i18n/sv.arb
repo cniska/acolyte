@@ -134,6 +134,7 @@
   "cli.help.desc.resume": "återuppta föregående session",
   "cli.help.desc.run": "kör en enskild prompt",
   "cli.help.desc.skill": "kör en prompt med en aktiv färdighet",
+  "cli.help.desc.serve": "kör servern i förgrunden",
   "cli.help.desc.start": "starta servern",
   "cli.help.desc.status": "visa serverstatus",
   "cli.help.desc.stop": "stoppa alla servrar",

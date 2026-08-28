@@ -366,6 +366,7 @@ export const SV_MESSAGES = {
   "cli.help.desc.resume": [{ kind: "text", value: "återuppta föregående session" }],
   "cli.help.desc.run": [{ kind: "text", value: "kör en enskild prompt" }],
   "cli.help.desc.skill": [{ kind: "text", value: "kör en prompt med en aktiv färdighet" }],
+  "cli.help.desc.serve": [{ kind: "text", value: "kör servern i förgrunden" }],
   "cli.help.desc.start": [{ kind: "text", value: "starta servern" }],
   "cli.help.desc.status": [{ kind: "text", value: "visa serverstatus" }],
   "cli.help.desc.stop": [{ kind: "text", value: "stoppa alla servrar" }],

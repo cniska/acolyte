@@ -37,7 +37,7 @@ function createRunDeps(): {
     readResolvedConfigSync: () => ({ replyTimeoutMs: 1234 }) as never,
     runResourceId: () => "user_123",
     serverApiKey: "key",
-    serverEntry: "src/server.ts",
+    spawnCommand: [process.execPath, "run", "src/server.ts"],
     serverPort: 6767,
     commandError: (name) => calls.commandErrors.push(name),
     commandHelp: (name) => calls.help.push(name),

@@ -18,7 +18,7 @@ type DaemonModeDeps = {
   port: number;
   printDim: (message: string) => void;
   failCommand: () => void;
-  serverEntry: string;
+  spawnCommand: string[];
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
   ensureLocalServer: typeof ensureLocalServer;
@@ -34,7 +34,11 @@ export async function startMode(args: string[], deps: DaemonModeDeps): Promise<v
     return;
   }
   if (args.length > 0) return deps.commandError("start");
-  const result = await deps.ensureLocalServer({ port: deps.port, apiKey: deps.apiKey, serverEntry: deps.serverEntry });
+  const result = await deps.ensureLocalServer({
+    port: deps.port,
+    apiKey: deps.apiKey,
+    spawnCommand: deps.spawnCommand,
+  });
   if (result.started) deps.printDim(t("cli.server.started", { port: deps.port, pid: result.pid }));
   else deps.printDim(t("cli.server.already_running", { port: deps.port, pid: result.pid }));
 }
@@ -114,7 +118,11 @@ export async function restartMode(args: string[], deps: DaemonModeDeps): Promise
       return;
     }
   }
-  const result = await deps.ensureLocalServer({ port: deps.port, apiKey: deps.apiKey, serverEntry: deps.serverEntry });
+  const result = await deps.ensureLocalServer({
+    port: deps.port,
+    apiKey: deps.apiKey,
+    spawnCommand: deps.spawnCommand,
+  });
   deps.printDim(t("cli.server.restarted", { port: deps.port, pid: result.pid }));
 }
 

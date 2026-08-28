@@ -76,6 +76,17 @@ describe("cli subcommand help", () => {
     expect(output).not.toContain("Acolyte server listening");
   });
 
+  test("the command table omits the daemon's own serve command", async () => {
+    const { home, project } = await createTestEnv();
+    const listing = runCli(home, project, "--help");
+    expect(listing.stdout).toContain("start");
+    expect(listing.stdout).not.toContain("run the server in the foreground");
+
+    const help = runCli(home, project, "serve", "--help");
+    expect(help.exitCode).toBe(0);
+    expect(help.stdout).toContain("run the server in the foreground");
+  });
+
   test("history and status help aliases print usage", async () => {
     const { home, project } = await createTestEnv();
     const cases = [

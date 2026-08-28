@@ -831,6 +831,10 @@
   "@cli.help.desc.skill": {
     "description": "Description of the 'skill' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
+  "cli.help.desc.serve": "run the server in the foreground",
+  "@cli.help.desc.serve": {
+    "description": "Description of the hidden 'serve' command, shown only by 'acolyte serve --help'. Lowercase verb phrase, no trailing period."
+  },
   "cli.help.desc.start": "start server",
   "@cli.help.desc.start": {
     "description": "Description of the 'start' command in the CLI command table. Lowercase verb phrase, no trailing period."

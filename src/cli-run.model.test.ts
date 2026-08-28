@@ -20,7 +20,7 @@ function createRunDeps(): { deps: RunDeps; calls: { errors: string[]; dims: stri
     readResolvedConfigSync: () => ({ replyTimeoutMs: 0 }) as never,
     runResourceId: (_id: string) => "run:1" as never,
     serverApiKey: "",
-    serverEntry: "",
+    spawnCommand: [],
     serverPort: 6767,
     commandError: () => undefined,
     commandHelp: () => undefined,

@@ -19,7 +19,7 @@ function createDeps(overrides?: Partial<DaemonDeps>): {
     failCommand: () => {
       failures += 1;
     },
-    serverEntry: "src/server.ts",
+    spawnCommand: [process.execPath, "run", "src/server.ts"],
     commandError: () => {},
     commandHelp: () => {},
     ensureLocalServer: async () => ({ port: 6767, pid: 1234, started: false }),

@@ -134,6 +134,7 @@
   "cli.help.desc.resume": "jatka edellistä istuntoa",
   "cli.help.desc.run": "suorita yksi kehote",
   "cli.help.desc.skill": "suorita kehote taito aktiivisena",
+  "cli.help.desc.serve": "suorita palvelin edustalla",
   "cli.help.desc.start": "käynnistä palvelin",
   "cli.help.desc.status": "näytä palvelimen tila",
   "cli.help.desc.stop": "pysäytä kaikki palvelimet",

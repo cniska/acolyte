@@ -11,6 +11,7 @@ import {
   stopAllLocalServers,
   stopLocalServer,
 } from "./server-daemon";
+import { serverSpawnCommand } from "./server-spawn";
 import { startTestServer, tempDir } from "./test-utils";
 
 const dirs = tempDir();
@@ -142,7 +143,7 @@ describe("server daemon", () => {
         ensureLocalServer({
           port: server.port,
           apiKey: undefined,
-          serverEntry: join(process.cwd(), "src/server.ts"),
+          spawnCommand: serverSpawnCommand(),
           env,
         }),
       ).resolves.toEqual({ port: server.port, pid: process.pid, started: false });
@@ -159,7 +160,7 @@ describe("server daemon", () => {
         ensureLocalServer({
           port: server.port,
           apiKey: undefined,
-          serverEntry: join(process.cwd(), "src/server.ts"),
+          spawnCommand: serverSpawnCommand(),
           env,
         }),
       ).resolves.toEqual({ port: server.port, pid: 0, started: false });
@@ -180,9 +181,9 @@ describe("server daemon", () => {
     const staleAt = new Date(Date.now() - 60_000);
     await utimes(startLockPath, staleAt, staleAt);
 
-    const serverEntry = join(home, "status-server.ts");
+    const spawnEntry = join(home, "status-server.ts");
     await writeFile(
-      serverEntry,
+      spawnEntry,
       [
         "Bun.serve({",
         "  port: Number(process.env.PORT),",
@@ -202,7 +203,7 @@ describe("server daemon", () => {
       const result = await ensureLocalServer({
         port,
         apiKey: undefined,
-        serverEntry,
+        spawnCommand: [process.execPath, "run", spawnEntry],
         env,
         timeoutMs: 1_500,
       });
@@ -225,14 +226,14 @@ describe("server daemon", () => {
     const port = reservation.port;
     reservation.stop();
 
-    const serverEntry = join(home, "crash-server.ts");
-    await writeFile(serverEntry, "process.exit(1);", "utf8");
+    const spawnEntry = join(home, "crash-server.ts");
+    await writeFile(spawnEntry, "process.exit(1);", "utf8");
 
     await expect(
       ensureLocalServer({
         port,
         apiKey: undefined,
-        serverEntry,
+        spawnCommand: [process.execPath, "run", spawnEntry],
         env,
         timeoutMs: 5_000,
       }),
@@ -247,22 +248,16 @@ describe("server daemon", () => {
     reservation.stop();
 
     const startLockPath = startupLockPath(port, env);
-    const origExecPath = process.execPath;
 
-    try {
-      Object.defineProperty(process, "execPath", { value: "/nonexistent/binary", configurable: true });
-      await expect(
-        ensureLocalServer({
-          port,
-          apiKey: undefined,
-          serverEntry: "server.ts",
-          env,
-          timeoutMs: 5_000,
-        }),
-      ).rejects.toThrow();
-    } finally {
-      Object.defineProperty(process, "execPath", { value: origExecPath, configurable: true });
-    }
+    await expect(
+      ensureLocalServer({
+        port,
+        apiKey: undefined,
+        spawnCommand: ["/nonexistent/binary"],
+        env,
+        timeoutMs: 5_000,
+      }),
+    ).rejects.toThrow();
 
     await expect(Bun.file(startLockPath).exists()).resolves.toBe(false);
   });
@@ -478,9 +473,9 @@ describe("server daemon", () => {
     const startLockPath = startupLockPath(port, env);
     await mkdir(join(startLockPath, ".."), { recursive: true });
 
-    const serverEntry = join(home, "lock-stealer.ts");
+    const spawnEntry = join(home, "lock-stealer.ts");
     await writeFile(
-      serverEntry,
+      spawnEntry,
       [
         `import { writeFileSync } from "node:fs";`,
         `writeFileSync(${JSON.stringify(startLockPath)}, JSON.stringify({ pid: process.pid, port: ${port}, startedAt: new Date().toISOString() }));`,
@@ -500,7 +495,7 @@ describe("server daemon", () => {
       ensureLocalServer({
         port,
         apiKey: undefined,
-        serverEntry,
+        spawnCommand: [process.execPath, "run", spawnEntry],
         env,
         timeoutMs: 2_000,
       }),

@@ -355,6 +355,7 @@ export const EN_MESSAGES = {
   "cli.help.desc.resume": [{ kind: "text", value: "resume previous session" }],
   "cli.help.desc.run": [{ kind: "text", value: "run a single prompt" }],
   "cli.help.desc.skill": [{ kind: "text", value: "run a prompt with an active skill" }],
+  "cli.help.desc.serve": [{ kind: "text", value: "run the server in the foreground" }],
   "cli.help.desc.start": [{ kind: "text", value: "start server" }],
   "cli.help.desc.status": [{ kind: "text", value: "show server status" }],
   "cli.help.desc.stop": [{ kind: "text", value: "stop all servers" }],

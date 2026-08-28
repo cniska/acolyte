@@ -22,7 +22,7 @@ function createSkillDeps(): { deps: SkillDeps; calls: { errors: string[]; dims: 
     readResolvedConfigSync: () => ({ replyTimeoutMs: 0 }) as never,
     readSkillInstructions: async () => "do the thing",
     serverApiKey: "",
-    serverEntry: "",
+    spawnCommand: [],
     serverPort: 6767,
     commandError: () => undefined,
     commandHelp: () => undefined,

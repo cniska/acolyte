@@ -362,6 +362,7 @@ export const FI_MESSAGES = {
   "cli.help.desc.resume": [{ kind: "text", value: "jatka edellistä istuntoa" }],
   "cli.help.desc.run": [{ kind: "text", value: "suorita yksi kehote" }],
   "cli.help.desc.skill": [{ kind: "text", value: "suorita kehote taito aktiivisena" }],
+  "cli.help.desc.serve": [{ kind: "text", value: "suorita palvelin edustalla" }],
   "cli.help.desc.start": [{ kind: "text", value: "käynnistä palvelin" }],
   "cli.help.desc.status": [{ kind: "text", value: "näytä palvelimen tila" }],
   "cli.help.desc.stop": [{ kind: "text", value: "pysäytä kaikki palvelimet" }],

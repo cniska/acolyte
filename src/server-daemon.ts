@@ -30,7 +30,7 @@ const STARTUP_LOCK_MAX_AGE_MS = 30_000;
 type EnsureLocalServerInput = {
   port: number;
   apiKey?: string;
-  serverEntry: string;
+  spawnCommand: string[];
   env?: Env;
   timeoutMs?: number;
 };
@@ -233,7 +233,7 @@ export async function ensureLocalServer(
   input: EnsureLocalServerInput,
   retryCount = 0,
 ): Promise<EnsureLocalServerResult> {
-  const { port, apiKey, serverEntry, env, timeoutMs: inputTimeoutMs } = input;
+  const { port, apiKey, spawnCommand, env, timeoutMs: inputTimeoutMs } = input;
   const apiUrl = apiUrlForPort(port);
   const timeoutMs = inputTimeoutMs ?? SERVER_START_TIMEOUT_MS;
   const lockPath = serverLockPath(port, env);
@@ -272,7 +272,7 @@ export async function ensureLocalServer(
   try {
     const logFd = openSync(logPath, "a", PRIVATE_FILE_MODE);
     try {
-      proc = Bun.spawn([process.execPath, "run", serverEntry], {
+      proc = Bun.spawn(spawnCommand, {
         env: { ...process.env, PORT: String(port) },
         stdout: logFd,
         stderr: logFd,

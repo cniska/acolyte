@@ -29,7 +29,7 @@ type SkillModeDeps = {
   readResolvedConfigSync: typeof readResolvedConfigSyncType;
   readSkillInstructions: (path: string, args?: string) => Promise<string>;
   serverApiKey: typeof appConfigType.server.apiKey;
-  serverEntry: string;
+  spawnCommand: string[];
   serverPort: typeof appConfigType.server.port;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
@@ -80,8 +80,8 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
     readResolvedConfigSync,
     readSkillInstructions,
     serverApiKey,
-    serverEntry,
     serverPort,
+    spawnCommand,
     commandError,
     commandHelp,
   } = deps;
@@ -120,7 +120,7 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
   const session = createSession(parsed.model ?? appModel);
   session.activeSkills = [{ name: skill.name, instructions }];
 
-  const daemon = await ensureLocalServer({ port: serverPort, apiKey: serverApiKey, serverEntry });
+  const daemon = await ensureLocalServer({ port: serverPort, apiKey: serverApiKey, spawnCommand });
   const apiUrl = apiUrlForPort(serverPort);
   if (daemon.started) printDim(t("cli.server.started", { port: daemon.port, pid: daemon.pid }));
   else printDim(t("cli.server.already_running", { port: daemon.port, pid: daemon.pid }));

@@ -8,6 +8,7 @@ import { nowIso } from "./datetime";
 import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
 import { apiUrlForPort, ensureLocalServer } from "./server-daemon";
+import { serverSpawnCommand } from "./server-spawn";
 import type { Session, SessionState, SessionStore } from "./session-contract";
 import { acquireSessionLock, releaseSessionLock } from "./session-lock";
 import { createSession, getSessionStore } from "./session-store";
@@ -92,7 +93,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
   const daemon = await ensureLocalServer({
     port: appConfig.server.port,
     apiKey: appConfig.server.apiKey,
-    serverEntry: `${import.meta.dir}/server.ts`,
+    spawnCommand: serverSpawnCommand(),
   });
   const apiUrl = apiUrlForPort(appConfig.server.port);
   if (daemon.started) printDim(t("cli.server.started", { port: daemon.port, pid: daemon.pid }));

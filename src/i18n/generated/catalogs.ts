@@ -146,6 +146,7 @@ export type MessageArgs = {
   "cli.help.desc.resume": never;
   "cli.help.desc.run": never;
   "cli.help.desc.skill": never;
+  "cli.help.desc.serve": never;
   "cli.help.desc.start": never;
   "cli.help.desc.status": never;
   "cli.help.desc.stop": never;

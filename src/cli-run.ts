@@ -32,7 +32,7 @@ type RunModeDeps = {
   readResolvedConfigSync: typeof readResolvedConfigSyncType;
   runResourceId: (sessionId: string) => ResourceId;
   serverApiKey: typeof appConfigType.server.apiKey;
-  serverEntry: string;
+  spawnCommand: string[];
   serverPort: typeof appConfigType.server.port;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
@@ -75,8 +75,8 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
     readResolvedConfigSync,
     runResourceId,
     serverApiKey,
-    serverEntry,
     serverPort,
+    spawnCommand,
     commandError,
     commandHelp,
   } = deps;
@@ -104,7 +104,7 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
   const daemon = await ensureLocalServer({
     port: serverPort,
     apiKey: serverApiKey,
-    serverEntry,
+    spawnCommand,
   });
   const apiUrl = apiUrlForPort(serverPort);
   if (daemon.started) printDim(t("cli.server.started", { port: daemon.port, pid: daemon.pid }));

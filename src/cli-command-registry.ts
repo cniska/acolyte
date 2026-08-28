@@ -37,6 +37,7 @@ import { readOAuthTokensSync, removeOAuthTokens, writeOAuthTokens } from "./oaut
 import { openBrowser } from "./open-browser";
 import { exchangeCode } from "./openai-oauth";
 import { startOAuthCallbackServer } from "./openai-oauth-server";
+import { startServer } from "./server-app";
 import {
   apiUrlForPort,
   ensureLocalServer,
@@ -45,6 +46,7 @@ import {
   stopAllLocalServers,
   stopLocalServer,
 } from "./server-daemon";
+import { SERVE_COMMAND, serverSpawnCommand } from "./server-spawn";
 import { createSession, getSessionStore } from "./session-store";
 import { createId } from "./short-id";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skill-ops";
@@ -65,7 +67,9 @@ export function commandError(name: string, message?: string): void {
 }
 
 export function usage(version: string): void {
-  const docs = Object.values(COMMAND_REGISTRY).map((entry) => entry.help());
+  const docs = Object.values(COMMAND_REGISTRY)
+    .filter((entry) => !entry.hidden)
+    .map((entry) => entry.help());
   printUsage(version, docs, printOutput, formatCliTitle);
 }
 
@@ -90,7 +94,7 @@ const daemonDeps = {
   failCommand: () => {
     process.exitCode = 1;
   },
-  serverEntry: `${import.meta.dir}/server.ts`,
+  spawnCommand: serverSpawnCommand(),
   commandError,
   commandHelp,
   ensureLocalServer,
@@ -219,8 +223,8 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         readResolvedConfigSync,
         runResourceId,
         serverApiKey: appConfig.server.apiKey,
-        serverEntry: `${import.meta.dir}/server.ts`,
         serverPort: appConfig.server.port,
+        spawnCommand: serverSpawnCommand(),
         commandError,
         commandHelp,
       }),
@@ -249,6 +253,23 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       examples: ["acolyte start"],
     }),
     handler: (args) => startMode(args, daemonDeps),
+  },
+  [SERVE_COMMAND]: {
+    hidden: true,
+    help: () => ({
+      command: SERVE_COMMAND,
+      usage: `acolyte ${SERVE_COMMAND}`,
+      description: t("cli.help.desc.serve"),
+      examples: [`acolyte ${SERVE_COMMAND}`],
+    }),
+    handler: async (args) => {
+      if (hasHelpFlag(args)) {
+        commandHelp(SERVE_COMMAND);
+        return;
+      }
+      if (args.length > 0) return commandError(SERVE_COMMAND);
+      await startServer();
+    },
   },
   stop: {
     help: () => ({
@@ -366,8 +387,8 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         readResolvedConfigSync,
         readSkillInstructions,
         serverApiKey: appConfig.server.apiKey,
-        serverEntry: `${import.meta.dir}/server.ts`,
         serverPort: appConfig.server.port,
+        spawnCommand: serverSpawnCommand(),
         commandError,
         commandHelp,
       }),
