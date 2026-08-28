@@ -1,4 +1,4 @@
-import { currentLocale } from "./i18n";
+import type { TranslationLocale } from "./i18n/locales";
 import type { ActiveSkill } from "./skill-contract";
 import { toolDefinitionsById, toolIds } from "./tool-registry";
 import { createWorkspaceInstructions, resolveWorkspaceProfile } from "./workspace-profile";
@@ -12,8 +12,7 @@ const OUTPUT_CONTRACT =
 
 // The prompt itself stays English so model behavior does not vary by locale; the interface language
 // reaches the model only as the language its prose is written in.
-function createReplyLanguage(): string {
-  const locale = currentLocale();
+function createReplyLanguage(locale: TranslationLocale): string {
   if (locale === "en") return "";
   const language = new Intl.DisplayNames(["en"], { type: "language" }).of(locale) ?? locale;
   return ` Reply in ${language}. What you write into the repository — code, identifiers, comments, commit messages, file contents — stays English.`;
@@ -51,6 +50,7 @@ export function createInstructions(
   workspace?: string,
   projectRulesPrompt = "",
   activeSkills: ActiveSkill[] = [],
+  locale: TranslationLocale = "en",
 ): string {
   const runtimeInstructions = createRuntimeInstructions(workspace);
   const projectRulesSection =
@@ -58,7 +58,7 @@ export function createInstructions(
   const skillsSection = createSkillsSection(activeSkills);
   const sections = [
     soulPrompt,
-    `${OUTPUT_CONTRACT}${createReplyLanguage()}`,
+    `${OUTPUT_CONTRACT}${createReplyLanguage(locale)}`,
     projectRulesSection,
     skillsSection,
     runtimeInstructions,

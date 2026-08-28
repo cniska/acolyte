@@ -45,11 +45,6 @@ export function setLocale(locale: TranslationLocale): void {
   activeLocale = locale;
 }
 
-/** The interface language in effect, for the surfaces that must name it rather than render through `t()`. */
-export function currentLocale(): TranslationLocale {
-  return activeLocale;
-}
-
 export function t<K extends TranslationKey>(key: K, ...args: TranslationArgs<K>): string {
   return render(TRANSLATIONS[activeLocale][key], args[0] as Record<string, TranslationValue> | undefined, activeLocale);
 }

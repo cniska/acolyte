@@ -286,6 +286,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       workspace: workspaceResolution.workspacePath,
       features: config.features,
       reasoning: config.reasoning,
+      locale: config.locale,
       authRoute: authRouteForModel(chatRequest.model, providerCredentials),
       taskId: handlers.taskId,
       runControl,

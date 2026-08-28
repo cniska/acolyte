@@ -577,6 +577,7 @@ export function createLifecycleInput(overrides: Partial<LifecycleInput> = {}): L
     request: { model: "gpt-5-mini", message: "test", history: [] },
     soulPrompt: "",
     features: DEFAULT_FEATURE_FLAGS,
+    locale: "en",
     ...overrides,
   };
 }
