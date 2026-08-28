@@ -445,7 +445,6 @@ export const FI_MESSAGES = {
     { kind: "arg", name: "id" },
     { kind: "text", value: " tallennettu." },
   ],
-  "cli.select.hint": [{ kind: "text", value: "↑↓ valitse · enter vahvista · esc peruuta" }],
   "cli.auth.method.required": [{ kind: "text", value: "Metodi vaaditaan. Käytä --key tai --subscription." }],
   "cli.server.already_running": [
     { kind: "text", value: "Palvelin on jo käynnissä portissa " },

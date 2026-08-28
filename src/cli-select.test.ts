@@ -100,7 +100,10 @@ describe("formatSelectFrame", () => {
     expect(frame[1]).toContain("❯ two");
     expect(frame[0]).toContain("one");
     expect(frame[0]).not.toContain("❯");
-    expect(frame).toHaveLength(3);
+  });
+
+  test("shows nothing but the rows", () => {
+    expect(formatSelectFrame(["one", "two"], 0)).toHaveLength(2);
   });
 });
 
@@ -182,7 +185,21 @@ describe("selectOption", () => {
     terminal.press(ENTER);
     await selection;
     const redraw = terminal.written[2] ?? "";
-    expect(redraw.startsWith("\u001b[A".repeat(4))).toBe(true);
+    expect(redraw.startsWith("\u001b[A".repeat(3))).toBe(true);
+  });
+
+  test("a chosen list closes with a blank line and a cancelled one does not", async () => {
+    const chosen = fakeTerminal();
+    const chosenSelection = selectOption(OPTIONS, chosen.io);
+    chosen.press(ENTER);
+    await chosenSelection;
+    expect(chosen.written.at(-1)?.endsWith("\n")).toBe(true);
+
+    const cancelled = fakeTerminal();
+    const cancelledSelection = selectOption(OPTIONS, cancelled.io);
+    cancelled.press(ESC);
+    await cancelledSelection;
+    expect(cancelled.written.at(-1)?.endsWith("\n")).toBe(false);
   });
 
   test("asks nothing when there is no terminal to ask in", async () => {

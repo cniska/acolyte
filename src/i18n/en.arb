@@ -1019,10 +1019,6 @@
       }
     }
   },
-  "cli.select.hint": "\u2191\u2193 select \u00b7 enter confirm \u00b7 esc cancel",
-  "@cli.select.hint": {
-    "description": "Footer under an interactive CLI list, naming the keys that move, confirm and cancel. The arrow glyphs and the key names 'enter' and 'esc' are literal keyboard keys; translate only the verbs."
-  },
   "cli.auth.method.required": "Method required. Use --key or --subscription.",
   "@cli.auth.method.required": {
     "description": "Shown when a provider supporting more than one method is authenticated without a terminal to choose in. The flag names are literal command syntax and must not be translated."

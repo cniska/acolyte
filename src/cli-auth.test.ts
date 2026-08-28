@@ -85,7 +85,7 @@ describe("authMode", () => {
       ["anthropic"],
     );
     await authMode([], deps);
-    expect(shown[0]).toEqual(["anthropic (api key)", "google (none)", "openai (none)", "vercel (none)"]);
+    expect(shown[0]).toEqual(["anthropic  api key", "google     none", "openai     none", "vercel     none"]);
     expect(writes).toEqual([{ envKey: "ANTHROPIC_API_KEY", value: "sk-new" }]);
   });
 

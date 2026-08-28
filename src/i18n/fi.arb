@@ -169,7 +169,6 @@
   "cli.memory.restored": "Palautettiin {count, plural, one {# muisti} other {# muistia}}: {ids}.",
   "cli.memory.saved.project": "Projektimuisti {id} tallennettu.",
   "cli.memory.saved.user": "Käyttäjämuisti {id} tallennettu.",
-  "cli.select.hint": "\u2191\u2193 valitse \u00b7 enter vahvista \u00b7 esc peruuta",
   "cli.auth.method.required": "Metodi vaaditaan. K\u00e4yt\u00e4 --key tai --subscription.",
   "cli.server.already_running": "Palvelin on jo käynnissä portissa {port} (pid {pid})",
   "cli.server.col.pid": "PID",

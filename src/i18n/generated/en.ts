@@ -438,7 +438,6 @@ export const EN_MESSAGES = {
     { kind: "arg", name: "id" },
     { kind: "text", value: "." },
   ],
-  "cli.select.hint": [{ kind: "text", value: "↑↓ select · enter confirm · esc cancel" }],
   "cli.auth.method.required": [{ kind: "text", value: "Method required. Use --key or --subscription." }],
   "cli.server.already_running": [
     { kind: "text", value: "Server already running on port " },

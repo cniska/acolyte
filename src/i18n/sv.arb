@@ -169,7 +169,6 @@
   "cli.memory.restored": "Återställde {count, plural, one {# minne} other {# minnen}}: {ids}.",
   "cli.memory.saved.project": "Projektminne {id} sparat.",
   "cli.memory.saved.user": "Användarminne {id} sparat.",
-  "cli.select.hint": "\u2191\u2193 v\u00e4lj \u00b7 enter bekr\u00e4fta \u00b7 esc avbryt",
   "cli.auth.method.required": "Metod kr\u00e4vs. Anv\u00e4nd --key eller --subscription.",
   "cli.server.already_running": "Servern körs redan på port {port} (pid {pid})",
   "cli.server.col.pid": "PID",

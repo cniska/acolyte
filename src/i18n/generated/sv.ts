@@ -449,7 +449,6 @@ export const SV_MESSAGES = {
     { kind: "arg", name: "id" },
     { kind: "text", value: " sparat." },
   ],
-  "cli.select.hint": [{ kind: "text", value: "↑↓ välj · enter bekräfta · esc avbryt" }],
   "cli.auth.method.required": [{ kind: "text", value: "Metod krävs. Använd --key eller --subscription." }],
   "cli.server.already_running": [
     { kind: "text", value: "Servern körs redan på port " },

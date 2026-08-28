@@ -1,3 +1,4 @@
+import { alignCols } from "./chat-format";
 import type { SelectOption } from "./cli-select";
 import { CodedError } from "./coded-error";
 import { errorMessage } from "./error-contract";
@@ -101,27 +102,24 @@ function methodLabels(methods: string[]): string {
   return methods.join(" + ");
 }
 
-function statusLines(deps: AuthModeDeps): string[] {
-  const keys = deps.readConfiguredProviderApiKeys();
-  const apiKeyLabel = t("status.provider_auth.api_key");
-  const subscriptionLabel = t("status.provider_auth.subscription");
-  return PROVIDERS.map((provider) => {
-    const methods: string[] = [];
-    if (supportsSubscription(provider) && deps.readOAuthTokens(provider) !== undefined) {
-      methods.push(subscriptionLabel);
-    }
-    if (keys[provider]) methods.push(apiKeyLabel);
-    return t("cli.auth.status.line", { provider, methods: methodLabels(methods) });
-  });
+function providerMethods(provider: Provider, deps: AuthModeDeps): string[] {
+  const methods: string[] = [];
+  if (supportsSubscription(provider) && deps.readOAuthTokens(provider) !== undefined) {
+    methods.push(t("status.provider_auth.subscription"));
+  }
+  if (deps.readConfiguredProviderApiKeys()[provider]) methods.push(t("status.provider_auth.api_key"));
+  return methods;
 }
 
 function printStatus(deps: AuthModeDeps): void {
-  for (const line of statusLines(deps)) deps.printDim(line);
+  for (const provider of PROVIDERS) {
+    deps.printDim(t("cli.auth.status.line", { provider, methods: methodLabels(providerMethods(provider, deps)) }));
+  }
 }
 
-/** The picker rows are the status lines, so choosing happens in the view the user came for. */
+/** Rows are a name and what it authenticates with, in columns: a picker has no prose to punctuate. */
 function selectProvider(deps: AuthModeDeps): Promise<Provider | undefined> {
-  const labels = statusLines(deps);
+  const labels = alignCols(PROVIDERS.map((provider) => [provider, methodLabels(providerMethods(provider, deps))]));
   return deps.selectOption(PROVIDERS.map((provider, row) => ({ value: provider, label: labels[row] ?? provider })));
 }
 

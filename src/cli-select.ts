@@ -1,5 +1,4 @@
 import { GLYPH_USER } from "./chat-glyphs";
-import { t } from "./i18n";
 import { dimText, writeChunk } from "./ui";
 
 export type SelectOption<T> = { value: T; label: string };
@@ -70,8 +69,7 @@ export function nextSelectIndex(index: number, count: number, key: SelectKey): n
 
 /** The chosen row reads as a prompt line; the rest keep the dim of the status list they mirror. */
 export function formatSelectFrame(labels: string[], index: number): string[] {
-  const rows = labels.map((label, row) => (row === index ? `${GLYPH_USER} ${label}` : dimText(`  ${label}`)));
-  return [...rows, dimText(t("cli.select.hint"))];
+  return labels.map((label, row) => (row === index ? `${GLYPH_USER} ${label}` : dimText(`  ${label}`)));
 }
 
 type SelectInput = {
@@ -106,12 +104,13 @@ export async function selectOption<T>(options: SelectOption<T>[], io?: SelectIo)
     let carried = "";
     let escapeTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const finish = (value: T | undefined): void => {
+    // A chosen list closes with a blank line, so the step that follows it reads as its own thing.
+    const finish = (value: T | undefined, chosen: boolean): void => {
       clearTimeout(escapeTimer);
       input.off("data", onData);
       input.setRawMode(false);
       input.pause();
-      write(SHOW_CURSOR);
+      write(chosen ? `${SHOW_CURSOR}\n` : SHOW_CURSOR);
       resolve(value);
     };
 
@@ -123,18 +122,18 @@ export async function selectOption<T>(options: SelectOption<T>[], io?: SelectIo)
       for (const key of read.keys) {
         if (key === "abort") {
           process.exitCode = 1;
-          finish(undefined);
+          finish(undefined, false);
           return;
         }
         if (key === "confirm") {
-          finish(options[index]?.value);
+          finish(options[index]?.value, true);
           return;
         }
         index = nextSelectIndex(index, options.length, key);
       }
       if (index !== before) draw(true);
       // Escape and the start of an arrow read identically; only the rest not arriving tells them apart.
-      if (carried === ESCAPE) escapeTimer = setTimeout(() => finish(undefined), ESCAPE_TIMEOUT_MS);
+      if (carried === ESCAPE) escapeTimer = setTimeout(() => finish(undefined, false), ESCAPE_TIMEOUT_MS);
       else if (carried.length > 0) escapeTimer = setTimeout(() => (carried = ""), ESCAPE_TIMEOUT_MS);
     };
 
@@ -145,7 +144,7 @@ export async function selectOption<T>(options: SelectOption<T>[], io?: SelectIo)
       input.resume();
       input.on("data", onData);
     } catch (error) {
-      finish(undefined);
+      finish(undefined, false);
       throw error;
     }
   });

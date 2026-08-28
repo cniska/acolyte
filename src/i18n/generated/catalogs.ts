@@ -181,7 +181,6 @@ export type MessageArgs = {
   "cli.memory.restored": { count: number; ids: string | number };
   "cli.memory.saved.project": { id: string | number };
   "cli.memory.saved.user": { id: string | number };
-  "cli.select.hint": never;
   "cli.auth.method.required": never;
   "cli.server.already_running": { pid: number; port: number };
   "cli.server.col.pid": never;
