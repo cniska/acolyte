@@ -107,6 +107,13 @@ describe("cli auth", () => {
     expect(out).toContain("openai (");
   }, 15_000);
 
+  test("a provider with two methods and no terminal names the flags to use", async () => {
+    const { home, project } = await createTestEnv();
+    const result = await runCliWithInput(home, project, ["auth", "openai"], "");
+    expect(result.exitCode).toBe(1);
+    expect(`${result.stdout}\n${result.stderr}`).toContain("--subscription");
+  }, 15_000);
+
   test("status lists API keys from the environment", async () => {
     const { home, project } = await createTestEnv();
     const result = await runCliWithInput(home, project, ["auth"], "", { OPENAI_API_KEY: "sk-env" });

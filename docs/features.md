@@ -33,7 +33,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - workspace profile detection with auto-detected install, lint, format, and test commands
 - configurable model reasoning level (low, medium, high) with provider-specific mapping
 - multi-provider support (OpenAI, Anthropic, Google, Vercel)
-- unified provider auth via `acolyte auth` — API key or subscription (OpenAI OAuth), global credentials, status and logout
+- unified provider auth via `acolyte auth` — provider and method chosen from a list, API key or subscription (OpenAI OAuth), global credentials, status and logout
 - provider rate limit awareness with sliding window pacing and exponential backoff
 - provider prompt-cache awareness with cached input token reporting
 - proactive token budgeting with system prompt reservation and priority-based allocation

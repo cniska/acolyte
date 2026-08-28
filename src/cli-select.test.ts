@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatSelectFrame, nextSelectIndex, selectKeyFor, selectOption } from "./cli-select";
+import { formatSelectFrame, nextSelectIndex, readSelectKeys, selectOption } from "./cli-select";
 
 const UP = "\u001b[A";
 const DOWN = "\u001b[B";
@@ -46,15 +46,41 @@ const OPTIONS = [
   { value: "c", label: "openai (subscription)" },
 ];
 
-describe("selectKeyFor", () => {
-  test("maps arrows, enter, escape and ctrl-c", () => {
-    expect(selectKeyFor(UP)).toBe("up");
-    expect(selectKeyFor(DOWN)).toBe("down");
-    expect(selectKeyFor(ENTER)).toBe("confirm");
-    expect(selectKeyFor("\n")).toBe("confirm");
-    expect(selectKeyFor(ESC)).toBe("cancel");
-    expect(selectKeyFor(CTRL_C)).toBe("abort");
-    expect(selectKeyFor("x")).toBe("none");
+describe("readSelectKeys", () => {
+  test("maps arrows, enter and ctrl-c", () => {
+    expect(readSelectKeys(UP).keys).toEqual(["up"]);
+    expect(readSelectKeys(DOWN).keys).toEqual(["down"]);
+    expect(readSelectKeys(ENTER).keys).toEqual(["confirm"]);
+    expect(readSelectKeys("\n").keys).toEqual(["confirm"]);
+    expect(readSelectKeys(CTRL_C).keys).toEqual(["abort"]);
+    expect(readSelectKeys("x").keys).toEqual(["none"]);
+  });
+
+  test("reads every keypress a single coalesced read carries", () => {
+    expect(readSelectKeys(`${DOWN}${DOWN}${DOWN}`).keys).toEqual(["down", "down", "down"]);
+    expect(readSelectKeys(`${DOWN}${UP}${ENTER}`).keys).toEqual(["down", "up", "confirm"]);
+  });
+
+  test("reads arrows sent as SS3, the way a terminal in application cursor mode does", () => {
+    expect(readSelectKeys("\u001bOA").keys).toEqual(["up"]);
+    expect(readSelectKeys("\u001bOB").keys).toEqual(["down"]);
+  });
+
+  test("carries a sequence cut off by the end of the read", () => {
+    expect(readSelectKeys(ESC)).toEqual({ keys: [], partial: ESC });
+    expect(readSelectKeys(`${ESC}[`)).toEqual({ keys: [], partial: `${ESC}[` });
+    expect(readSelectKeys(`${DOWN}${ESC}`)).toEqual({ keys: ["down"], partial: ESC });
+  });
+
+  test("never reads escape itself as a key, so a split arrow cannot cancel", () => {
+    expect(readSelectKeys(ESC).keys).not.toContain("cancel");
+    expect(readSelectKeys(`${ESC}b`).keys).toEqual(["none"]);
+  });
+
+  test("ignores sequences it has no use for", () => {
+    expect(readSelectKeys("\u001b[C").keys).toEqual(["none"]);
+    expect(readSelectKeys("\u001b[200~").keys).toEqual(["none"]);
+    expect(readSelectKeys("\u001b[M !!").keys).not.toContain("cancel");
   });
 });
 
@@ -96,6 +122,21 @@ describe("selectOption", () => {
     expect(await selection).toBe("c");
   });
 
+  test("holding a key, which arrives as one read, moves once per keypress", async () => {
+    const terminal = fakeTerminal();
+    const selection = selectOption(OPTIONS, terminal.io);
+    terminal.press(`${DOWN}${DOWN}`);
+    terminal.press(ENTER);
+    expect(await selection).toBe("c");
+  });
+
+  test("confirming mid-read ignores whatever followed it", async () => {
+    const terminal = fakeTerminal();
+    const selection = selectOption(OPTIONS, terminal.io);
+    terminal.press(`${DOWN}${ENTER}${DOWN}`);
+    expect(await selection).toBe("b");
+  });
+
   test("escape returns nothing and leaves the exit code alone", async () => {
     process.exitCode = 0;
     const terminal = fakeTerminal();
@@ -103,6 +144,15 @@ describe("selectOption", () => {
     terminal.press(ESC);
     expect(await selection).toBeUndefined();
     expect(process.exitCode).toBe(0);
+  });
+
+  test("an arrow split across two reads moves instead of cancelling", async () => {
+    const terminal = fakeTerminal();
+    const selection = selectOption(OPTIONS, terminal.io);
+    terminal.press(ESC);
+    terminal.press("[B");
+    terminal.press(ENTER);
+    expect(await selection).toBe("b");
   });
 
   test("ctrl-c returns nothing and fails the command", async () => {
