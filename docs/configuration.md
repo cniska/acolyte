@@ -104,7 +104,7 @@ It is deliberately not project-scoped: a repository-controlled config must not r
 
 ## Localization
 
-- `locale` — active UI language (defaults to `en`).
+- `locale` — active UI language, and the language the model writes its replies in (defaults to `en`). It is user-scoped: the language a person reads in follows them across projects, so a repository cannot set it.
 - Messages are authored in `src/i18n/*.arb` and compiled into the binary; see [localization](localization.md) for adding a language.
 
 ## Logging
@@ -181,7 +181,7 @@ acolyte config set features.syncAgents true
 | Key | Description |
 |---|---|
 | `port` | daemon server port (default: 6767) |
-| `locale` | UI language (default: `en`) |
+| `locale` | UI and reply language (default: `en`) |
 | `model` | model |
 | `reasoning` | reasoning level for supported models (`low`, `medium`, `high`) |
 | `openaiBaseUrl` | OpenAI API base URL |

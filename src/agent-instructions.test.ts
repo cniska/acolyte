@@ -133,3 +133,27 @@ describe("createInstructions", () => {
     expect(out).not.toContain("Active skill (");
   });
 });
+
+// The prompt is authored and tuned in English; only the language the model writes its prose in
+// follows the configured interface language.
+describe("createInstructions reply language", () => {
+  test("names the interface language, and keeps what lands in the repository English", () => {
+    const out = createInstructions("Soul.", undefined, "", [], "sv");
+    expectIntent(out, [["Reply in Swedish"], ["stays English", "commit messages"]]);
+  });
+
+  test("names each bundled language rather than its locale id", () => {
+    expect(createInstructions("Soul.", undefined, "", [], "fi")).toContain("in Finnish");
+  });
+
+  test("says nothing when the interface is already English", () => {
+    const out = createInstructions("Soul.", undefined, "", [], "en");
+    expect(out).not.toContain("Reply in");
+  });
+
+  test("carries the language inside the output contract, not as a section of its own", () => {
+    const out = createInstructions("Soul.", undefined, "", [], "sv");
+    const contractEnd = out.indexOf("\n\n", out.indexOf("Format as plain text"));
+    expect(out.indexOf("Reply in Swedish")).toBeLessThan(contractEnd);
+  });
+});

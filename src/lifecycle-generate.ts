@@ -16,6 +16,7 @@ import {
   parseError,
 } from "./error-handling";
 import { t } from "./i18n";
+import type { TranslationLocale } from "./i18n/locales";
 import {
   createFinishPolicyState,
   decideFinish,
@@ -116,10 +117,17 @@ export function createRunAgent(input: {
   model: string;
   tools: Toolset;
   activeSkills: ActiveSkill[];
+  locale: TranslationLocale;
 }): Agent {
   return createAgent({
     model: input.model,
-    instructions: createInstructions(input.soulPrompt, input.workspace, input.projectRulesPrompt, input.activeSkills),
+    instructions: createInstructions(
+      input.soulPrompt,
+      input.workspace,
+      input.projectRulesPrompt,
+      input.activeSkills,
+      input.locale,
+    ),
     tools: input.tools,
   });
 }

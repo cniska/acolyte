@@ -7,6 +7,7 @@ import { readResolvedConfigSync } from "./config";
 import { createDebugLogger } from "./debug-flags";
 import { createStreamError, errorIdSchema, parseError } from "./error-handling";
 import { field } from "./field";
+import { setLocale } from "./i18n";
 import { runLifecycle } from "./lifecycle";
 import { VERBOSE_ONLY_EVENTS } from "./lifecycle-constants";
 import { errorToLogFields, log } from "./log";
@@ -267,6 +268,8 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
   try {
     await loadSkills(workspaceResolution.workspacePath);
     const config = readResolvedConfigSync({ cwd: workspaceResolution.workspacePath });
+    // The daemon outlives a locale change, so its boot locale goes stale.
+    setLocale(config.locale);
     if (config.features.syncAgents) {
       await syncAgentsMdToProjectMemory({ workspace: workspaceResolution.workspacePath });
     }
@@ -283,6 +286,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       workspace: workspaceResolution.workspacePath,
       features: config.features,
       reasoning: config.reasoning,
+      locale: config.locale,
       authRoute: authRouteForModel(chatRequest.model, providerCredentials),
       taskId: handlers.taskId,
       runControl,

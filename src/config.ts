@@ -59,7 +59,7 @@ function shallowMerge<T extends object>(base: T, override: T): T {
 }
 
 function mergeConfig(userConfig: Config, projectConfig: Config): Config {
-  const { embeddingBaseUrl: _, ...projectSafe } = projectConfig;
+  const { embeddingBaseUrl: _, locale: __, ...projectSafe } = projectConfig;
   return shallowMerge(userConfig, projectSafe);
 }
 
@@ -274,8 +274,8 @@ function invalidValueError(key: string, value: string, error: z.ZodError): Error
 
 export async function setConfigValue(key: string, value: string, options?: ConfigOptions): Promise<void> {
   const scope = options?.scope ?? "user";
-  if (key === "embeddingBaseUrl" && scope === "project") {
-    throw new Error("embeddingBaseUrl is user-scoped");
+  if ((key === "embeddingBaseUrl" || key === "locale") && scope === "project") {
+    throw new Error(`${key} is user-scoped`);
   }
   const dotted = parseDottedKey(key);
   if (dotted) {
@@ -302,8 +302,8 @@ export async function setConfigValue(key: string, value: string, options?: Confi
 
 export async function unsetConfigValue(key: string, options?: ConfigOptions): Promise<void> {
   const scope = options?.scope ?? "user";
-  if (key === "embeddingBaseUrl" && scope === "project") {
-    throw new Error("embeddingBaseUrl is user-scoped");
+  if ((key === "embeddingBaseUrl" || key === "locale") && scope === "project") {
+    throw new Error(`${key} is user-scoped`);
   }
   const dotted = parseDottedKey(key);
   if (dotted) {

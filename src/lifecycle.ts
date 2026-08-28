@@ -109,6 +109,7 @@ function createRunContext(
     model: params.model,
     tools: params.prepared.tools,
     activeSkills: params.prepared.skillsForPrompt,
+    locale: input.locale,
   });
 
   const ctx: RunContext = {

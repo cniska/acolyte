@@ -5,6 +5,7 @@ import type { ReasoningLevel } from "./config-contract";
 import type { ErrorCode } from "./error-contract";
 import type { ErrorCategory, ErrorSource } from "./error-handling";
 import type { ResolvedFeatureFlags } from "./feature-flags-contract";
+import type { TranslationLocale } from "./i18n/locales";
 import type { LifecyclePolicy } from "./lifecycle-policy";
 import type { McpToolListing } from "./mcp-client";
 import type { MemoryCommitMetrics } from "./memory-contract";
@@ -120,6 +121,7 @@ export type LifecycleInput = {
   taskId?: string;
   features: ResolvedFeatureFlags;
   reasoning?: ReasoningLevel;
+  locale: TranslationLocale;
   authRoute?: AuthRoute;
   lifecyclePolicy?: Partial<LifecyclePolicy>;
   runControl?: RunControl;
