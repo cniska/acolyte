@@ -36,8 +36,8 @@ See [Configuration](./configuration.md) for OpenAI-compatible model setup.
 Authenticate providers with an API key or, where supported, a subscription. This is separate from `acolyte login`, which authenticates the cloud sync service.
 
 ```bash
-acolyte auth                         # status for every provider
-acolyte auth openai                  # interactive: key or subscription
+acolyte auth                         # pick a provider from the list, then how to authenticate
+acolyte auth openai                  # pick key or subscription from the list
 acolyte auth openai --key            # store OPENAI_API_KEY
 acolyte auth openai --subscription   # browser OAuth (port 1455)
 acolyte auth vercel --key            # store AI_GATEWAY_API_KEY

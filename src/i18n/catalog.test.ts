@@ -8,6 +8,42 @@ function placeholdersOf(parts: Part[]): string[] {
   return [...argNames(parts)];
 }
 
+// Bun's `prompt()` writes a space after the question it is given; `promptHidden` writes the question
+// exactly as given. A message going to the wrong one prints a doubled space or none at all.
+const SPACED_BY_PROMPT: TranslationKey[] = [
+  "cli.auth.override.confirm",
+  "cli.auth.subscription.override.confirm",
+  "cli.login.prompt.url",
+];
+
+const SPACED_BY_MESSAGE: TranslationKey[] = ["cli.auth.prompt.api_key", "cli.login.prompt.token"];
+
+function render(locale: (typeof LOCALES)[number], key: TranslationKey): string {
+  setLocale(locale);
+  const parts = (TRANSLATIONS[locale] as Record<string, Part[]>)[key] ?? [];
+  const names = placeholdersOf(parts);
+  const vars = Object.fromEntries(names.map((name) => [name, `<${name}>`]));
+  return (t as (k: TranslationKey, v?: unknown) => string)(key, names.length ? vars : undefined);
+}
+
+describe("interactive prompts leave exactly one space before the caret", () => {
+  for (const locale of LOCALES) {
+    test(`${locale} lets prompt() supply the space`, () => {
+      for (const key of SPACED_BY_PROMPT) {
+        expect(render(locale, key), `${locale}/${key}`).not.toMatch(/\s$/);
+      }
+      setLocale("en");
+    });
+
+    test(`${locale} carries the space in questions written verbatim`, () => {
+      for (const key of SPACED_BY_MESSAGE) {
+        expect(render(locale, key), `${locale}/${key}`).toMatch(/ $/);
+      }
+      setLocale("en");
+    });
+  }
+});
+
 describe("every bundled catalog renders", () => {
   for (const locale of LOCALES) {
     const catalog = TRANSLATIONS[locale] as Record<string, Part[]>;

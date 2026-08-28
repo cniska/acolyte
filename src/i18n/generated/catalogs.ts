@@ -101,13 +101,11 @@ export type MessageArgs = {
   "cli.auth.logout.subscription_none": { provider: string | number };
   "cli.auth.logout_none": { provider: string | number };
   "cli.auth.method.conflict": never;
-  "cli.auth.method.invalid": never;
   "cli.auth.opening": never;
   "cli.auth.override.cancelled": never;
   "cli.auth.override.confirm": { envKey: string | number };
   "cli.auth.port_in_use": never;
   "cli.auth.prompt.api_key": never;
-  "cli.auth.prompt.method": never;
   "cli.auth.provider.required": never;
   "cli.auth.saved": { envKey: string | number; path: string | number };
   "cli.auth.status.line": { methods: string | number; provider: string | number };
@@ -183,6 +181,7 @@ export type MessageArgs = {
   "cli.memory.restored": { count: number; ids: string | number };
   "cli.memory.saved.project": { id: string | number };
   "cli.memory.saved.user": { id: string | number };
+  "cli.auth.method.required": never;
   "cli.server.already_running": { pid: number; port: number };
   "cli.server.col.pid": never;
   "cli.server.col.port": never;

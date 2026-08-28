@@ -249,12 +249,11 @@ export const SV_MESSAGES = {
     { kind: "text", value: "." },
   ],
   "cli.auth.method.conflict": [{ kind: "text", value: "Använd bara en av --key och --subscription." }],
-  "cli.auth.method.invalid": [{ kind: "text", value: "Ogiltig metod. Använd key eller subscription." }],
   "cli.auth.opening": [{ kind: "text", value: "Öppnar webbläsaren för auktorisering med OpenAI…" }],
   "cli.auth.override.cancelled": [{ kind: "text", value: "Den befintliga nyckeln lämnades oförändrad." }],
   "cli.auth.override.confirm": [
     { kind: "arg", name: "envKey" },
-    { kind: "text", value: " är redan satt. Ersätta den? [y/N]: " },
+    { kind: "text", value: " är redan satt. Ersätta den? [y/N]:" },
   ],
   "cli.auth.port_in_use": [
     {
@@ -264,7 +263,6 @@ export const SV_MESSAGES = {
     },
   ],
   "cli.auth.prompt.api_key": [{ kind: "text", value: "API-nyckel: " }],
-  "cli.auth.prompt.method": [{ kind: "text", value: "Metod [key|subscription]: " }],
   "cli.auth.provider.required": [{ kind: "text", value: "Leverantör krävs. Använd: acolyte auth <provider>" }],
   "cli.auth.saved": [
     { kind: "text", value: "Sparade " },
@@ -285,7 +283,7 @@ export const SV_MESSAGES = {
   "cli.auth.subscription.override.confirm": [
     { kind: "text", value: "Prenumerationen för " },
     { kind: "arg", name: "provider" },
-    { kind: "text", value: " är redan ansluten. Ersätta den? [y/N]: " },
+    { kind: "text", value: " är redan ansluten. Ersätta den? [y/N]:" },
   ],
   "cli.auth.subscription.unsupported": [
     { kind: "arg", name: "provider" },
@@ -392,7 +390,7 @@ export const SV_MESSAGES = {
   "cli.history.none": [{ kind: "text", value: "Inga sparade sessioner." }],
   "cli.login.opening.browser": [{ kind: "text", value: "Öppnar webbläsaren för inloggning…" }],
   "cli.login.prompt.token": [{ kind: "text", value: "Molntoken: " }],
-  "cli.login.prompt.url": [{ kind: "text", value: "Molnadress (https://app.acolyte.sh): " }],
+  "cli.login.prompt.url": [{ kind: "text", value: "Molnadress (https://app.acolyte.sh):" }],
   "cli.login.saved": [{ kind: "text", value: "Inloggad." }],
   "cli.login.timeout": [{ kind: "text", value: "Autentiseringen tog för lång tid. Försök igen." }],
   "cli.login.token.empty": [{ kind: "text", value: "Token får inte vara tom." }],
@@ -451,6 +449,7 @@ export const SV_MESSAGES = {
     { kind: "arg", name: "id" },
     { kind: "text", value: " sparat." },
   ],
+  "cli.auth.method.required": [{ kind: "text", value: "Metod krävs. Använd --key eller --subscription." }],
   "cli.server.already_running": [
     { kind: "text", value: "Servern körs redan på port " },
     { kind: "arg", name: "port" },

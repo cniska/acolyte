@@ -21,8 +21,8 @@ acolyte config unset openaiBaseUrl
 `acolyte auth` authenticates providers with an API key or, where supported, a subscription:
 
 ```bash
-acolyte auth                         # status for every provider
-acolyte auth openai                  # interactive: key or subscription
+acolyte auth                         # pick a provider from the list, then how to authenticate
+acolyte auth openai                  # pick key or subscription from the list
 acolyte auth openai --key            # store OPENAI_API_KEY
 acolyte auth openai --subscription   # browser OAuth
 acolyte auth vercel --key            # store AI_GATEWAY_API_KEY
@@ -30,6 +30,8 @@ acolyte auth openai --logout         # remove stored credentials for openai
 acolyte auth openai --logout --key   # remove only OPENAI_API_KEY
 acolyte auth openai --logout --subscription # remove only the subscription
 ```
+
+Both lists are chosen with the arrow keys; enter confirms and esc cancels. Without a terminal — a pipe, a script, CI — `acolyte auth` prints provider status instead of asking, and a provider supporting both methods needs `--key` or `--subscription`.
 
 API keys are written to `<configDir>/credentials` (mode 0600), the same file `acolyte login` uses. Subscription tokens are stored separately in `<configDir>/oauth.json`. `auth` asks for confirmation before replacing stored credentials.
 

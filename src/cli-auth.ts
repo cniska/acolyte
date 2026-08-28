@@ -1,3 +1,5 @@
+import { alignCols } from "./chat-format";
+import type { SelectOption } from "./cli-select";
 import { CodedError } from "./coded-error";
 import { errorMessage } from "./error-contract";
 import { t } from "./i18n";
@@ -14,7 +16,9 @@ import {
 
 type AuthModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
+  interactive: boolean;
   prompt: (question: string) => string | null;
+  selectOption: <T>(options: SelectOption<T>[]) => Promise<T | undefined>;
   promptHidden: (question: string) => Promise<string | undefined>;
   printDim: (message: string) => void;
   printError: (message: string) => void;
@@ -98,21 +102,43 @@ function methodLabels(methods: string[]): string {
   return methods.join(" + ");
 }
 
+function providerMethods(provider: Provider, deps: AuthModeDeps): string[] {
+  const methods: string[] = [];
+  if (supportsSubscription(provider) && deps.readOAuthTokens(provider) !== undefined) {
+    methods.push(t("status.provider_auth.subscription"));
+  }
+  if (deps.readConfiguredProviderApiKeys()[provider]) methods.push(t("status.provider_auth.api_key"));
+  return methods;
+}
+
 function printStatus(deps: AuthModeDeps): void {
-  const keys = deps.readConfiguredProviderApiKeys();
-  const apiKeyLabel = t("status.provider_auth.api_key");
-  const subscriptionLabel = t("status.provider_auth.subscription");
   for (const provider of PROVIDERS) {
-    const methods: string[] = [];
-    if (supportsSubscription(provider) && deps.readOAuthTokens(provider) !== undefined) {
-      methods.push(subscriptionLabel);
-    }
-    if (keys[provider]) methods.push(apiKeyLabel);
-    deps.printDim(t("cli.auth.status.line", { provider, methods: methodLabels(methods) }));
+    deps.printDim(t("cli.auth.status.line", { provider, methods: methodLabels(providerMethods(provider, deps)) }));
   }
 }
 
+/** Each step opens with a blank line, so a list, a prompt and a browser handoff stay separate. */
+function beginStep(deps: AuthModeDeps): void {
+  deps.printDim("");
+}
+
+/** Rows are a name and what it authenticates with, in columns: a picker has no prose to punctuate. */
+function selectProvider(deps: AuthModeDeps): Promise<Provider | undefined> {
+  beginStep(deps);
+  const labels = alignCols(PROVIDERS.map((provider) => [provider, methodLabels(providerMethods(provider, deps))]));
+  return deps.selectOption(PROVIDERS.map((provider, row) => ({ value: provider, label: labels[row] ?? provider })));
+}
+
+function selectMethod(deps: AuthModeDeps): Promise<AuthMethod | undefined> {
+  beginStep(deps);
+  return deps.selectOption<AuthMethod>([
+    { value: "subscription", label: t("status.provider_auth.subscription") },
+    { value: "key", label: t("status.provider_auth.api_key") },
+  ]);
+}
+
 async function saveApiKey(provider: Provider, deps: AuthModeDeps): Promise<void> {
+  beginStep(deps);
   const envKey = providerApiEnvKeyByProvider[provider];
   if (deps.readProviderApiKeys()[envKey]) {
     const answer = deps.prompt(t("cli.auth.override.confirm", { envKey }))?.trim().toLowerCase();
@@ -132,6 +158,7 @@ async function saveApiKey(provider: Provider, deps: AuthModeDeps): Promise<void>
 }
 
 async function loginSubscription(provider: OAuthProvider, deps: AuthModeDeps): Promise<void> {
+  beginStep(deps);
   if (provider !== "openai") {
     deps.printError(t("cli.auth.subscription.unsupported", { provider }));
     process.exitCode = 1;
@@ -206,13 +233,6 @@ async function logoutProvider(provider: Provider, method: AuthMethod | undefined
   deps.printDim(t("cli.auth.logout", { provider }));
 }
 
-function parseMethodChoice(raw: string | null | undefined): AuthMethod | null {
-  const value = raw?.trim().toLowerCase() ?? "";
-  if (value === "key" || value === "k" || value === "api" || value === "api_key" || value === "api-key") return "key";
-  if (value === "subscription" || value === "s" || value === "oauth") return "subscription";
-  return null;
-}
-
 async function resolveMethod(
   provider: Provider,
   parsed: ParsedAuthArgs,
@@ -227,14 +247,13 @@ async function resolveMethod(
     return "subscription";
   }
   if (parsed.key || !supportsSubscription(provider)) return "key";
-
-  const choice = parseMethodChoice(deps.prompt(t("cli.auth.prompt.method")));
-  if (!choice) {
-    deps.printError(t("cli.auth.method.invalid"));
+  if (!deps.interactive) {
+    deps.printError(t("cli.auth.method.required"));
     process.exitCode = 1;
     return null;
   }
-  return choice;
+
+  return (await selectMethod(deps)) ?? null;
 }
 
 export async function authMode(args: string[], deps: AuthModeDeps): Promise<void> {
@@ -254,23 +273,33 @@ export async function authMode(args: string[], deps: AuthModeDeps): Promise<void
     return;
   }
 
-  if (parsed.provider === undefined) {
-    if (parsed.logout || parsed.key || parsed.subscription) {
-      deps.commandError("auth", t("cli.auth.provider.required"));
-      process.exitCode = 1;
-      return;
-    }
-    printStatus(deps);
-    return;
-  }
-
-  const provider = parseProvider(parsed.provider);
-  if (!provider) {
-    deps.printError(t("cli.auth.invalid_provider", { providers: PROVIDER_LIST }));
+  if (parsed.provider === undefined && (parsed.logout || parsed.key || parsed.subscription)) {
+    deps.commandError("auth", t("cli.auth.provider.required"));
     process.exitCode = 1;
     return;
   }
 
+  if (parsed.provider !== undefined) {
+    const provider = parseProvider(parsed.provider);
+    if (!provider) {
+      deps.printError(t("cli.auth.invalid_provider", { providers: PROVIDER_LIST }));
+      process.exitCode = 1;
+      return;
+    }
+    await authenticateProvider(provider, parsed, deps);
+    return;
+  }
+
+  if (!deps.interactive) {
+    printStatus(deps);
+    return;
+  }
+
+  const chosen = await selectProvider(deps);
+  if (chosen) await authenticateProvider(chosen, parsed, deps);
+}
+
+async function authenticateProvider(provider: Provider, parsed: ParsedAuthArgs, deps: AuthModeDeps): Promise<void> {
   if (parsed.logout) {
     if (parsed.subscription && !supportsSubscription(provider)) {
       deps.printError(t("cli.auth.subscription.unsupported", { provider }));
