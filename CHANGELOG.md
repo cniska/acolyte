@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.26.0 (2026-08-28)
+
+- fix(cli): start the daemon from a compiled binary (`52adef01`)
+- feat(auth): pick provider and method (#406) (`23367ffd`)
+
+
 ## 0.25.0 (2026-08-28)
 
 - docs(comparison): rebuild feature overview (`72f33a19`)
