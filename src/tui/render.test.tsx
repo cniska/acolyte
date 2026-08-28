@@ -465,6 +465,59 @@ describe("render", () => {
     }
   });
 
+  test("focus-in after an incremental overflow does not duplicate frozen scrollback", async () => {
+    // Growing one line per frame reaches the viewport through the incremental path, which freezes
+    // the rows the terminal scrolled away. A focus-in repaint reads that bookkeeping, so if the
+    // incremental path skipped it the forced repaint re-emits rows already in scrollback.
+    const LINES = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
+    const stdin = mockStdinTty();
+    try {
+      const writes = await withMockedStdout(
+        async (captured) => {
+          const { render } = await import("./render");
+          let visible = 1;
+          const listeners = new Set<() => void>();
+          const store = {
+            get: () => visible,
+            subscribe: (listener: () => void) => {
+              listeners.add(listener);
+              return () => listeners.delete(listener);
+            },
+          };
+          function App(): React.JSX.Element {
+            const count = useSyncExternalStore(store.subscribe, store.get);
+            return (
+              <tui-box flexDirection="column">
+                {LINES.slice(0, count).map((line) => (
+                  <tui-text key={line}>{line}</tui-text>
+                ))}
+                <tui-text>input</tui-text>
+              </tui-box>
+            );
+          }
+          const app = render(<App />);
+          await drainFrame(() => app.flush(), captured);
+          for (visible = 2; visible <= LINES.length; visible++) {
+            for (const listener of listeners) listener();
+            await drainFrame(() => app.flush(), captured);
+          }
+          stdin.emit("\x1b[I");
+          app.unmount();
+          await app.waitUntilExit();
+        },
+        { columns: 20, rows: 6 },
+      );
+
+      const vt = replayTerminal(frameWrites(writes), 6, 20);
+      const transcript = [...vt.scrollback, ...vt.screen];
+      for (const line of LINES) {
+        expect(transcript.filter((row) => row.includes(line)).length).toBe(1);
+      }
+    } finally {
+      stdin.restore();
+    }
+  });
+
   test("focus-in after a width resize erases the stale tail copy", async () => {
     // A width-change repaint must skip its erase (reflow makes the stored count
     // unsafe), leaving a stale copy of the tail above the new one. When every tail
@@ -622,6 +675,31 @@ describe("render", () => {
     const ROWS = 10;
     const COLS = 40;
     const tall = "x".repeat(COLS * (ROWS + 3));
+    // The line itself changes, so its rows are rewritten rather than left standing.
+    const edited = `y${tall.slice(1)}`;
+    const frames = await renderScript(
+      [
+        <tui-box key="a" flexDirection="column">
+          <tui-text>{tall}</tui-text>
+        </tui-box>,
+        <tui-box key="b" flexDirection="column">
+          <tui-text>{edited}</tui-text>
+          <tui-text>after</tui-text>
+        </tui-box>,
+      ],
+      { columns: COLS, rows: ROWS },
+    );
+    const vt = replayTerminal(frameWrites(frames.flat()), ROWS, COLS);
+    const painted = [...vt.scrollback, ...vt.screen].filter((row) => row.includes("x")).length;
+    // The repaint reclaims every row still on screen; only the rows that genuinely
+    // scrolled off the top survive as a stale prefix.
+    expect(painted).toBe(ROWS + 3 + (ROWS + 3 - ROWS));
+  });
+
+  test("a line appended below a viewport-taller line leaves it on screen once", async () => {
+    const ROWS = 10;
+    const COLS = 40;
+    const tall = "x".repeat(COLS * (ROWS + 3));
     const frames = await renderScript(
       [
         <tui-box key="a" flexDirection="column">
@@ -636,9 +714,7 @@ describe("render", () => {
     );
     const vt = replayTerminal(frameWrites(frames.flat()), ROWS, COLS);
     const painted = [...vt.scrollback, ...vt.screen].filter((row) => row.includes("x")).length;
-    // The repaint reclaims every row still on screen; only the rows that genuinely
-    // scrolled off the top survive as a stale prefix.
-    expect(painted).toBe(ROWS + 3 + (ROWS + 3 - ROWS));
+    expect(painted).toBe(ROWS + 3);
   });
 
   test("an edit above the fold repaints the tail without duplicating scrollback", async () => {
@@ -1287,6 +1363,97 @@ describe("render", () => {
     }
   });
 
+  test("a terminal wipe reaches the screen with the repaint that follows it", async () => {
+    // A bare wipe leaves an empty screen until the next commit paints — a visible flash.
+    const { clearTerminal } = await import("./host-config");
+    let cleared = false;
+    const listeners = new Set<() => void>();
+    const store = {
+      get: () => cleared,
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    const postClear: string[] = [];
+    await withMockedStdout(
+      async (buf) => {
+        const { render } = await import("./render");
+        function App(): React.JSX.Element {
+          const c = useSyncExternalStore(store.subscribe, store.get);
+          return (
+            <tui-box flexDirection="column">
+              <tui-text>{c ? "AFTER" : "BEFORE"}</tui-text>
+            </tui-box>
+          );
+        }
+        const app = render(<App />);
+        await drainFrame(() => app.flush(), buf);
+        const mark = buf.length;
+        cleared = true;
+        clearTerminal();
+        for (const listener of listeners) listener();
+        await drainFrame(() => app.flush(), buf);
+        postClear.push(...buf.slice(mark));
+        app.unmount();
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 6 },
+    );
+
+    const wipes = postClear.filter((write) => write.includes(ansi.clearScreen));
+    expect(wipes).toHaveLength(1);
+    expect(wipes[0]).toContain("AFTER");
+    expect(wipes[0]?.startsWith(ansi.syncStart)).toBe(true);
+    // The wipe leads the payload: trailing it would erase the content just painted.
+    expect(wipes[0]?.indexOf(ansi.clearScreen)).toBeLessThan(wipes[0]?.indexOf("AFTER") ?? -1);
+  });
+
+  test("a wipe consumed by an overflowing repaint still reaches the terminal", async () => {
+    // The wipe is armed once and consumed by whichever payload the next commit emits, so a clear
+    // landing on a commit whose content overflows must carry it as the plain payload does.
+    const { clearTerminal } = await import("./host-config");
+    const TALL = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"];
+    let cleared = false;
+    const listeners = new Set<() => void>();
+    const store = {
+      get: () => cleared,
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    const postClear: string[] = [];
+    await withMockedStdout(
+      async (buf) => {
+        const { render } = await import("./render");
+        function App(): React.JSX.Element {
+          const c = useSyncExternalStore(store.subscribe, store.get);
+          return (
+            <tui-box flexDirection="column">
+              {c ? TALL.map((line) => <tui-text key={line}>{line}</tui-text>) : <tui-text>BEFORE</tui-text>}
+            </tui-box>
+          );
+        }
+        const app = render(<App />);
+        await drainFrame(() => app.flush(), buf);
+        const mark = buf.length;
+        cleared = true;
+        clearTerminal();
+        for (const listener of listeners) listener();
+        await drainFrame(() => app.flush(), buf);
+        postClear.push(...buf.slice(mark));
+        app.unmount();
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 6 },
+    );
+
+    const wipes = postClear.filter((write) => write.includes(ansi.clearScreen));
+    expect(wipes).toHaveLength(1);
+    expect(wipes[0]).toContain("T8");
+  });
+
   test("a promotion after a width change writes committed lines in full, never dropping them", async () => {
     // The frozen line count is measured in the freeze frame's width. After a resize the
     // committed slice rewraps to a different line count, so dropping that stale count would
@@ -1450,6 +1617,68 @@ describe("growing a live region", () => {
       return up.length > 0 ? Math.max(...up) : 0;
     });
     expect(reach).toEqual(new Array(7).fill(3));
+  });
+
+  test("appending a line past the viewport height still repaints a constant number of rows", async () => {
+    const script = [];
+    for (let n = 1; n <= 24; n++) script.push(growingRow(n));
+    const frames = await renderScript(script, { columns: 80, rows: 12 });
+
+    const erasedRows = frames.slice(1).map((frame) => {
+      const up = cursorUpCounts(frame);
+      return up.length > 0 ? Math.max(...up) : 0;
+    });
+    expect(erasedRows).toEqual(new Array(23).fill(2));
+  });
+
+  // A new disqualifier in the incremental path shows up here as a reach that grows with the
+  // region, at whichever geometry it slipped through.
+  test.each([
+    [40, 80],
+    [12, 80],
+    [8, 40],
+    [6, 20],
+  ])("an appended line costs a constant repaint at %i rows and %i columns", async (rows, columns) => {
+    const script = [];
+    for (let n = 1; n <= rows * 2; n++) script.push(growingRow(n));
+    const frames = await renderScript(script, { columns, rows });
+
+    const reach = frames.slice(1).map((frame) => {
+      const up = cursorUpCounts(frame);
+      return up.length > 0 ? Math.max(...up) : 0;
+    });
+    expect(new Set(reach)).toEqual(new Set([2]));
+    const painted = frames.slice(1).map((frame) => frame.join("").split("\n").length);
+    expect(new Set(painted)).toEqual(new Set([4]));
+  });
+
+  // A frame split across writes presents the erase without its repaint, which the VT harness
+  // cannot see.
+  test("every frame of a growing region is one synchronized write", async () => {
+    const script = [];
+    for (let n = 1; n <= 24; n++) script.push(growingRow(n));
+    const frames = await renderScript(script, { columns: 80, rows: 12 });
+
+    for (const frame of frames.slice(1)) {
+      expect(frame).toHaveLength(1);
+      expect(frame[0]?.startsWith(ansi.syncStart)).toBe(true);
+      expect(frame[0]?.endsWith(ansi.syncEnd)).toBe(true);
+    }
+  });
+
+  test("the tail of an overflowing region is on screen exactly once", async () => {
+    const script = [];
+    for (let n = 1; n <= 24; n++) script.push(growingRow(n));
+    const frames = await renderScript(script, { columns: 80, rows: 12 });
+    const screen = replayTerminal(frames.flat(), 12, 80)
+      .screen.map((line) => line.trimEnd())
+      .filter(Boolean);
+    expect(screen).toEqual([
+      ...Array.from({ length: 9 }, (_, i) => `  ${i + 16} + const value${i + 16} = ${i + 16};`),
+      "╭────────╮",
+      "│ ❯      │",
+      "╰────────╯",
+    ]);
   });
 
   test("the grown region is on screen exactly once", async () => {
