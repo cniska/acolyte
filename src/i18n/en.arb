@@ -560,10 +560,6 @@
   "@cli.auth.method.conflict": {
     "description": "Shown when both --key and --subscription are passed. Both are literal flag names and must not be translated."
   },
-  "cli.auth.method.invalid": "Invalid method. Use key or subscription.",
-  "@cli.auth.method.invalid": {
-    "description": "Shown when the method answer was not recognized. 'key' and 'subscription' are the literal accepted inputs (cli-auth.ts:209-214) and must not be translated."
-  },
   "cli.auth.opening": "Opening browser to authorize with OpenAI…",
   "@cli.auth.opening": {
     "description": "Progress line shown before a browser is opened for provider authorization. 'OpenAI' is a company name and stays as-is."
@@ -588,10 +584,6 @@
   "cli.auth.prompt.api_key": "API key: ",
   "@cli.auth.prompt.api_key": {
     "description": "Interactive prompt asking the user to type an API key (cli-auth.ts:124). Ends with a colon and a trailing space because input continues on the same line; keep both."
-  },
-  "cli.auth.prompt.method": "Method [key|subscription]: ",
-  "@cli.auth.prompt.method": {
-    "description": "Interactive prompt asking which authentication method to use (cli-auth.ts:231). '[key|subscription]' lists the literal words the parser accepts (cli-auth.ts:209-214) and must not be translated. Ends with a colon and a trailing space; keep both."
   },
   "cli.auth.provider.required": "Provider required. Use: acolyte auth <provider>",
   "@cli.auth.provider.required": {
@@ -1026,6 +1018,14 @@
         "type": "String"
       }
     }
+  },
+  "cli.select.hint": "\u2191\u2193 select \u00b7 enter confirm \u00b7 esc cancel",
+  "@cli.select.hint": {
+    "description": "Footer under an interactive CLI list, naming the keys that move, confirm and cancel. The arrow glyphs and the key names 'enter' and 'esc' are literal keyboard keys; translate only the verbs."
+  },
+  "cli.auth.method.required": "Method required. Use --key or --subscription.",
+  "@cli.auth.method.required": {
+    "description": "Shown when a provider supporting more than one method is authenticated without a terminal to choose in. The flag names are literal command syntax and must not be translated."
   },
   "cli.server.already_running": "Server already running on port {port} (pid {pid})",
   "@cli.server.already_running": {

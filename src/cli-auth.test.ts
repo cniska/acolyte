@@ -5,16 +5,24 @@ import type { ProviderApiEnvKey } from "./provider-contract";
 
 const tokens = { accessToken: "a", refreshToken: "r", expiresAt: 1, accountId: "acct" };
 
-function createDeps(overrides: Partial<Parameters<typeof authMode>[1]> = {}) {
+function createDeps(overrides: Partial<Parameters<typeof authMode>[1]> = {}, choices: string[] = []) {
   const server: OAuthCallbackServer = {
     result: Promise.resolve({ code: "the-code" }),
     stop: mock(async () => {}),
   };
   const writes: Array<{ envKey: ProviderApiEnvKey; value: string }> = [];
+  const shown: string[][] = [];
+  const pending = [...choices];
   const removes: ProviderApiEnvKey[] = [];
   const base = {
     hasHelpFlag: () => false,
+    interactive: false,
     prompt: mock((_q: string) => null as string | null),
+    selectOption: async <T>(options: Array<{ value: T; label: string }>): Promise<T | undefined> => {
+      shown.push(options.map((option) => option.label));
+      const wanted = pending.shift();
+      return options.find((option) => wanted !== undefined && option.label.includes(wanted))?.value;
+    },
     promptHidden: mock(async (_q: string) => "sk-new" as string | undefined),
     printDim: mock((_: string) => {}),
     printError: mock((_: string) => {}),
@@ -37,7 +45,7 @@ function createDeps(overrides: Partial<Parameters<typeof authMode>[1]> = {}) {
     commandError: mock((_: string, __?: string) => {}),
     commandHelp: mock((_: string) => {}),
   };
-  return { deps: { ...base, ...overrides }, server, writes, removes };
+  return { deps: { ...base, ...overrides }, server, writes, removes, shown };
 }
 
 beforeEach(() => {
@@ -55,7 +63,7 @@ describe("authMode", () => {
     expect(deps.commandHelp).toHaveBeenCalledWith("auth");
   });
 
-  test("no args prints status for every provider", async () => {
+  test("no args prints status for every provider when stdin is not a terminal", async () => {
     const { deps } = createDeps({
       readOAuthTokens: mock((provider: string) => (provider === "openai" ? tokens : undefined)),
       readConfiguredProviderApiKeys: mock(() => ({ anthropic: "sk-a" })),
@@ -68,6 +76,55 @@ describe("authMode", () => {
     expect(deps.startCallbackServer).not.toHaveBeenCalled();
   });
 
+  test("no args in a terminal picks a provider from the status list", async () => {
+    const { deps, writes, shown } = createDeps(
+      {
+        interactive: true,
+        readConfiguredProviderApiKeys: mock(() => ({ anthropic: "sk-a" })),
+      },
+      ["anthropic"],
+    );
+    await authMode([], deps);
+    expect(shown[0]).toEqual(["anthropic (api key)", "google (none)", "openai (none)", "vercel (none)"]);
+    expect(writes).toEqual([{ envKey: "ANTHROPIC_API_KEY", value: "sk-new" }]);
+  });
+
+  test("no args in a terminal picks provider, then method", async () => {
+    const { deps, shown } = createDeps({ interactive: true }, ["openai", "subscription"]);
+    await authMode([], deps);
+    expect(shown[0]?.some((label) => label.startsWith("openai"))).toBe(true);
+    expect(shown[1]).toEqual(["subscription", "api key"]);
+    expect(deps.startCallbackServer).toHaveBeenCalled();
+  });
+
+  test("cancelling the provider list changes nothing and does not fail", async () => {
+    const { deps, writes } = createDeps({ interactive: true });
+    await authMode([], deps);
+    expect(deps.printError).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(0);
+    expect(writes).toEqual([]);
+    expect(deps.startCallbackServer).not.toHaveBeenCalled();
+  });
+
+  test("cancelling the method list changes nothing and does not fail", async () => {
+    const { deps, writes } = createDeps({ interactive: true }, ["openai"]);
+    await authMode([], deps);
+    expect(deps.printError).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(0);
+    expect(writes).toEqual([]);
+    expect(deps.startCallbackServer).not.toHaveBeenCalled();
+  });
+
+  test("a provider needing a method choice without a terminal names the flags", async () => {
+    const { deps, writes } = createDeps();
+    await authMode(["openai"], deps);
+    expect((deps.printError as ReturnType<typeof mock>).mock.calls.map((c) => String(c[0])).join(" ")).toContain(
+      "--subscription",
+    );
+    expect(process.exitCode).toBe(1);
+    expect(writes).toEqual([]);
+  });
+
   test("unsupported provider errors", async () => {
     const { deps } = createDeps();
     await authMode(["nope"], deps);
@@ -76,10 +133,10 @@ describe("authMode", () => {
     expect(deps.startCallbackServer).not.toHaveBeenCalled();
   });
 
-  test("key-only provider writes API key without method prompt", async () => {
-    const { deps, writes } = createDeps();
+  test("key-only provider writes API key without offering a method list", async () => {
+    const { deps, writes, shown } = createDeps();
     await authMode(["anthropic"], deps);
-    expect(deps.prompt).not.toHaveBeenCalled();
+    expect(shown).toEqual([]);
     expect(writes).toEqual([{ envKey: "ANTHROPIC_API_KEY", value: "sk-new" }]);
     expect(deps.startCallbackServer).not.toHaveBeenCalled();
   });
@@ -118,10 +175,10 @@ describe("authMode", () => {
     expect(writes).toEqual([{ envKey: "AI_GATEWAY_API_KEY", value: "sk-new" }]);
   });
 
-  test("openai without flags prompts for method", async () => {
-    const { deps, writes } = createDeps({ prompt: mock(() => "key") });
+  test("openai without flags offers the method list", async () => {
+    const { deps, writes, shown } = createDeps({ interactive: true }, ["api key"]);
     await authMode(["openai"], deps);
-    expect(deps.prompt).toHaveBeenCalled();
+    expect(shown).toEqual([["subscription", "api key"]]);
     expect(writes).toEqual([{ envKey: "OPENAI_API_KEY", value: "sk-new" }]);
     expect(deps.startCallbackServer).not.toHaveBeenCalled();
   });
@@ -136,7 +193,7 @@ describe("authMode", () => {
   });
 
   test("openai method subscription runs OAuth", async () => {
-    const { deps } = createDeps({ prompt: mock(() => "subscription") });
+    const { deps } = createDeps({ interactive: true }, ["subscription"]);
     await authMode(["openai"], deps);
     expect(deps.writeOAuthTokens).toHaveBeenCalledWith("openai", tokens);
   });

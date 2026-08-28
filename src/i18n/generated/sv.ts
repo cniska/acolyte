@@ -249,7 +249,6 @@ export const SV_MESSAGES = {
     { kind: "text", value: "." },
   ],
   "cli.auth.method.conflict": [{ kind: "text", value: "Använd bara en av --key och --subscription." }],
-  "cli.auth.method.invalid": [{ kind: "text", value: "Ogiltig metod. Använd key eller subscription." }],
   "cli.auth.opening": [{ kind: "text", value: "Öppnar webbläsaren för auktorisering med OpenAI…" }],
   "cli.auth.override.cancelled": [{ kind: "text", value: "Den befintliga nyckeln lämnades oförändrad." }],
   "cli.auth.override.confirm": [
@@ -264,7 +263,6 @@ export const SV_MESSAGES = {
     },
   ],
   "cli.auth.prompt.api_key": [{ kind: "text", value: "API-nyckel: " }],
-  "cli.auth.prompt.method": [{ kind: "text", value: "Metod [key|subscription]: " }],
   "cli.auth.provider.required": [{ kind: "text", value: "Leverantör krävs. Använd: acolyte auth <provider>" }],
   "cli.auth.saved": [
     { kind: "text", value: "Sparade " },
@@ -451,6 +449,8 @@ export const SV_MESSAGES = {
     { kind: "arg", name: "id" },
     { kind: "text", value: " sparat." },
   ],
+  "cli.select.hint": [{ kind: "text", value: "↑↓ välj · enter bekräfta · esc avbryt" }],
+  "cli.auth.method.required": [{ kind: "text", value: "Metod krävs. Använd --key eller --subscription." }],
   "cli.server.already_running": [
     { kind: "text", value: "Servern körs redan på port " },
     { kind: "arg", name: "port" },

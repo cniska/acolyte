@@ -15,6 +15,7 @@ import { memoryMode } from "./cli-memory";
 import { handlePrompt } from "./cli-prompt";
 import { promptHidden } from "./cli-prompt-hidden";
 import { runMode, runResourceId } from "./cli-run";
+import { selectOption } from "./cli-select";
 import { skillMode } from "./cli-skill";
 import { isServerConnectionFailure, statusMode } from "./cli-status";
 import { toolMode } from "./cli-tool";
@@ -124,6 +125,8 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
     handler: (args) =>
       authMode(args, {
         hasHelpFlag,
+        interactive: process.stdin.isTTY === true,
+        selectOption,
         prompt: (message) => prompt(message),
         promptHidden,
         printDim,

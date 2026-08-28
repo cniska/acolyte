@@ -247,7 +247,6 @@ export const FI_MESSAGES = {
     { kind: "text", value: " ei ole tallennettuja tunnuksia." },
   ],
   "cli.auth.method.conflict": [{ kind: "text", value: "Käytä vain toista: --key tai --subscription." }],
-  "cli.auth.method.invalid": [{ kind: "text", value: "Virheellinen tapa. Käytä key tai subscription." }],
   "cli.auth.opening": [{ kind: "text", value: "Avataan selain OpenAI-valtuutusta varten…" }],
   "cli.auth.override.cancelled": [{ kind: "text", value: "Olemassa oleva avain jätettiin ennalleen." }],
   "cli.auth.override.confirm": [
@@ -262,7 +261,6 @@ export const FI_MESSAGES = {
     },
   ],
   "cli.auth.prompt.api_key": [{ kind: "text", value: "API-avain: " }],
-  "cli.auth.prompt.method": [{ kind: "text", value: "Tapa [key|subscription]: " }],
   "cli.auth.provider.required": [{ kind: "text", value: "Palveluntarjoaja vaaditaan. Käytä: acolyte auth <provider>" }],
   "cli.auth.saved": [
     { kind: "text", value: "Tallennettu " },
@@ -447,6 +445,8 @@ export const FI_MESSAGES = {
     { kind: "arg", name: "id" },
     { kind: "text", value: " tallennettu." },
   ],
+  "cli.select.hint": [{ kind: "text", value: "↑↓ valitse · enter vahvista · esc peruuta" }],
+  "cli.auth.method.required": [{ kind: "text", value: "Metodi vaaditaan. Käytä --key tai --subscription." }],
   "cli.server.already_running": [
     { kind: "text", value: "Palvelin on jo käynnissä portissa " },
     { kind: "arg", name: "port" },

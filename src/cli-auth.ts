@@ -1,3 +1,4 @@
+import type { SelectOption } from "./cli-select";
 import { CodedError } from "./coded-error";
 import { errorMessage } from "./error-contract";
 import { t } from "./i18n";
@@ -14,7 +15,9 @@ import {
 
 type AuthModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
+  interactive: boolean;
   prompt: (question: string) => string | null;
+  selectOption: <T>(options: SelectOption<T>[]) => Promise<T | undefined>;
   promptHidden: (question: string) => Promise<string | undefined>;
   printDim: (message: string) => void;
   printError: (message: string) => void;
@@ -98,18 +101,35 @@ function methodLabels(methods: string[]): string {
   return methods.join(" + ");
 }
 
-function printStatus(deps: AuthModeDeps): void {
+function statusLines(deps: AuthModeDeps): string[] {
   const keys = deps.readConfiguredProviderApiKeys();
   const apiKeyLabel = t("status.provider_auth.api_key");
   const subscriptionLabel = t("status.provider_auth.subscription");
-  for (const provider of PROVIDERS) {
+  return PROVIDERS.map((provider) => {
     const methods: string[] = [];
     if (supportsSubscription(provider) && deps.readOAuthTokens(provider) !== undefined) {
       methods.push(subscriptionLabel);
     }
     if (keys[provider]) methods.push(apiKeyLabel);
-    deps.printDim(t("cli.auth.status.line", { provider, methods: methodLabels(methods) }));
-  }
+    return t("cli.auth.status.line", { provider, methods: methodLabels(methods) });
+  });
+}
+
+function printStatus(deps: AuthModeDeps): void {
+  for (const line of statusLines(deps)) deps.printDim(line);
+}
+
+/** The picker rows are the status lines, so choosing happens in the view the user came for. */
+function selectProvider(deps: AuthModeDeps): Promise<Provider | undefined> {
+  const labels = statusLines(deps);
+  return deps.selectOption(PROVIDERS.map((provider, row) => ({ value: provider, label: labels[row] ?? provider })));
+}
+
+function selectMethod(deps: AuthModeDeps): Promise<AuthMethod | undefined> {
+  return deps.selectOption<AuthMethod>([
+    { value: "subscription", label: t("status.provider_auth.subscription") },
+    { value: "key", label: t("status.provider_auth.api_key") },
+  ]);
 }
 
 async function saveApiKey(provider: Provider, deps: AuthModeDeps): Promise<void> {
@@ -206,13 +226,6 @@ async function logoutProvider(provider: Provider, method: AuthMethod | undefined
   deps.printDim(t("cli.auth.logout", { provider }));
 }
 
-function parseMethodChoice(raw: string | null | undefined): AuthMethod | null {
-  const value = raw?.trim().toLowerCase() ?? "";
-  if (value === "key" || value === "k" || value === "api" || value === "api_key" || value === "api-key") return "key";
-  if (value === "subscription" || value === "s" || value === "oauth") return "subscription";
-  return null;
-}
-
 async function resolveMethod(
   provider: Provider,
   parsed: ParsedAuthArgs,
@@ -227,14 +240,13 @@ async function resolveMethod(
     return "subscription";
   }
   if (parsed.key || !supportsSubscription(provider)) return "key";
-
-  const choice = parseMethodChoice(deps.prompt(t("cli.auth.prompt.method")));
-  if (!choice) {
-    deps.printError(t("cli.auth.method.invalid"));
+  if (!deps.interactive) {
+    deps.printError(t("cli.auth.method.required"));
     process.exitCode = 1;
     return null;
   }
-  return choice;
+
+  return (await selectMethod(deps)) ?? null;
 }
 
 export async function authMode(args: string[], deps: AuthModeDeps): Promise<void> {
@@ -254,23 +266,33 @@ export async function authMode(args: string[], deps: AuthModeDeps): Promise<void
     return;
   }
 
-  if (parsed.provider === undefined) {
-    if (parsed.logout || parsed.key || parsed.subscription) {
-      deps.commandError("auth", t("cli.auth.provider.required"));
-      process.exitCode = 1;
-      return;
-    }
-    printStatus(deps);
-    return;
-  }
-
-  const provider = parseProvider(parsed.provider);
-  if (!provider) {
-    deps.printError(t("cli.auth.invalid_provider", { providers: PROVIDER_LIST }));
+  if (parsed.provider === undefined && (parsed.logout || parsed.key || parsed.subscription)) {
+    deps.commandError("auth", t("cli.auth.provider.required"));
     process.exitCode = 1;
     return;
   }
 
+  if (parsed.provider !== undefined) {
+    const provider = parseProvider(parsed.provider);
+    if (!provider) {
+      deps.printError(t("cli.auth.invalid_provider", { providers: PROVIDER_LIST }));
+      process.exitCode = 1;
+      return;
+    }
+    await authenticateProvider(provider, parsed, deps);
+    return;
+  }
+
+  if (!deps.interactive) {
+    printStatus(deps);
+    return;
+  }
+
+  const chosen = await selectProvider(deps);
+  if (chosen) await authenticateProvider(chosen, parsed, deps);
+}
+
+async function authenticateProvider(provider: Provider, parsed: ParsedAuthArgs, deps: AuthModeDeps): Promise<void> {
   if (parsed.logout) {
     if (parsed.subscription && !supportsSubscription(provider)) {
       deps.printError(t("cli.auth.subscription.unsupported", { provider }));

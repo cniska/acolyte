@@ -241,7 +241,6 @@ export const EN_MESSAGES = {
     { kind: "text", value: "." },
   ],
   "cli.auth.method.conflict": [{ kind: "text", value: "Use only one of --key or --subscription." }],
-  "cli.auth.method.invalid": [{ kind: "text", value: "Invalid method. Use key or subscription." }],
   "cli.auth.opening": [{ kind: "text", value: "Opening browser to authorize with OpenAI…" }],
   "cli.auth.override.cancelled": [{ kind: "text", value: "Left the existing key unchanged." }],
   "cli.auth.override.confirm": [
@@ -256,7 +255,6 @@ export const EN_MESSAGES = {
     },
   ],
   "cli.auth.prompt.api_key": [{ kind: "text", value: "API key: " }],
-  "cli.auth.prompt.method": [{ kind: "text", value: "Method [key|subscription]: " }],
   "cli.auth.provider.required": [{ kind: "text", value: "Provider required. Use: acolyte auth <provider>" }],
   "cli.auth.saved": [
     { kind: "text", value: "Saved " },
@@ -440,6 +438,8 @@ export const EN_MESSAGES = {
     { kind: "arg", name: "id" },
     { kind: "text", value: "." },
   ],
+  "cli.select.hint": [{ kind: "text", value: "↑↓ select · enter confirm · esc cancel" }],
+  "cli.auth.method.required": [{ kind: "text", value: "Method required. Use --key or --subscription." }],
   "cli.server.already_running": [
     { kind: "text", value: "Server already running on port " },
     { kind: "arg", name: "port" },
