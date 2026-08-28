@@ -89,6 +89,14 @@ describe("authMode", () => {
     expect(writes).toEqual([{ envKey: "ANTHROPIC_API_KEY", value: "sk-new" }]);
   });
 
+  test("each step opens with a blank line, including the first list", async () => {
+    const { deps } = createDeps({ interactive: true }, ["openai", "subscription"]);
+    await authMode([], deps);
+    const printed = (deps.printDim as ReturnType<typeof mock>).mock.calls.map((c) => c[0] as string);
+    expect(printed[0]).toBe("");
+    expect(printed.filter((line) => line === "")).toHaveLength(3);
+  });
+
   test("no args in a terminal picks provider, then method", async () => {
     const { deps, shown } = createDeps({ interactive: true }, ["openai", "subscription"]);
     await authMode([], deps);

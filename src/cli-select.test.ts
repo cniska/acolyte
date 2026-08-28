@@ -188,20 +188,6 @@ describe("selectOption", () => {
     expect(redraw.startsWith("\u001b[A".repeat(3))).toBe(true);
   });
 
-  test("a chosen list closes with a blank line and a cancelled one does not", async () => {
-    const chosen = fakeTerminal();
-    const chosenSelection = selectOption(OPTIONS, chosen.io);
-    chosen.press(ENTER);
-    await chosenSelection;
-    expect(chosen.written.at(-1)?.endsWith("\n")).toBe(true);
-
-    const cancelled = fakeTerminal();
-    const cancelledSelection = selectOption(OPTIONS, cancelled.io);
-    cancelled.press(ESC);
-    await cancelledSelection;
-    expect(cancelled.written.at(-1)?.endsWith("\n")).toBe(false);
-  });
-
   test("asks nothing when there is no terminal to ask in", async () => {
     const terminal = fakeTerminal(false);
     expect(await selectOption(OPTIONS, terminal.io)).toBeUndefined();

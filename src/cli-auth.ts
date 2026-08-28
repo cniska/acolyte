@@ -117,13 +117,20 @@ function printStatus(deps: AuthModeDeps): void {
   }
 }
 
+/** Each step opens with a blank line, so a list, a prompt and a browser handoff stay separate. */
+function beginStep(deps: AuthModeDeps): void {
+  deps.printDim("");
+}
+
 /** Rows are a name and what it authenticates with, in columns: a picker has no prose to punctuate. */
 function selectProvider(deps: AuthModeDeps): Promise<Provider | undefined> {
+  beginStep(deps);
   const labels = alignCols(PROVIDERS.map((provider) => [provider, methodLabels(providerMethods(provider, deps))]));
   return deps.selectOption(PROVIDERS.map((provider, row) => ({ value: provider, label: labels[row] ?? provider })));
 }
 
 function selectMethod(deps: AuthModeDeps): Promise<AuthMethod | undefined> {
+  beginStep(deps);
   return deps.selectOption<AuthMethod>([
     { value: "subscription", label: t("status.provider_auth.subscription") },
     { value: "key", label: t("status.provider_auth.api_key") },
@@ -131,6 +138,7 @@ function selectMethod(deps: AuthModeDeps): Promise<AuthMethod | undefined> {
 }
 
 async function saveApiKey(provider: Provider, deps: AuthModeDeps): Promise<void> {
+  beginStep(deps);
   const envKey = providerApiEnvKeyByProvider[provider];
   if (deps.readProviderApiKeys()[envKey]) {
     const answer = deps.prompt(t("cli.auth.override.confirm", { envKey }))?.trim().toLowerCase();
@@ -150,6 +158,7 @@ async function saveApiKey(provider: Provider, deps: AuthModeDeps): Promise<void>
 }
 
 async function loginSubscription(provider: OAuthProvider, deps: AuthModeDeps): Promise<void> {
+  beginStep(deps);
   if (provider !== "openai") {
     deps.printError(t("cli.auth.subscription.unsupported", { provider }));
     process.exitCode = 1;
