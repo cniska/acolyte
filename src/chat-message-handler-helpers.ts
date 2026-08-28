@@ -8,10 +8,7 @@ export type NaturalRememberDirective = {
 };
 
 export function isAbortError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  if (error.name === "AbortError") return true;
-  const message = error.message.toLowerCase();
-  return message.includes("request aborted") || message.includes("aborted");
+  return error instanceof Error && error.name === "AbortError";
 }
 
 export function formatSubmitError(error: unknown): string {
