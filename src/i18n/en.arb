@@ -568,9 +568,9 @@
   "@cli.auth.override.cancelled": {
     "description": "Shown when the user declined to overwrite a stored API key."
   },
-  "cli.auth.override.confirm": "{envKey} is already set. Replace it? [y/N]: ",
+  "cli.auth.override.confirm": "{envKey} is already set. Replace it? [y/N]:",
   "@cli.auth.override.confirm": {
-    "description": "Confirmation prompt before overwriting a stored API key (cli-auth.ts:118). {envKey} is a literal environment variable name. '[y/N]' shows the accepted answers: the code accepts only 'y' or 'yes' (cli-auth.ts:119), so leave those letters untranslated. Ends with a colon and a trailing space.",
+    "description": "Confirmation prompt before overwriting a stored API key (cli-auth.ts:118). {envKey} is a literal environment variable name. '[y/N]' shows the accepted answers: the code accepts only 'y' or 'yes' (cli-auth.ts:119), so leave those letters untranslated. Ends with a colon and no trailing space: `prompt()` writes the separating space itself.",
     "placeholders": {
       "envKey": {
         "type": "String"
@@ -621,9 +621,9 @@
   "@cli.auth.subscription.override.cancelled": {
     "description": "Shown when the user declined to replace a connected subscription."
   },
-  "cli.auth.subscription.override.confirm": "{provider} subscription is already connected. Replace it? [y/N]: ",
+  "cli.auth.subscription.override.confirm": "{provider} subscription is already connected. Replace it? [y/N]:",
   "@cli.auth.subscription.override.confirm": {
-    "description": "Confirmation prompt before replacing a connected subscription (cli-auth.ts:141). '[y/N]' shows the accepted answers: the code accepts only 'y' or 'yes' (cli-auth.ts:142), so leave those letters untranslated. Ends with a colon and a trailing space because the user answers on the same line.",
+    "description": "Confirmation prompt before replacing a connected subscription (cli-auth.ts:141). '[y/N]' shows the accepted answers: the code accepts only 'y' or 'yes' (cli-auth.ts:142), so leave those letters untranslated. Ends with a colon and no trailing space: `prompt()` writes the separating space itself.",
     "placeholders": {
       "provider": {
         "type": "String"
@@ -913,9 +913,9 @@
   "@cli.login.prompt.token": {
     "description": "Interactive prompt asking for the cloud token (cli-login.ts:62). Ends with a colon and a trailing space because the user types on the same line; keep both."
   },
-  "cli.login.prompt.url": "Cloud URL (https://app.acolyte.sh): ",
+  "cli.login.prompt.url": "Cloud URL (https://app.acolyte.sh):",
   "@cli.login.prompt.url": {
-    "description": "Interactive prompt asking for the cloud URL (cli-login.ts:38). Ends with a colon and a trailing space because the user types on the same line; keep both. The parenthesized URL is an example default and must not be translated."
+    "description": "Interactive prompt asking for the cloud URL (cli-login.ts:38). Ends with a colon and no trailing space: `prompt()` writes the separating space itself. The parenthesized URL is an example default and must not be translated."
   },
   "cli.login.saved": "Logged in.",
   "@cli.login.saved": {

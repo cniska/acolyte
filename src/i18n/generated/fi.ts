@@ -251,7 +251,7 @@ export const FI_MESSAGES = {
   "cli.auth.override.cancelled": [{ kind: "text", value: "Olemassa oleva avain jätettiin ennalleen." }],
   "cli.auth.override.confirm": [
     { kind: "arg", name: "envKey" },
-    { kind: "text", value: " on jo asetettu. Korvataanko? [y/N]: " },
+    { kind: "text", value: " on jo asetettu. Korvataanko? [y/N]:" },
   ],
   "cli.auth.port_in_use": [
     {
@@ -279,7 +279,7 @@ export const FI_MESSAGES = {
   "cli.auth.subscription.override.confirm": [
     { kind: "text", value: "Tilaus " },
     { kind: "arg", name: "provider" },
-    { kind: "text", value: " on jo yhdistetty. Korvataanko? [y/N]: " },
+    { kind: "text", value: " on jo yhdistetty. Korvataanko? [y/N]:" },
   ],
   "cli.auth.subscription.unsupported": [
     { kind: "arg", name: "provider" },
@@ -386,7 +386,7 @@ export const FI_MESSAGES = {
   "cli.history.none": [{ kind: "text", value: "Ei tallennettuja istuntoja." }],
   "cli.login.opening.browser": [{ kind: "text", value: "Avataan selain kirjautumista varten…" }],
   "cli.login.prompt.token": [{ kind: "text", value: "Pilvitunnus: " }],
-  "cli.login.prompt.url": [{ kind: "text", value: "Pilven osoite (https://app.acolyte.sh): " }],
+  "cli.login.prompt.url": [{ kind: "text", value: "Pilven osoite (https://app.acolyte.sh):" }],
   "cli.login.saved": [{ kind: "text", value: "Kirjauduttu sisään." }],
   "cli.login.timeout": [{ kind: "text", value: "Tunnistautuminen aikakatkaistiin. Yritä uudelleen." }],
   "cli.login.token.empty": [{ kind: "text", value: "Tunnus ei voi olla tyhjä." }],

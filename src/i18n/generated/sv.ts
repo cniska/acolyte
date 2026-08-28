@@ -253,7 +253,7 @@ export const SV_MESSAGES = {
   "cli.auth.override.cancelled": [{ kind: "text", value: "Den befintliga nyckeln lämnades oförändrad." }],
   "cli.auth.override.confirm": [
     { kind: "arg", name: "envKey" },
-    { kind: "text", value: " är redan satt. Ersätta den? [y/N]: " },
+    { kind: "text", value: " är redan satt. Ersätta den? [y/N]:" },
   ],
   "cli.auth.port_in_use": [
     {
@@ -283,7 +283,7 @@ export const SV_MESSAGES = {
   "cli.auth.subscription.override.confirm": [
     { kind: "text", value: "Prenumerationen för " },
     { kind: "arg", name: "provider" },
-    { kind: "text", value: " är redan ansluten. Ersätta den? [y/N]: " },
+    { kind: "text", value: " är redan ansluten. Ersätta den? [y/N]:" },
   ],
   "cli.auth.subscription.unsupported": [
     { kind: "arg", name: "provider" },
@@ -390,7 +390,7 @@ export const SV_MESSAGES = {
   "cli.history.none": [{ kind: "text", value: "Inga sparade sessioner." }],
   "cli.login.opening.browser": [{ kind: "text", value: "Öppnar webbläsaren för inloggning…" }],
   "cli.login.prompt.token": [{ kind: "text", value: "Molntoken: " }],
-  "cli.login.prompt.url": [{ kind: "text", value: "Molnadress (https://app.acolyte.sh): " }],
+  "cli.login.prompt.url": [{ kind: "text", value: "Molnadress (https://app.acolyte.sh):" }],
   "cli.login.saved": [{ kind: "text", value: "Inloggad." }],
   "cli.login.timeout": [{ kind: "text", value: "Autentiseringen tog för lång tid. Försök igen." }],
   "cli.login.token.empty": [{ kind: "text", value: "Token får inte vara tom." }],

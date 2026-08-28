@@ -245,7 +245,7 @@ export const EN_MESSAGES = {
   "cli.auth.override.cancelled": [{ kind: "text", value: "Left the existing key unchanged." }],
   "cli.auth.override.confirm": [
     { kind: "arg", name: "envKey" },
-    { kind: "text", value: " is already set. Replace it? [y/N]: " },
+    { kind: "text", value: " is already set. Replace it? [y/N]:" },
   ],
   "cli.auth.port_in_use": [
     {
@@ -272,7 +272,7 @@ export const EN_MESSAGES = {
   "cli.auth.subscription.override.cancelled": [{ kind: "text", value: "Left the existing subscription unchanged." }],
   "cli.auth.subscription.override.confirm": [
     { kind: "arg", name: "provider" },
-    { kind: "text", value: " subscription is already connected. Replace it? [y/N]: " },
+    { kind: "text", value: " subscription is already connected. Replace it? [y/N]:" },
   ],
   "cli.auth.subscription.unsupported": [
     { kind: "arg", name: "provider" },
@@ -379,7 +379,7 @@ export const EN_MESSAGES = {
   "cli.history.none": [{ kind: "text", value: "No saved sessions." }],
   "cli.login.opening.browser": [{ kind: "text", value: "Opening browser to sign in…" }],
   "cli.login.prompt.token": [{ kind: "text", value: "Cloud token: " }],
-  "cli.login.prompt.url": [{ kind: "text", value: "Cloud URL (https://app.acolyte.sh): " }],
+  "cli.login.prompt.url": [{ kind: "text", value: "Cloud URL (https://app.acolyte.sh):" }],
   "cli.login.saved": [{ kind: "text", value: "Logged in." }],
   "cli.login.timeout": [{ kind: "text", value: "Authentication timed out. Please try again." }],
   "cli.login.token.empty": [{ kind: "text", value: "Token cannot be empty." }],
