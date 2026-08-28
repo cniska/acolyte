@@ -54,7 +54,7 @@ bun run erosion:run --top 5
 # Commit and tag
 git add -A
 git commit -m "chore: release v${new}"
-git tag "v${new}"
+git tag -m "v${new}" "v${new}"
 
 echo ""
 echo "Ready to push v${new}. Run:"
