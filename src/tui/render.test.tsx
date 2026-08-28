@@ -1310,6 +1310,50 @@ describe("render", () => {
     }
   });
 
+  test("a terminal wipe reaches the screen with the repaint that follows it", async () => {
+    // A bare wipe leaves an empty screen until the next commit paints — a visible flash.
+    const { clearTerminal } = await import("./host-config");
+    let cleared = false;
+    const listeners = new Set<() => void>();
+    const store = {
+      get: () => cleared,
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    const postClear: string[] = [];
+    await withMockedStdout(
+      async (buf) => {
+        const { render } = await import("./render");
+        function App(): React.JSX.Element {
+          const c = useSyncExternalStore(store.subscribe, store.get);
+          return (
+            <tui-box flexDirection="column">
+              <tui-text>{c ? "AFTER" : "BEFORE"}</tui-text>
+            </tui-box>
+          );
+        }
+        const app = render(<App />);
+        await drainFrame(() => app.flush(), buf);
+        const mark = buf.length;
+        cleared = true;
+        clearTerminal();
+        for (const listener of listeners) listener();
+        await drainFrame(() => app.flush(), buf);
+        postClear.push(...buf.slice(mark));
+        app.unmount();
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 6 },
+    );
+
+    const wipes = postClear.filter((write) => write.includes(ansi.clearScreen));
+    expect(wipes).toHaveLength(1);
+    expect(wipes[0]).toContain("AFTER");
+    expect(wipes[0]?.startsWith(ansi.syncStart)).toBe(true);
+  });
+
   test("a promotion after a width change writes committed lines in full, never dropping them", async () => {
     // The frozen line count is measured in the freeze frame's width. After a resize the
     // committed slice rewraps to a different line count, so dropping that stale count would
@@ -1475,8 +1519,6 @@ describe("growing a live region", () => {
     expect(reach).toEqual(new Array(7).fill(3));
   });
 
-  // Once the region outgrows the viewport every appended line used to erase and repaint the whole
-  // live region, which is the same flicker one viewport lower down.
   test("appending a line past the viewport height still repaints a constant number of rows", async () => {
     const script = [];
     for (let n = 1; n <= 24; n++) script.push(growingRow(n));
@@ -1489,10 +1531,8 @@ describe("growing a live region", () => {
     expect(erasedRows).toEqual(new Array(23).fill(2));
   });
 
-  // The guard against the regression this test exists for: an appended line must cost the same
-  // repaint whatever the region's height and whichever side of the viewport it sits on. A future
-  // disqualifier in the incremental path (the overflow case was one) shows up here as a reach that
-  // grows with the region.
+  // A new disqualifier in the incremental path shows up here as a reach that grows with the
+  // region, at whichever geometry it slipped through.
   test.each([
     [40, 80],
     [12, 80],
@@ -1507,15 +1547,13 @@ describe("growing a live region", () => {
       const up = cursorUpCounts(frame);
       return up.length > 0 ? Math.max(...up) : 0;
     });
-    // Three composer rows follow the appended line at every width used here.
     expect(new Set(reach)).toEqual(new Set([2]));
-    // One appended line plus those three rows — never the whole region.
     const painted = frames.slice(1).map((frame) => frame.join("").split("\n").length);
     expect(new Set(painted)).toEqual(new Set([4]));
   });
 
-  // Splitting a frame across writes presents the erase without its repaint, which is the same
-  // flicker from the other direction — and the VT harness cannot see it.
+  // A frame split across writes presents the erase without its repaint, which the VT harness
+  // cannot see.
   test("every frame of a growing region is one synchronized write", async () => {
     const script = [];
     for (let n = 1; n <= 24; n++) script.push(growingRow(n));

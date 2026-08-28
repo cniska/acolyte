@@ -159,8 +159,8 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 - **TUI-1** — The chat client renders in the terminal through a custom React renderer with its own reconciler; it does not depend on a general-purpose terminal-UI framework.
 - **TUI-2** — Completed transcript content is flushed once to terminal scrollback and never re-rendered; only the active region is repainted on updates.
-- **TUI-3** — Erase-and-repaint of the active region is atomic within a synchronized-output block to prevent flicker, with a documented fallback where synchronized output is unsupported.
-- **TUI-4** — When the active region overflows the viewport, top lines are frozen to scrollback and only the bottom portion re-renders; terminal resize and focus-in invalidate frozen state and repaint cleanly.
+- **TUI-3** — Erase-and-repaint of the active region is atomic within a synchronized-output block to prevent flicker, and a scrollback wipe reaches the terminal in the same block as the repaint that follows it, with a documented fallback where synchronized output is unsupported.
+- **TUI-4** — When the active region overflows the viewport, top lines are frozen to scrollback and only the bottom portion re-renders; an appended line costs the same repaint whether or not the region overflows; terminal resize and focus-in invalidate frozen state and repaint cleanly.
 - **TUI-5** — TUI state reads that depend on current state use the functional-update form so concurrent updates from streaming events and input handlers do not race on a stale value.
 - **TUI-6** — Only active input handlers receive key events; terminal key parsing is centralized, with unambiguous modifier reporting on terminals that support the enhanced keyboard protocol.
 - **TUI-7** — A live status line shows location, model, token usage, active skill, and PR context, updating token totals during a turn.

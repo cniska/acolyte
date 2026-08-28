@@ -50,6 +50,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
   let lastActive = "";
   let lastActiveLineCount = 0;
   let paintForced = false;
+  let pendingClear = false;
   // Lines of stale tail copies left by width-change repaints (which must skip their
   // erase). Reclaimed by the next same-width erase so the copies don't dangle. Kept
   // as text, not a count, so consecutive width changes can revalidate that every
@@ -160,6 +161,8 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
 
   function commitRender() {
     if (exited) return;
+    const clearPrefix = pendingClear ? ansi.clearScreen : "";
+    pendingClear = false;
     const cols = stdout.columns ?? DEFAULT_COLUMNS;
     const { staticItems, active } = serializeSplit(root, cols);
     const maxLiveRows = (stdout.rows ?? DEFAULT_ROWS) - 1;
@@ -241,7 +244,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
 
     // Only re-render the active region if it changed.
     if (active === lastActive && !forced) {
-      if (staticPrefix) syncWrite(staticPrefix);
+      if (staticPrefix || clearPrefix) syncWrite(clearPrefix + staticPrefix);
       return;
     }
 
@@ -315,14 +318,13 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
       // lines simply follow it; otherwise step up to the first stale row, return to column 0,
       // and clear from there.
       const reposition = staleRows > 0 ? `${ansi.cursorUp(staleRows - 1)}\r${ansi.eraseDown}` : "\n";
-      // The appended lines push the region past the viewport top, so the rows that scrolled away
-      // are frozen here exactly as the full-repaint path freezes them.
+      // The appended lines scrolled the top rows past the viewport, so they freeze here too.
       if (splitIdx > 0) {
         frozenLineCount += splitIdx;
         frozenScrollbackText = allLines.slice(0, frozenLineCount).join("\n");
         frozenColumns = cols;
       }
-      syncWrite(`${reposition}${liveLines.slice(unchangedPrefix).join("\n")}`);
+      syncWrite(`${clearPrefix}${reposition}${liveLines.slice(unchangedPrefix).join("\n")}`);
     } else if (splitIdx > 0) {
       // Write overflow + bottom-fitting slice atomically. The overflow lines scroll
       // into terminal scrollback naturally as the write pushes past the viewport top.
@@ -330,9 +332,11 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
       frozenLineCount += splitIdx;
       frozenScrollbackText = allLines.slice(0, frozenLineCount).join("\n");
       frozenColumns = cols;
-      syncWrite(`${staticPrefix}${erase}${overflowLines.join("\n")}\n${liveLines.slice(splitIdx).join("\n")}`);
+      syncWrite(
+        `${clearPrefix}${staticPrefix}${erase}${overflowLines.join("\n")}\n${liveLines.slice(splitIdx).join("\n")}`,
+      );
     } else {
-      syncWrite(staticPrefix + erase + liveLines.join("\n"));
+      syncWrite(clearPrefix + staticPrefix + erase + liveLines.join("\n"));
     }
     lastActiveLineCount = physRows > 0 ? physRows - 1 : 0;
     lastActive = active;
@@ -366,7 +370,9 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
   setOnCommit(throttledCommitRender);
 
   // A scrollback wipe erases the off-screen lines this bookkeeping tracks, so reset it in the
-  // same step or the next commit adopts a frozen prefix that no longer exists on screen.
+  // same step or the next commit adopts a frozen prefix that no longer exists on screen. The wipe
+  // rides that commit's synchronized block: written here it would show an empty screen until the
+  // repaint landed. Callers pair it with the state change that repaints (`chat-promotion.ts`).
   setOnClear(() => {
     if (exited) return;
     frozenLineCount = 0;
@@ -375,7 +381,7 @@ export function render(node: ReactNode, options: RenderOptions = {}): RenderInst
     lastActiveLineCount = 0;
     staleTail = [];
     pendingStaleTail = [];
-    if (stdout.isTTY) stdout.write(ansi.clearScreen);
+    pendingClear = stdout.isTTY;
   });
 
   const container = reconciler.createContainer(
