@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { configMode } from "./cli-config";
+import { setLocale } from "./i18n";
 
 type ConfigModeDeps = Parameters<typeof configMode>[1];
 
@@ -73,5 +74,26 @@ describe("cli config", () => {
     });
     await configMode(["set", "reasoning", "high", "--project"], deps);
     expect(calls).toEqual([{ key: "reasoning", value: "high", scope: "project" }]);
+  });
+
+  test("setting the locale confirms in the language just chosen", async () => {
+    const { deps, dimLines } = createDeps();
+    try {
+      await configMode(["set", "locale", "sv"], deps);
+      expect(dimLines.at(-1)).toBe("Inställningen locale sparades (user).");
+    } finally {
+      setLocale("en");
+    }
+  });
+
+  test("unsetting the locale confirms in the default language", async () => {
+    const { deps, dimLines } = createDeps();
+    try {
+      await configMode(["set", "locale", "sv"], deps);
+      await configMode(["unset", "locale"], deps);
+      expect(dimLines.at(-1)).toBe("Removed config locale (user).");
+    } finally {
+      setLocale("en");
+    }
   });
 });

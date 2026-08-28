@@ -8,7 +8,8 @@ import type {
   unsetConfigValue as unsetConfigValueType,
 } from "./config";
 import { CONFIG_SET_SCHEMAS } from "./config-contract";
-import { t } from "./i18n";
+import { setLocale, t } from "./i18n";
+import { translationLocaleSchema } from "./i18n/locales";
 
 type ConfigModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
@@ -134,6 +135,8 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
         process.exitCode = 1;
         return;
       }
+      // Confirm in the language just chosen: this process resolved its locale before the write.
+      if (key === "locale") setLocale(translationLocaleSchema.parse(value));
       printDim(t("cli.config.saved", { key, scope: scope ?? "user" }));
       return;
     }
@@ -157,6 +160,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       }
 
       await unsetConfigValue(key, { scope: scope ?? "user" });
+      if (key === "locale") setLocale(translationLocaleSchema.parse((await readConfig()).locale ?? "en"));
       printDim(t("cli.config.removed", { key, scope: scope ?? "user" }));
       return;
     }
