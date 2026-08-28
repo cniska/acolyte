@@ -465,6 +465,59 @@ describe("render", () => {
     }
   });
 
+  test("focus-in after an incremental overflow does not duplicate frozen scrollback", async () => {
+    // Growing one line per frame reaches the viewport through the incremental path, which freezes
+    // the rows the terminal scrolled away. A focus-in repaint reads that bookkeeping, so if the
+    // incremental path skipped it the forced repaint re-emits rows already in scrollback.
+    const LINES = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"];
+    const stdin = mockStdinTty();
+    try {
+      const writes = await withMockedStdout(
+        async (captured) => {
+          const { render } = await import("./render");
+          let visible = 1;
+          const listeners = new Set<() => void>();
+          const store = {
+            get: () => visible,
+            subscribe: (listener: () => void) => {
+              listeners.add(listener);
+              return () => listeners.delete(listener);
+            },
+          };
+          function App(): React.JSX.Element {
+            const count = useSyncExternalStore(store.subscribe, store.get);
+            return (
+              <tui-box flexDirection="column">
+                {LINES.slice(0, count).map((line) => (
+                  <tui-text key={line}>{line}</tui-text>
+                ))}
+                <tui-text>input</tui-text>
+              </tui-box>
+            );
+          }
+          const app = render(<App />);
+          await drainFrame(() => app.flush(), captured);
+          for (visible = 2; visible <= LINES.length; visible++) {
+            for (const listener of listeners) listener();
+            await drainFrame(() => app.flush(), captured);
+          }
+          stdin.emit("\x1b[I");
+          app.unmount();
+          await app.waitUntilExit();
+        },
+        { columns: 20, rows: 6 },
+      );
+
+      const vt = replayTerminal(frameWrites(writes), 6, 20);
+      const transcript = [...vt.scrollback, ...vt.screen];
+      for (const line of LINES) {
+        expect(transcript.filter((row) => row.includes(line)).length).toBe(1);
+      }
+    } finally {
+      stdin.restore();
+    }
+  });
+
   test("focus-in after a width resize erases the stale tail copy", async () => {
     // A width-change repaint must skip its erase (reflow makes the stored count
     // unsafe), leaving a stale copy of the tail above the new one. When every tail
@@ -1352,6 +1405,53 @@ describe("render", () => {
     expect(wipes).toHaveLength(1);
     expect(wipes[0]).toContain("AFTER");
     expect(wipes[0]?.startsWith(ansi.syncStart)).toBe(true);
+    // The wipe leads the payload: trailing it would erase the content just painted.
+    expect(wipes[0]?.indexOf(ansi.clearScreen)).toBeLessThan(wipes[0]?.indexOf("AFTER") ?? -1);
+  });
+
+  test("a wipe consumed by an overflowing repaint still reaches the terminal", async () => {
+    // The wipe is armed once and consumed by whichever payload the next commit emits, so a clear
+    // landing on a commit whose content overflows must carry it as the plain payload does.
+    const { clearTerminal } = await import("./host-config");
+    const TALL = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"];
+    let cleared = false;
+    const listeners = new Set<() => void>();
+    const store = {
+      get: () => cleared,
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    const postClear: string[] = [];
+    await withMockedStdout(
+      async (buf) => {
+        const { render } = await import("./render");
+        function App(): React.JSX.Element {
+          const c = useSyncExternalStore(store.subscribe, store.get);
+          return (
+            <tui-box flexDirection="column">
+              {c ? TALL.map((line) => <tui-text key={line}>{line}</tui-text>) : <tui-text>BEFORE</tui-text>}
+            </tui-box>
+          );
+        }
+        const app = render(<App />);
+        await drainFrame(() => app.flush(), buf);
+        const mark = buf.length;
+        cleared = true;
+        clearTerminal();
+        for (const listener of listeners) listener();
+        await drainFrame(() => app.flush(), buf);
+        postClear.push(...buf.slice(mark));
+        app.unmount();
+        await app.waitUntilExit();
+      },
+      { columns: 20, rows: 6 },
+    );
+
+    const wipes = postClear.filter((write) => write.includes(ansi.clearScreen));
+    expect(wipes).toHaveLength(1);
+    expect(wipes[0]).toContain("T8");
   });
 
   test("a promotion after a width change writes committed lines in full, never dropping them", async () => {
