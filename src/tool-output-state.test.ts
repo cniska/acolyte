@@ -131,14 +131,35 @@ describe("createToolOutputState", () => {
     expect(update?.items.map(text)).toEqual([undefined, "settled"]);
   });
 
-  test("transient parts keep only the most recent rows", () => {
+  test("transient parts keep the most recent rows and say how many the window dropped", () => {
     const state = createToolOutputState({ surface: "transcript" });
     let update = null;
     for (let i = 1; i <= OUTPUT_WINDOW_ROWS + 3; i++) {
       update = state.push({ toolCallId: "tc_1", content: shellLine(`line-${i}`), transient: true });
     }
+    expect(update?.items[0]).toEqual({ kind: "truncated", count: 3, unit: "lines" });
+    expect(text(update?.items[1])).toBe("line-4");
+    expect(text(update?.items[OUTPUT_WINDOW_ROWS])).toBe(`line-${OUTPUT_WINDOW_ROWS + 3}`);
+  });
+
+  test("a live tail inside the window reports no truncation", () => {
+    const state = createToolOutputState({ surface: "transcript" });
+    let update = null;
+    for (let i = 1; i <= OUTPUT_WINDOW_ROWS; i++) {
+      update = state.push({ toolCallId: "tc_1", content: shellLine(`line-${i}`), transient: true });
+    }
     expect(update?.items).toHaveLength(OUTPUT_WINDOW_ROWS);
-    expect(text(update?.items[0])).toBe("line-4");
+    expect(update?.items.some((part) => part.kind === "truncated")).toBe(false);
+  });
+
+  test("a settled call drops the live tail's truncation count", () => {
+    const state = createToolOutputState({ surface: "transcript" });
+    for (let i = 1; i <= OUTPUT_WINDOW_ROWS + 3; i++) {
+      state.push({ toolCallId: "tc_1", content: shellLine(`line-${i}`), transient: true });
+    }
+    const update = state.push({ toolCallId: "tc_1", content: shellLine("settled") });
+
+    expect(update?.items.map(text)).toEqual(["settled"]);
   });
 
   test("output past the window keeps the header and the most recent rows", () => {
