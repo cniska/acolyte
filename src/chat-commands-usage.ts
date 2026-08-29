@@ -1,7 +1,8 @@
 import type { CommandHandler } from "./chat-commands-contract";
 import { type ChatRow, createRow } from "./chat-contract";
-import { alignCols, formatCompactNumber } from "./chat-format";
+import { alignCols } from "./chat-format";
 import { t } from "./i18n";
+import { formatCompactNumber } from "./number-format";
 import type { SessionTokenUsageEntry } from "./session-contract";
 
 function formatUsageValue(value: number): string {

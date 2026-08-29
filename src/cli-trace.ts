@@ -40,6 +40,11 @@ function verboseRowData(line: LogLine): Record<string, string | undefined> {
   return data;
 }
 
+/** Every stored field, unfiltered: `--json` is the scripted-query interface over the store. */
+function jsonRowData(line: LogLine): Record<string, string | undefined> {
+  return { timestamp: line.timestamp, ...line.fields };
+}
+
 type CompactToolLine = {
   tool: string;
   arg: string;
@@ -267,10 +272,8 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
       }
       if (i > 0) out.addSeparator();
       if (out.verbose || isJson) {
-        // `--json` is the scripted-query interface, so it carries every stored event: filtering
-        // verbose-only events there silently misrepresents the store as missing them.
         for (const line of lines) {
-          out.addRow(verboseRowData(line));
+          out.addRow(isJson ? jsonRowData(line) : verboseRowData(line));
         }
       } else {
         renderCompact(lines, out);

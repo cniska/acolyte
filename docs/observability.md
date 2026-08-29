@@ -9,9 +9,12 @@ Every event carries a sequence number and is associated with its request, task, 
 - task acceptance, queueing, start, completion, and state transitions
 - workspace detection and sandbox resolution
 - lifecycle preparation, generation, window drops, and errors
+- per-model-call token usage: input, output, cache read, cache write, and reasoning
 - tool calls, results, errors, and budget blocks
 - format, lint, and install effects
 - memory commits, active skill context, and the final lifecycle summary
+
+Each tool result records the character count of the prompt content it becomes — after truncation to the tool-result ceiling and any appended effect output — so a task's input budget can be attributed to the tools that filled it.
 
 The final summary includes model-call and tool-call counts, read/search/write totals, memory and session searches, pre-write discovery calls, budget exhaustion, and error state.
 
@@ -19,7 +22,7 @@ Memory commit events carry the shape of what was distilled: the message count an
 
 ## Inspecting a task
 
-`acolyte trace` lists recent tasks. `acolyte trace task <id>` renders the task's tool timeline and compact summary. Pass `--verbose` to include tool output events, or `--json` for one JSON line per event. `--verbose` shapes human output only; `--json` always carries every recorded event.
+`acolyte trace` lists recent tasks. `acolyte trace task <id>` renders the task's tool timeline and compact summary. Pass `--verbose` to include tool output events, or `--json` for one JSON line per event. `--verbose` shapes human output only, projecting each event through the catalog's display fields; `--json` carries every recorded event with every field stored on it.
 
 ```bash
 acolyte trace

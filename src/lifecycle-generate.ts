@@ -288,7 +288,13 @@ async function streamWithTimeout(ctx: RunContext, prompt: string, timeoutMs: num
   }
 }
 
-function completeToolCall(ctx: RunContext, toolCallId: string, toolName: string, isError = false): void {
+function completeToolCall(
+  ctx: RunContext,
+  toolCallId: string,
+  toolName: string,
+  isError = false,
+  promptChars?: number,
+): void {
   const started = ctx.toolCallStartedAt.get(toolCallId);
   if (!started) return;
   const durationMs = Date.now() - started.startedAtMs;
@@ -297,6 +303,7 @@ function completeToolCall(ctx: RunContext, toolCallId: string, toolName: string,
     tool_call_id: toolCallId,
     duration_ms: durationMs,
     is_error: isError,
+    ...(typeof promptChars === "number" ? { result_chars: promptChars } : {}),
   });
   ctx.toolCallStartedAt.delete(toolCallId);
 }
@@ -430,7 +437,7 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     } else {
       accountMemoryRecallTokens(ctx, toolName, p.result);
     }
-    completeToolCall(ctx, p.toolCallId, toolName, isError);
+    completeToolCall(ctx, p.toolCallId, toolName, isError, p.promptChars);
     emitToolResult(ctx, p.toolCallId, toolName, error);
   },
 
@@ -495,11 +502,11 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     if (typeof p?.outputTokens === "number") ctx.outputTokensAccum += p.outputTokens;
     ctx.modelCallCount += 1;
     ctx.debug("lifecycle.model_usage", {
-      inputTokens: p?.inputTokens,
-      outputTokens: p?.outputTokens,
-      cacheReadTokens: p?.cacheReadTokens,
-      cacheWriteTokens: p?.cacheWriteTokens,
-      reasoningTokens: p?.reasoningTokens,
+      input_tokens: p?.inputTokens,
+      output_tokens: p?.outputTokens,
+      cache_read_tokens: p?.cacheReadTokens,
+      cache_write_tokens: p?.cacheWriteTokens,
+      reasoning_tokens: p?.reasoningTokens,
     });
     ctx.emit({
       type: "usage",

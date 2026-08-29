@@ -197,12 +197,17 @@ export function createAgentStream(
               try {
                 const args = JSON.parse(tc.input);
                 const { result, effectOutput } = await tool.execute(args, tc.toolCallId);
-                streamController.enqueue({
-                  type: "tool-result",
-                  payload: { toolCallId: tc.toolCallId, toolName: tc.toolName, result },
-                });
                 const raw = effectOutput ? `${JSON.stringify(result)}\n${effectOutput}` : JSON.stringify(result);
                 const outputValue = truncateMiddle(raw, MAX_TOOL_RESULT_CHARS);
+                streamController.enqueue({
+                  type: "tool-result",
+                  payload: {
+                    toolCallId: tc.toolCallId,
+                    toolName: tc.toolName,
+                    result,
+                    promptChars: outputValue.length,
+                  },
+                });
                 toolResultParts.push({
                   type: "tool-result",
                   toolCallId: tc.toolCallId,

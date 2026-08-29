@@ -31,7 +31,13 @@ export type GenerateResult = {
 
 export type TextDeltaPayload = { text?: string };
 export type ToolCallPayload = { toolCallId?: string; toolName?: string; args?: Record<string, unknown> };
-export type ToolResultPayload = { toolCallId?: string; toolName?: string; result?: unknown };
+/** `promptChars` is the length of the prompt content this result becomes, after truncation and appended effect output. */
+export type ToolResultPayload = {
+  toolCallId?: string;
+  toolName?: string;
+  result?: unknown;
+  promptChars?: number;
+};
 export type ToolErrorPayload = {
   error?: unknown;
   message?: string;

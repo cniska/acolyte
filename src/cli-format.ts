@@ -1,8 +1,8 @@
 import { relative } from "node:path";
 import { segmentAssistantContent, wrapAssistantContent, wrapCodeText } from "./chat-content";
-import { formatCompactNumber } from "./chat-format";
 import { GLYPH_FILLED } from "./chat-glyphs";
 import { t } from "./i18n";
+import { formatCompactNumber } from "./number-format";
 import type { ToolOutputPart } from "./tool-output-contract";
 import { resolveToolLabel, toolLabelKey } from "./tool-output-format";
 import { renderToolOutput } from "./tool-output-render";
