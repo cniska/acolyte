@@ -4,7 +4,6 @@ import type { Effect, EffectInput, EffectResult, RunContext } from "./lifecycle-
 import type { EffectOutput, PostToolContext, PreToolContext, SessionContext } from "./tool-contract";
 import { type ShellLine, shellTailParts } from "./tool-output-format";
 import { OUTPUT_WINDOW_ROWS } from "./tool-policy";
-import { DISCOVERY_TOOL_SET } from "./tool-registry";
 import type { WorkspaceCommand } from "./workspace-contract";
 import {
   type CommandResult,
@@ -141,7 +140,7 @@ function mergeEffectOutputs(a: EffectOutput | undefined, b: EffectOutput | undef
 }
 
 async function preToolSideEffects(ctx: RunContext, preCtx: PreToolContext): Promise<void> {
-  if (DISCOVERY_TOOL_SET.has(preCtx.toolId)) return;
+  if (ctx.session.discoveryTools.has(preCtx.toolId)) return;
   for (const effect of PRE_EFFECTS) {
     await effect.run(ctx);
   }

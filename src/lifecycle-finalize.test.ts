@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { parseChatResponse } from "./client-contract";
+import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createRunContext } from "./test-utils";
-import { createSessionContext } from "./tool-session";
+import { toolsForAgent } from "./tool-registry";
 import { missingCatalogDisplayFields } from "./trace-event-catalog";
 
 describe("ChatResponse error field", () => {
@@ -127,7 +128,7 @@ describe("phaseFinalize", () => {
   });
 
   test("counts recall probes separately and keeps them out of search/discovery", () => {
-    const session = createSessionContext("task_1");
+    const { session } = toolsForAgent({ taskId: "task_1" });
     session.callLog.push(
       { toolName: "memory-search", args: {}, taskId: "task_1", status: "succeeded" },
       { toolName: "session-search", args: {}, taskId: "task_1", status: "succeeded" },
@@ -158,7 +159,10 @@ describe("phaseFinalize", () => {
   });
 
   test("counts writes and pre-write discovery from the session write set", () => {
-    const session = createSessionContext("task_1", new Set(["undo-restore"]));
+    const { session } = toolsForAgent({
+      taskId: "task_1",
+      features: { ...DEFAULT_FEATURE_FLAGS, undoCheckpoints: true },
+    });
     session.callLog.push(
       { toolName: "file-search", args: {}, taskId: "task_1", status: "succeeded" },
       { toolName: "undo-restore", args: {}, taskId: "task_1", status: "succeeded" },

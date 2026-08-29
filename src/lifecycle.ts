@@ -15,7 +15,6 @@ import { resolveScopeKey } from "./memory-ops";
 import { createTaskActivity } from "./task-activity";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { ensureRealTokenEncoder } from "./token-estimate";
-import { DISCOVERY_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
@@ -175,7 +174,7 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
   const activity = createTaskActivity(
     scopedCallLog(ctx.session, ctx.taskId),
     ctx.session.writeTools,
-    DISCOVERY_TOOL_SET,
+    ctx.session.discoveryTools,
   );
   // The commit runs in the background, so the turn can only estimate, and this one is a floor: it
   // covers at most one window and omits the recall candidates the distiller is shown, whose size is

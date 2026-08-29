@@ -6,6 +6,9 @@ export function createSessionContext(taskId?: string, writeTools: ReadonlySet<st
     callLog: [],
     taskId,
     writeTools,
+    readTools: new Set(),
+    searchTools: new Set(),
+    discoveryTools: new Set(),
     toolTimeoutMs: TOOL_TIMEOUT_MS,
   };
 }

@@ -163,14 +163,6 @@ export function toolIdsByCategory(category: ToolCategory): string[] {
     .sort();
 }
 
-export const READ_TOOLS: readonly string[] = toolIdsByCategory("read");
-export const SEARCH_TOOLS: readonly string[] = toolIdsByCategory("search");
-export const DISCOVERY_TOOLS: readonly string[] = [...READ_TOOLS, ...SEARCH_TOOLS].sort();
-
-export const READ_TOOL_SET = new Set<string>(READ_TOOLS);
-export const SEARCH_TOOL_SET = new Set<string>(SEARCH_TOOLS);
-export const DISCOVERY_TOOL_SET = new Set<string>(DISCOVERY_TOOLS);
-
 export function toolsForAgent(options?: {
   workspace?: string;
   onOutput?: ToolOutputListener;
@@ -203,11 +195,16 @@ export function toolsForAgent(options?: {
     const nativeIds = new Set(Object.keys(base));
     Object.assign(base, bindMcpTools(options.mcpListings, session, nativeIds, options.sessionId));
   }
-  session.writeTools = new Set(
-    Object.values(base)
-      .filter((tool) => tool.category === "write")
-      .map((tool) => tool.id),
-  );
+  const idsInCategory = (category: ToolCategory): ReadonlySet<string> =>
+    new Set(
+      Object.values(base)
+        .filter((tool) => tool.category === category)
+        .map((tool) => tool.id),
+    );
+  session.writeTools = idsInCategory("write");
+  session.readTools = idsInCategory("read");
+  session.searchTools = idsInCategory("search");
+  session.discoveryTools = new Set([...session.readTools, ...session.searchTools]);
   return {
     tools: base as unknown as Toolset,
     session,

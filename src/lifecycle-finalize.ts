@@ -2,7 +2,6 @@ import type { ChatResponse } from "./api";
 import { t } from "./i18n";
 import { promptUsageTotalTokens, type RunContext } from "./lifecycle-contract";
 import { estimateTokens } from "./token-estimate";
-import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
@@ -34,10 +33,10 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   // keep them off those axes so read/search/discovery stay a clean over-exploration signal.
   const isRecallProbe = (toolName: string) => toolName === "memory-search" || toolName === "session-search";
   const isCodeDiscovery = (entry: { toolName: string }) =>
-    DISCOVERY_TOOL_SET.has(entry.toolName) && !isRecallProbe(entry.toolName);
-  const readCalls = callLog.filter((entry) => READ_TOOL_SET.has(entry.toolName)).length;
+    ctx.session.discoveryTools.has(entry.toolName) && !isRecallProbe(entry.toolName);
+  const readCalls = callLog.filter((entry) => ctx.session.readTools.has(entry.toolName)).length;
   const searchCalls = callLog.filter(
-    (entry) => SEARCH_TOOL_SET.has(entry.toolName) && !isRecallProbe(entry.toolName),
+    (entry) => ctx.session.searchTools.has(entry.toolName) && !isRecallProbe(entry.toolName),
   ).length;
   const writeCalls = callLog.filter((entry) => ctx.session.writeTools.has(entry.toolName)).length;
   const memorySearchCalls = callLog.filter((entry) => entry.toolName === "memory-search").length;

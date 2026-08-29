@@ -79,6 +79,9 @@ export type SessionContext = {
   maxToolCallsPerRequest?: number;
   budgetNoticeAnnounced?: boolean;
   writeTools: ReadonlySet<string>;
+  readTools: ReadonlySet<string>;
+  searchTools: ReadonlySet<string>;
+  discoveryTools: ReadonlySet<string>;
   toolTimeoutMs?: number;
   featureFlags?: ResolvedFeatureFlags;
   onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
