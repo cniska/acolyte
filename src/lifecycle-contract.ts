@@ -94,9 +94,13 @@ export type GenerateOptions = { timeoutMs: number };
 
 export type EffectResult = { type: "done"; output?: string };
 
+/** The call whose completion ran this effect. Its id anchors the effect's own transcript row to
+ *  the write that caused it. */
+export type EffectInput = { paths?: string[]; toolCallId?: string };
+
 export type Effect = {
   id: string;
-  run: (ctx: RunContext, paths?: string[]) => EffectResult;
+  run: (ctx: RunContext, input?: EffectInput) => EffectResult;
 };
 
 export type RunControl = {
