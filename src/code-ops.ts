@@ -370,7 +370,7 @@ async function editCodeFile(absPath: string, workspace: string, edits: EditCodeE
     }
     if (isRenameEdit(edit) && !edit.target && hasRenameModeConflict(matches)) {
       throw createToolError(
-        TOOL_ERROR_CODES.editCodeNoMatch,
+        TOOL_ERROR_CODES.editCodeAmbiguousTarget,
         `Scoped rename target is ambiguous for ${edit.from}; retry with target: "local" or target: "member"${edit.withinSymbol ? ` withinSymbol: ${edit.withinSymbol}` : ""}`,
       );
     }

@@ -4,9 +4,10 @@ export const TOOL_ERROR_CODES = {
   editFileBatchTooLarge: "E_EDIT_FILE_BATCH_TOO_LARGE",
   editFileFindTooLarge: "E_EDIT_FILE_FIND_TOO_LARGE",
   editFileFindNotFound: "E_EDIT_FILE_FIND_NOT_FOUND",
-  editFileLineRangeTooLarge: "E_EDIT_FILE_LINE_RANGE_TOO_LARGE",
+  editFileWouldClearFile: "E_EDIT_FILE_WOULD_CLEAR_FILE",
   editFileReplaceTooLarge: "E_EDIT_FILE_REPLACE_TOO_LARGE",
   editCodeNoMatch: "E_EDIT_CODE_NO_MATCH",
+  editCodeAmbiguousTarget: "E_EDIT_CODE_AMBIGUOUS_TARGET",
   editCodeReplacementMetaMismatch: "E_EDIT_CODE_REPLACEMENT_META_MISMATCH",
   editCodeUnsupportedFile: "E_EDIT_CODE_UNSUPPORTED_FILE",
   searchFilesEmptyScope: "E_SEARCH_FILES_EMPTY_SCOPE",
@@ -55,6 +56,11 @@ export const ERROR_KINDS = {
   budgetExhausted: "budget_exhausted",
   gitUnavailable: "git_unavailable",
   daemonLost: "daemon_lost",
+  noMatch: "no_match",
+  ambiguousMatch: "ambiguous_match",
+  tooLarge: "too_large",
+  unsupportedFile: "unsupported_file",
+  invalidRequest: "invalid_request",
   unknown: "unknown",
 } as const;
 export type ErrorKind = (typeof ERROR_KINDS)[keyof typeof ERROR_KINDS];

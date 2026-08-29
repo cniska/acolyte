@@ -195,7 +195,13 @@ export async function withToolError<T>(toolId: string, task: () => Promise<T>): 
       code?: string;
       kind?: string;
     };
+    // The filesystem raises a missing path itself, so the errno is the only place it is ever named.
     const code = field(error, "code");
+    if (code === "ENOENT") {
+      wrapped.code = LIFECYCLE_ERROR_CODES.fileNotFound;
+      wrapped.kind = ERROR_KINDS.fileNotFound;
+      throw wrapped;
+    }
     if (typeof code === "string" && code.length > 0) wrapped.code = code;
     const kind = field(error, "kind");
     if (typeof kind === "string" && kind.length > 0) wrapped.kind = kind;

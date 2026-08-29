@@ -8,6 +8,7 @@ import {
   createStreamError,
   errorCodeFromCategory,
   errorKindFromCategory,
+  errorKindFromErrorCode,
   parseError,
 } from "./error-handling";
 
@@ -94,6 +95,36 @@ describe("error handling helpers", () => {
       kind: ERROR_KINDS.embeddingUnavailable,
       source: "server",
     });
+  });
+
+  test("every tool error code carries a kind more precise than unknown", () => {
+    const unclassified = Object.values(TOOL_ERROR_CODES).filter(
+      (code) => (errorKindFromErrorCode(code) ?? "unknown") === "unknown",
+    );
+
+    expect(unclassified).toEqual([]);
+  });
+
+  test("tool error codes separate a missing match from an oversized input", () => {
+    expect(errorKindFromErrorCode(TOOL_ERROR_CODES.searchFilesNoMatch)).toBe("no_match");
+    expect(errorKindFromErrorCode(TOOL_ERROR_CODES.editFileFindNotFound)).toBe("no_match");
+    expect(errorKindFromErrorCode(TOOL_ERROR_CODES.editFileMultiMatch)).toBe("ambiguous_match");
+    expect(errorKindFromErrorCode(TOOL_ERROR_CODES.editFileFindTooLarge)).toBe("too_large");
+    expect(errorKindFromErrorCode(TOOL_ERROR_CODES.editFileBatchTooLarge)).toBe("too_large");
+    expect(errorKindFromErrorCode(TOOL_ERROR_CODES.scanCodeUnsupportedFile)).toBe("unsupported_file");
+    expect(errorKindFromErrorCode(TOOL_ERROR_CODES.readFileRangeInvalid)).toBe("invalid_request");
+    expect(errorKindFromErrorCode(TOOL_ERROR_CODES.sandboxViolation)).toBe("sandbox_violation");
+  });
+
+  test("an ambiguous rename target is not classified as a missing match", () => {
+    expect(errorKindFromErrorCode(TOOL_ERROR_CODES.editCodeAmbiguousTarget)).toBe("ambiguous_match");
+    expect(errorKindFromErrorCode(TOOL_ERROR_CODES.editCodeNoMatch)).toBe("no_match");
+  });
+
+  test("a code naming an inherited object property resolves to no kind", () => {
+    // A tool payload supplies this string unchecked, so a prototype member must not answer for a code.
+    expect(errorKindFromErrorCode("toString")).toBeUndefined();
+    expect(errorKindFromErrorCode("constructor")).toBeUndefined();
   });
 
   test("createErrorStats initializes all known categories", () => {

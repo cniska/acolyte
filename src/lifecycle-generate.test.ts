@@ -367,6 +367,11 @@ describe("phaseGenerate", () => {
     expect(traceResult?.fields).toMatchObject({ tool: "file-edit", is_error: true });
     // A null would persist as an empty string; an unknown size has to be absent instead.
     expect(traceResult?.fields).not.toHaveProperty("result_chars");
+    const traceError = debugEvents.find((event) => event.event === "lifecycle.error");
+    expect(traceError?.fields).toMatchObject({
+      code: TOOL_ERROR_CODES.editFileMultiMatch,
+      kind: "ambiguous_match",
+    });
   });
 
   test("emits the embedding-unavailable kind for a failed memory search", async () => {

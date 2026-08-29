@@ -86,7 +86,7 @@ function captureError(ctx: RunContext, message: string, meta?: CaptureErrorMeta)
     (kindCategory ? errorCodeFromCategory(kindCategory) : undefined) ??
     LIFECYCLE_ERROR_CODES.unknown;
   const category = categoryFromErrorCode(code) ?? kindCategory ?? "other";
-  const kind = meta?.kind ?? errorKindFromCategory(category);
+  const kind = meta?.kind ?? errorKindFromErrorCode(code) ?? errorKindFromCategory(category);
   const error: LifecycleError = { message, code, category, source: meta?.source, tool: meta?.tool };
   ctx.errorStats[category] += 1;
   ctx.debug("lifecycle.error", {

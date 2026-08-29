@@ -6,6 +6,8 @@ import {
   type ErrorKind,
   LIFECYCLE_ERROR_CODES,
   MEMORY_ERROR_CODES,
+  TOOL_ERROR_CODES,
+  type ToolErrorCode,
 } from "./error-contract";
 import { domainIdSchema } from "./id-contract";
 import type { StreamError } from "./stream-error";
@@ -61,8 +63,31 @@ export function errorKindFromCategory(category: ErrorCategory): ErrorKind {
   return ERROR_MAP.find((e) => e.category === category)?.kind ?? ERROR_KINDS.unknown;
 }
 
+// Keyed by every tool code, so a new code cannot compile until it says what kind of failure it is.
+const TOOL_ERROR_KINDS: Record<ToolErrorCode, ErrorKind> = {
+  [TOOL_ERROR_CODES.sandboxViolation]: ERROR_KINDS.sandboxViolation,
+  [TOOL_ERROR_CODES.gitUnavailable]: ERROR_KINDS.gitUnavailable,
+  [TOOL_ERROR_CODES.editFileMultiMatch]: ERROR_KINDS.ambiguousMatch,
+  [TOOL_ERROR_CODES.editCodeAmbiguousTarget]: ERROR_KINDS.ambiguousMatch,
+  [TOOL_ERROR_CODES.editFileFindNotFound]: ERROR_KINDS.noMatch,
+  [TOOL_ERROR_CODES.editCodeNoMatch]: ERROR_KINDS.noMatch,
+  [TOOL_ERROR_CODES.searchFilesNoMatch]: ERROR_KINDS.noMatch,
+  [TOOL_ERROR_CODES.editFileBatchTooLarge]: ERROR_KINDS.tooLarge,
+  [TOOL_ERROR_CODES.editFileFindTooLarge]: ERROR_KINDS.tooLarge,
+  [TOOL_ERROR_CODES.editFileWouldClearFile]: ERROR_KINDS.invalidRequest,
+  [TOOL_ERROR_CODES.editFileReplaceTooLarge]: ERROR_KINDS.tooLarge,
+  [TOOL_ERROR_CODES.readFileTooLarge]: ERROR_KINDS.tooLarge,
+  [TOOL_ERROR_CODES.editCodeUnsupportedFile]: ERROR_KINDS.unsupportedFile,
+  [TOOL_ERROR_CODES.scanCodeUnsupportedFile]: ERROR_KINDS.unsupportedFile,
+  [TOOL_ERROR_CODES.searchFilesUnsearchable]: ERROR_KINDS.unsupportedFile,
+  [TOOL_ERROR_CODES.editCodeReplacementMetaMismatch]: ERROR_KINDS.invalidRequest,
+  [TOOL_ERROR_CODES.readFileRangeInvalid]: ERROR_KINDS.invalidRequest,
+  [TOOL_ERROR_CODES.searchFilesEmptyScope]: ERROR_KINDS.invalidRequest,
+};
+
 export function errorKindFromErrorCode(code?: string): ErrorKind | undefined {
   if (code === MEMORY_ERROR_CODES.embeddingUnavailable) return ERROR_KINDS.embeddingUnavailable;
+  if (code && Object.hasOwn(TOOL_ERROR_KINDS, code)) return TOOL_ERROR_KINDS[code as ToolErrorCode];
   return ERROR_MAP.find((e) => e.code === code)?.kind;
 }
 
