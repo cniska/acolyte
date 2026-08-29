@@ -93,6 +93,9 @@ function installOnce(ctx: RunContext, workspace: string, command: WorkspaceComma
           command: formatWorkspaceCommand(command),
           has_errors: result.hasErrors,
         });
+        // A failed install is not a settled one. Forget it so the next tool call tries again,
+        // rather than leaving the workspace without dependencies for the daemon's lifetime.
+        if (result.hasErrors) installs.delete(workspace);
       });
   installs.set(workspace, run);
   return run;
