@@ -40,3 +40,27 @@ describe("undo checkpoint side effects", () => {
     expect(listed).toEqual([]);
   });
 });
+
+test("passes the lifecycle effects' tool-result append through untouched", async () => {
+  const workspace = dirs.createDir("acolyte-undo-append-");
+  const session = createSessionContext("task_append");
+  // The lifecycle effects attach first, so this stands in for the lint output they contribute.
+  session.onAfterToolAsync = async () => ({ append: "Lint errors:\nsrc/a.ts: no-explicit-any" });
+
+  attachUndoCheckpointSideEffects({
+    workspace,
+    sessionId: "sess_append",
+    session,
+    writeToolSet: new Set(["file-edit"]),
+  });
+
+  const output = await session.onAfterToolAsync?.({
+    toolId: "file-edit",
+    toolCallId: "call_1",
+    args: { path: "a.txt" },
+    status: "succeeded",
+    result: {},
+  });
+
+  expect(output).toEqual({ append: "Lint errors:\nsrc/a.ts: no-explicit-any" });
+});
