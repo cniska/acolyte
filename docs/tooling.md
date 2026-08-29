@@ -51,7 +51,7 @@ Entries in `IGNORED_DIRS` take precedence and cannot be re-included by gitignore
 
 ## File reading
 
-`file-read` returns the whole file as numbered lines under a `Lines: start-end of total` header. The total counts lines holding content, and those line numbers are what `file-edit` accepts for line-range edits.
+`file-read` returns the whole file as numbered lines under a `Lines: start-end of total` header. The total counts lines holding content.
 
 Two ceilings bound a read, and they differ in the caller's remedy. `FILE_READ_MAX_BYTES` (5 MB) is checked by a `stat` before the read; a file over it is readable at no range and has to be searched instead. `FILE_READ_MAX_TOKENS` (20,000) is checked on the formatted output; a file over it is re-readable with `offset` and `limit`. Both throw a structured error naming the measured size rather than truncating.
 
