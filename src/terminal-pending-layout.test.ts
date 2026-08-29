@@ -39,6 +39,20 @@ test("the pending marker alternates between hollow and fisheye as the clock adva
   expect(markerAt(1000)).toBe("◈ ");
 });
 
+test("a turn that has not started keeps a steady marker, never the active fisheye", () => {
+  const markerAt = (kind: "queued" | "accepted", now: number) =>
+    layoutPending({
+      presentation: { state: { kind, position: 1 }, frame: 0, startedAt: 0, queuedMessages: [], runningUsage: null },
+      now,
+      columns: 80,
+    }).lines[0]?.spans[0]?.text;
+
+  for (const kind of ["queued", "accepted"] as const) {
+    expect(markerAt(kind, 0)).toBe("◆ ");
+    expect(markerAt(kind, 500)).toBe("◆ ");
+  }
+});
+
 test("each queued message is padded to a sent message's vertical rhythm", () => {
   const rows = layoutPending({
     presentation: {

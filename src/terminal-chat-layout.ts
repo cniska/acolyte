@@ -383,7 +383,9 @@ export function layoutPending(input: {
   let shimmerOffset = 0;
   const lines: TerminalLine[] = wrapTerminalProse(text, Math.max(24, input.columns - 2)).map((line, index) => {
     const marker: TerminalSpan = {
-      text: index === 0 ? `${pulseGlyph(markerPulseFilled(input.now, running))} ` : "  ",
+      // Only a running turn pulses. A queued or accepted one has not started, and a steady fisheye
+      // would claim it had.
+      text: index === 0 ? `${running ? pulseGlyph(markerPulseFilled(input.now, true)) : GLYPH_FILLED} ` : "  ",
       role: markerRole,
     };
     const body: TerminalSpan[] = running
