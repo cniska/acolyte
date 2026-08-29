@@ -2,6 +2,7 @@ import { renderActiveSkillBlock } from "./agent-instructions";
 import type { ChatRequest } from "./api";
 import { MAX_RECENT_TURNS } from "./lifecycle-constants";
 import { log } from "./log";
+import { formatCompactNumber } from "./number-format";
 import type { ActiveSkill } from "./skill-contract";
 import { getLoadedSkills } from "./skill-ops";
 import { estimateTokens } from "./token-estimate";
@@ -176,10 +177,6 @@ function skillRosterLine(activeSkills: ChatRequest["activeSkills"], contextMaxTo
 type DroppedSkill = { name: string; tokens: number; remaining: number };
 type FittedSkill = { skill: ActiveSkill; tokens: number };
 
-function formatTokenCount(tokens: number): string {
-  return tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : `${tokens}`;
-}
-
 // Reserve budget for the system-prefix skill bodies so history fits around them. Overflow is
 // pathological (a few k against 170k) — drop best-effort, never a hard request failure.
 function fitActiveSkills(
@@ -249,7 +246,7 @@ export function createAgentInput(
   }
 
   if (skillFit.fitted.length > 0) {
-    const summary = skillFit.fitted.map((f) => `${f.skill.name} (${formatTokenCount(f.tokens)})`).join(", ");
+    const summary = skillFit.fitted.map((f) => `${f.skill.name} (${formatCompactNumber(f.tokens)})`).join(", ");
     const costLine = `SYSTEM: Active skills: ${summary} — skill-deactivate when no longer needed.`;
     const costTokens = estimateTokens(costLine);
     if (costTokens <= tokenBudget.remaining()) {

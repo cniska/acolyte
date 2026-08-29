@@ -1,13 +1,5 @@
 export const COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH = 20;
 
-export function formatCompactNumber(n: number): string {
-  if (n < 1000) return String(n);
-  const k = n / 1000;
-  const rounded = Math.round(k * 10) / 10;
-  if (rounded < 100) return `${rounded.toFixed(1)}k`;
-  return `${Math.round(k)}k`;
-}
-
 export function commandOutputColWidth(sections: [string, string][][]): number {
   const allRows = sections.flat();
   if (allRows.length === 0) return COMMAND_OUTPUT_KEY_COLUMN_MIN_WIDTH;
