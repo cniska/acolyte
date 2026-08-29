@@ -182,22 +182,15 @@ function createEditFileTool(input: ToolkitInput) {
     toolkit: "file",
     category: "write",
     description:
-      "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs, which match exact text, or {startLine, endLine, replace} objects, which address lines as `file-read` numbers them. Every edit in one call is located against that same content, so edits in a batch do not shift each other. An endLine past the last line is clamped to it. All edits in a call are applied together or none are.",
+      "Edit an existing file. Pass `edits` as an array of {find, replace} pairs. `find` is exact text that appears once in the file — extend it with surrounding lines until it is unique. Every edit in one call is located against the file as it was read, so edits in a batch do not shift each other, and all of them are applied together or none are.",
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z
         .array(
-          z.union([
-            z.object({
-              find: z.string().min(1),
-              replace: z.string(),
-            }),
-            z.object({
-              startLine: z.number().int().min(1, "Line numbers must be >= 1"),
-              endLine: z.number().int().min(1, "Line numbers must be >= 1"),
-              replace: z.string(),
-            }),
-          ]),
+          z.object({
+            find: z.string().min(1),
+            replace: z.string(),
+          }),
         )
         .min(1),
     }),
