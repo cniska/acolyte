@@ -18,7 +18,7 @@ lifecycle → budget → toolkit → registry
 |---------|---------|
 | `file` | File operations |
 | `code` | AST-aware code scanning and editing |
-| `undo` | Revert file edits |
+| `undo` | Revert file edits — registered only when `undoCheckpoints` is enabled |
 | `session` | Search current session history |
 | `memory` | Persistent cross-session knowledge |
 | `skill` | Skill activation and deactivation |
