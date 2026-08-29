@@ -27,7 +27,7 @@ Before changing or removing anything, understand why it exists. Check the histor
 
 ### 3. Apply incrementally
 
-One simplification at a time. Run tests (`test-run`) after each change. If tests fail, revert with `undo-restore` and reconsider. Separate refactoring from feature work.
+One simplification at a time. Run tests (`test-run`) after each change. If tests fail, revert the change and reconsider. Separate refactoring from feature work.
 
 ### 4. Verify
 
