@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import { ghInstalled } from "./gh-ops";
 import { expectIntent } from "./test-utils";
 import { renderToolOutput } from "./tool-output-render";
@@ -22,12 +23,10 @@ describe("toolsets", () => {
       "gitLog",
       "gitShow",
       "gitStatus",
-      "listUndo",
       "memoryAdd",
       "memoryObserve",
       "memorySearch",
       "readFile",
-      "restoreUndo",
       "runCommand",
       "runTests",
       "scanCode",
@@ -42,6 +41,14 @@ describe("toolsets", () => {
     expect(Object.keys(tools).sort()).toEqual(expected);
     expect(session).toBeDefined();
     expect(session.callLog).toEqual([]);
+    expect(session.writeTools.has("undo-restore")).toBe(false);
+  });
+
+  test("includes undo tools and write classification when undo checkpoints are enabled", () => {
+    const { tools, session } = toolsForAgent({ features: { ...DEFAULT_FEATURE_FLAGS, undoCheckpoints: true } });
+    expect(Object.keys(tools)).toContain("listUndo");
+    expect(Object.keys(tools)).toContain("restoreUndo");
+    expect(session.writeTools.has("undo-restore")).toBe(true);
   });
 });
 
@@ -51,8 +58,8 @@ describe("toolIds", () => {
     expect(ids).toEqual([...ids].sort());
     expect(ids).toContain("file-read");
     expect(ids).toContain("file-edit");
-    expect(ids).toContain("undo-list");
-    expect(ids).toContain("undo-restore");
+    expect(ids).not.toContain("undo-list");
+    expect(ids).not.toContain("undo-restore");
     expect(ids).toContain("shell-run");
     expect(ids).toContain("web-search");
     expect(ids).toContain("git-add");
@@ -69,7 +76,7 @@ describe("toolIdsByCategory", () => {
     expect(ids).toContain("file-delete");
     expect(ids).toContain("git-add");
     expect(ids).toContain("git-commit");
-    expect(ids).toContain("undo-restore");
+    expect(ids).not.toContain("undo-restore");
     expect(ids).not.toContain("tasklist-update");
     expect(ids).not.toContain("file-read");
     expect(ids).not.toContain("shell-run");
@@ -102,8 +109,11 @@ describe("model-facing tool text", () => {
       )?.properties;
       return properties?.[param]?.description ?? "";
     };
-    expectIntent(described("undo-restore", "checkpointId"), [["undo-list"]]);
-    expectIntent(described("undo-restore", "paths"), [["undo-list"]]);
+    const { tools } = toolsForAgent({ features: { ...DEFAULT_FEATURE_FLAGS, undoCheckpoints: true } });
+    const undoRestore = Object.values(tools).find((tool) => tool.id === "undo-restore");
+    const undoProperties = undoRestore?.inputSchema as { properties?: Record<string, { description?: string }> };
+    expectIntent(undoProperties?.properties?.checkpointId?.description ?? "", [["undo-list"]]);
+    expectIntent(undoProperties?.properties?.paths?.description ?? "", [["undo-list"]]);
     expectIntent(described("file-read", "offset"), [["too large to read whole"]]);
   });
 

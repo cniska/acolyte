@@ -8,9 +8,10 @@ import type { LifecycleDebugEvent, RunContext } from "./lifecycle-contract";
 import { phaseGenerate } from "./lifecycle-generate";
 import type { RateLimiter } from "./rate-limiter";
 import { createRunContext } from "./test-utils";
-import { WRITE_TOOL_SET } from "./tool-registry";
 import { createSessionContext } from "./tool-session";
 import { traceEventDisplayFields } from "./trace-event-catalog";
+
+const writeTools = new Set(["code-edit", "file-create", "file-delete", "file-edit", "git-add", "git-commit"]);
 
 const noopRateLimiter: RateLimiter = {
   async beforeCall() {},
@@ -730,7 +731,7 @@ describe("phaseGenerate", () => {
   test("injects the budget notice once when the per-turn call count crosses the threshold", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
-    const session = createSessionContext(undefined, WRITE_TOOL_SET);
+    const session = createSessionContext(undefined, writeTools);
     session.maxToolCallsPerRequest = 100;
     // Threshold is ceil(0.9 * 100) = 90; pre-fill the call log to the crossing point.
     for (let i = 0; i < 90; i++) session.callLog.push({ toolName: "file-read", args: {}, status: "succeeded" });
@@ -783,7 +784,7 @@ describe("phaseGenerate", () => {
     // rather than surfacing an empty answer.
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
-    const session = createSessionContext(undefined, WRITE_TOOL_SET);
+    const session = createSessionContext(undefined, writeTools);
 
     const turns: LanguageModelV4StreamPart[][] = [
       [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
@@ -825,7 +826,7 @@ describe("phaseGenerate", () => {
   test("a written final response after tool work completes cleanly", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
-    const session = createSessionContext(undefined, WRITE_TOOL_SET);
+    const session = createSessionContext(undefined, writeTools);
 
     const turns: LanguageModelV4StreamPart[][] = [
       [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],

@@ -2,7 +2,7 @@ import type { ChatResponse } from "./api";
 import { t } from "./i18n";
 import { promptUsageTotalTokens, type RunContext } from "./lifecycle-contract";
 import { estimateTokens } from "./token-estimate";
-import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
+import { DISCOVERY_TOOL_SET, READ_TOOL_SET, SEARCH_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 
 export function phaseFinalize(ctx: RunContext): ChatResponse {
@@ -39,10 +39,10 @@ export function phaseFinalize(ctx: RunContext): ChatResponse {
   const searchCalls = callLog.filter(
     (entry) => SEARCH_TOOL_SET.has(entry.toolName) && !isRecallProbe(entry.toolName),
   ).length;
-  const writeCalls = callLog.filter((entry) => WRITE_TOOL_SET.has(entry.toolName)).length;
+  const writeCalls = callLog.filter((entry) => ctx.session.writeTools.has(entry.toolName)).length;
   const memorySearchCalls = callLog.filter((entry) => entry.toolName === "memory-search").length;
   const sessionSearchCalls = callLog.filter((entry) => entry.toolName === "session-search").length;
-  const firstWriteIndex = callLog.findIndex((entry) => WRITE_TOOL_SET.has(entry.toolName));
+  const firstWriteIndex = callLog.findIndex((entry) => ctx.session.writeTools.has(entry.toolName));
   const preWriteDiscoveryCalls =
     firstWriteIndex >= 0
       ? callLog.slice(0, firstWriteIndex).filter(isCodeDiscovery).length

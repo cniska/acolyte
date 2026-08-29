@@ -4,7 +4,7 @@ import type { Effect, EffectInput, EffectResult, RunContext } from "./lifecycle-
 import type { EffectOutput, PostToolContext, PreToolContext, SessionContext } from "./tool-contract";
 import { type ShellLine, shellTailParts } from "./tool-output-format";
 import { OUTPUT_WINDOW_ROWS } from "./tool-policy";
-import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
+import { DISCOVERY_TOOL_SET } from "./tool-registry";
 import type { WorkspaceCommand } from "./workspace-contract";
 import {
   type CommandResult,
@@ -151,7 +151,7 @@ async function preToolSideEffects(ctx: RunContext, preCtx: PreToolContext): Prom
 // write cannot start while a formatter is still rewriting the file this one produced.
 async function postToolSideEffects(ctx: RunContext, postCtx: PostToolContext): Promise<EffectOutput | undefined> {
   if (postCtx.status !== "succeeded") return undefined;
-  if (!WRITE_TOOL_SET.has(postCtx.toolId)) return undefined;
+  if (!ctx.session.writeTools.has(postCtx.toolId)) return undefined;
   const path = typeof postCtx.args.path === "string" ? postCtx.args.path.trim() : "";
   if (!path) return undefined;
   // A write that removed the file leaves nothing to format or lint, and a linter pointed at a path

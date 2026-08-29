@@ -15,7 +15,7 @@ import { resolveScopeKey } from "./memory-ops";
 import { createTaskActivity } from "./task-activity";
 import { createInMemoryTaskQueue } from "./task-queue";
 import { ensureRealTokenEncoder } from "./token-estimate";
-import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
+import { DISCOVERY_TOOL_SET } from "./tool-registry";
 import { scopedCallLog } from "./tool-session";
 import { attachUndoCheckpointSideEffects } from "./undo-checkpoints-effects";
 import { formatWorkspaceCommand, resolveWorkspaceProfile } from "./workspace-profile";
@@ -153,7 +153,7 @@ function createRunContext(
         workspace: ctx.workspace,
         sessionId,
         session,
-        writeToolSet: WRITE_TOOL_SET,
+        writeToolSet: session.writeTools,
       });
     }
   }
@@ -172,7 +172,11 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
     ...ctx.request.history.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: ctx.request.message },
   ];
-  const activity = createTaskActivity(scopedCallLog(ctx.session, ctx.taskId), WRITE_TOOL_SET, DISCOVERY_TOOL_SET);
+  const activity = createTaskActivity(
+    scopedCallLog(ctx.session, ctx.taskId),
+    ctx.session.writeTools,
+    DISCOVERY_TOOL_SET,
+  );
   // The commit runs in the background, so the turn can only estimate, and this one is a floor: it
   // covers at most one window and omits the recall candidates the distiller is shown, whose size is
   // known only once the commit runs. Exact accounting needs the real usage carried back from it.
@@ -276,6 +280,7 @@ export async function runLifecycle(input: LifecycleInput, deps: LifecycleDeps = 
     projectRulesPrompt: input.projectRulesPrompt,
     model,
     policy,
+    features: input.features,
     debug,
     onOutput: (event: ToolOutputEvent) => {
       ctxRef?.sideEffectSink?.({ type: "tool-output", ...event });

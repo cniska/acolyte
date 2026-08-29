@@ -76,6 +76,7 @@ export type PhasePrepareInput = {
   projectRulesPrompt?: string;
   model: string;
   policy: LifecyclePolicy;
+  features?: ResolvedFeatureFlags;
   debug: RunContext["debug"];
   onOutput: (event: ToolOutputEvent) => void;
   onTasklist: TasklistListener;

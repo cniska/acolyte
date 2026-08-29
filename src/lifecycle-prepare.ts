@@ -25,6 +25,7 @@ export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
     taskId: input.taskId,
     sessionId: input.request.sessionId,
     mcpListings: input.mcpListings,
+    features: input.features,
   });
   const toolTokens = estimateToolTokens(tools);
   const { policy } = input;

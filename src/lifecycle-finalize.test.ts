@@ -157,6 +157,29 @@ describe("phaseFinalize", () => {
     expect(summary?.pre_write_discovery_calls).toBe(2);
   });
 
+  test("counts writes and pre-write discovery from the session write set", () => {
+    const session = createSessionContext("task_1", new Set(["undo-restore"]));
+    session.callLog.push(
+      { toolName: "file-search", args: {}, taskId: "task_1", status: "succeeded" },
+      { toolName: "undo-restore", args: {}, taskId: "task_1", status: "succeeded" },
+      { toolName: "file-read", args: {}, taskId: "task_1", status: "succeeded" },
+    );
+    let summary: Record<string, unknown> | undefined;
+    const ctx = createRunContext({
+      taskId: "task_1",
+      session,
+      result: { text: "done", toolCalls: [] },
+      debug: (event, fields) => {
+        if (event === "lifecycle.summary") summary = fields;
+      },
+    });
+
+    phaseFinalize(ctx);
+
+    expect(summary?.write_calls).toBe(1);
+    expect(summary?.pre_write_discovery_calls).toBe(1);
+  });
+
   test("lifecycle.summary debug event has all catalog display fields", () => {
     const debugEvents: Array<{ event: string; fields: Record<string, unknown> }> = [];
     const ctx = createRunContext({
