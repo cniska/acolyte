@@ -27,13 +27,13 @@ These must always hold.
 - When behavior and tests diverge, fix the implementation. Update expectations only when explicitly requested.
 - Verify every factual claim at its source before it ships, and cite it — `file:line` for code, a pinned revision for anything outside the repo. Inference, memory, and a plausible reading of a name are not verification.
 - A quantifier (`only`, `never`, `every`, `no other`) needs an exhaustive sweep, not a sample. Without one, weaken the claim to what was checked.
-- Commit only when explicitly requested.
+- Commit verified slices locally on the topic branch as you go; never commit unrequested on `main`.
 - Changes that affect agent behavior: dogfood with `acolyte run` before merge, not just tests.
 
 ## Workflow
 
 - Run: `bun run start` (dev with watch/restart: `bun run dev`).
-- Verify before every commit: `bun run verify` (lint, typecheck, test, audit).
+- Verify before pushing or opening a PR: `bun run verify` (lint, typecheck, test, audit). A slice commit runs the tests covering the slice.
 - Release: `bun run release <patch|minor|major>` — the script owns the gates (clean `main`, version bump, changelog, verify, tag).
 - Worktrees: do each branch's work in its own worktree so parallel branches never clobber the tree; `wt <branch>` creates one (`scripts/worktree-setup.sh`), `wt rm <branch>` removes it. Keep the primary `main` checkout for direct-to-`main` changes.
 
