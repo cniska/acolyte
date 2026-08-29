@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import type { WorkspaceCommand, WorkspaceProfile } from "./workspace-contract";
 import { detectWorkspaceProfile } from "./workspace-detectors";
 
@@ -10,28 +10,25 @@ export function renderCommandResult(result: CommandResult): string {
   return `stdout:\n${result.stdout}\n\nstderr:\n${result.stderr}`;
 }
 
+// A formatter reports what it rewrote on its way out and exits 0, so both streams are read on
+// every path: a success here carries the account of what changed, not just an absence of errors.
 export function runCommand(workspace: string, command: WorkspaceCommand, timeoutMs = 30_000): CommandResult {
   const { bin, args } = command;
-  try {
-    execFileSync(bin, [...args], {
-      cwd: workspace,
-      timeout: timeoutMs,
-      maxBuffer: 1024 * 1024,
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+  const run = spawnSync(bin, [...args], {
+    cwd: workspace,
+    timeout: timeoutMs,
+    maxBuffer: 1024 * 1024,
+    encoding: "utf-8",
+  });
+  const stdout = (run.stdout ?? "").trim();
+  const stderr = (run.stderr ?? "").trim();
+  // An absent binary is not a workspace failure — the ecosystem was detected, the tool is not
+  // installed. Nothing to report and nothing to fix.
+  if (run.error && "code" in run.error && run.error.code === "ENOENT") {
     return { hasErrors: false, stdout: "", stderr: "" };
-  } catch (error) {
-    const stderr = typeof error === "object" && error !== null && "stderr" in error ? String(error.stderr).trim() : "";
-    if (stderr.includes("not found") || stderr.includes("ENOENT")) {
-      return { hasErrors: false, stdout: "", stderr: "" };
-    }
-    const stdout =
-      typeof error === "object" && error !== null && "stdout" in error
-        ? String(error.stdout).trim()
-        : String(error).trim();
-    return { hasErrors: true, stdout, stderr };
   }
+  if (run.error) return { hasErrors: true, stdout, stderr: stderr || String(run.error) };
+  return { hasErrors: run.status !== 0, stdout, stderr };
 }
 
 export function resolveCommandFiles(command: WorkspaceCommand, filePaths: string[]): WorkspaceCommand {
@@ -71,14 +68,30 @@ export function clearWorkspaceProfileCache(): void {
   cache.clear();
 }
 
+// Formatting and linting are lifecycle effects: they run on their own after a write and report
+// themselves in the transcript, so nothing here names those commands. What the model cannot
+// otherwise know, and does run itself, belongs here.
 export function createWorkspaceInstructions(profile: WorkspaceProfile): string[] {
   const lines: string[] = [];
-  if (profile.formatCommand) {
-    const cmd = formatWorkspaceCommand(profile.formatCommand);
-    lines.push(`Format command: \`${cmd}\`. Run this to auto-fix lint or format issues before manual repairs.`);
+  if (profile.ecosystem) {
+    lines.push(`This is a ${profile.ecosystem} project.`);
   }
   if (profile.packageManager) {
-    lines.push(`This project uses ${profile.packageManager}. Use it for install and run commands.`);
+    lines.push(`It uses ${profile.packageManager}. Use it for install and run commands.`);
+  }
+  if (profile.testCommand) {
+    // The tool substitutes the file placeholder, so the model is told the runner it will invoke
+    // rather than a command string it cannot use as written.
+    const runner = formatWorkspaceCommand(resolveCommandFiles(profile.testCommand, []));
+    lines.push(`Its tests run under \`${runner}\`, which the test tool invokes.`);
+  }
+  if (profile.installCommand) {
+    lines.push(
+      "The harness installs dependencies when they are missing, so a fresh checkout is ready before I touch it.",
+    );
+  }
+  if (profile.formatCommand || profile.lintCommand) {
+    lines.push("The harness formats and lints every file I write, straight after the write. I leave that to it.");
   }
   return lines;
 }
