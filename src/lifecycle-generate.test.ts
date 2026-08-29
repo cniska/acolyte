@@ -731,7 +731,8 @@ describe("phaseGenerate", () => {
   test("injects the budget notice once when the per-turn call count crosses the threshold", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
-    const session = createSessionContext(undefined, writeTools);
+    const session = createSessionContext();
+    session.writeTools = writeTools;
     session.maxToolCallsPerRequest = 100;
     // Threshold is ceil(0.9 * 100) = 90; pre-fill the call log to the crossing point.
     for (let i = 0; i < 90; i++) session.callLog.push({ toolName: "file-read", args: {}, status: "succeeded" });
@@ -784,7 +785,8 @@ describe("phaseGenerate", () => {
     // rather than surfacing an empty answer.
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
-    const session = createSessionContext(undefined, writeTools);
+    const session = createSessionContext();
+    session.writeTools = writeTools;
 
     const turns: LanguageModelV4StreamPart[][] = [
       [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
@@ -826,7 +828,8 @@ describe("phaseGenerate", () => {
   test("a written final response after tool work completes cleanly", async () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
-    const session = createSessionContext(undefined, writeTools);
+    const session = createSessionContext();
+    session.writeTools = writeTools;
 
     const turns: LanguageModelV4StreamPart[][] = [
       [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],

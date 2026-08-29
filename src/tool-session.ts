@@ -1,11 +1,11 @@
 import { MAX_TOOL_CALLS_PER_REQUEST, TOOL_TIMEOUT_MS } from "./lifecycle-constants";
 import type { SessionContext, ToolCallRecord, ToolCallStatus } from "./tool-contract";
 
-export function createSessionContext(taskId?: string, writeTools: ReadonlySet<string> = new Set()): SessionContext {
+export function createSessionContext(taskId?: string): SessionContext {
   return {
     callLog: [],
     taskId,
-    writeTools,
+    writeTools: new Set(),
     readTools: new Set(),
     searchTools: new Set(),
     discoveryTools: new Set(),
