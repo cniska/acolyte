@@ -11,8 +11,10 @@ import {
   startFakeProviderServer,
 } from "../scripts/fake-provider-server";
 import { appConfig } from "./app-config";
+import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import { runLifecycle } from "./lifecycle";
 import { createRunControl } from "./lifecycle-contract";
+import { phasePrepare } from "./lifecycle-prepare";
 import { PLUGIN_MCP_SCHEMA_ID } from "./plugin-contract";
 import { resetPluginCache } from "./plugin-ops";
 import { createLifecycleDeps, createLifecycleInput, tempDir, writePlugin } from "./test-utils";
@@ -260,6 +262,36 @@ printf '%s\n' "$@" > "${formatLog}"
     );
 
     expect(reply.output).toBe("Yielding to a newer pending message.");
+  });
+
+  test("offers the undo tools only when checkpoints are enabled", async () => {
+    async function toolIdsForFlag(undoCheckpoints: boolean): Promise<string[]> {
+      let offered: string[] = [];
+      const deps = createLifecycleDeps({
+        phasePrepare,
+        phaseGenerate: mock(async (ctx: { tools: Record<string, unknown>; result?: unknown }) => {
+          offered = Object.keys(ctx.tools);
+          ctx.result = { text: "done", toolCalls: [] };
+        }),
+      });
+      await runLifecycle(
+        createLifecycleInput({
+          request: { model: "gpt-5-mini", message: "test", history: [] },
+          workspace,
+          features: { ...DEFAULT_FEATURE_FLAGS, undoCheckpoints },
+        }),
+        deps,
+      );
+      return offered;
+    }
+
+    const withoutUndo = await toolIdsForFlag(false);
+    expect(withoutUndo).not.toContain("listUndo");
+    expect(withoutUndo).not.toContain("restoreUndo");
+
+    const withUndo = await toolIdsForFlag(true);
+    expect(withUndo).toContain("listUndo");
+    expect(withUndo).toContain("restoreUndo");
   });
 
   test("captures undo checkpoint after write tool when enabled", async () => {
