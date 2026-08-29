@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isoDateTimeSchema } from "./datetime";
+import { type EffectRow, effectRowSchema } from "./effect-contract";
 import { domainIdSchema } from "./id-contract";
 import { createId } from "./short-id";
 import { tasklistOutputSchema } from "./tasklist-contract";
@@ -50,7 +51,13 @@ export const commandOutputSchema = z.object({
 
 export type CommandOutput = z.infer<typeof commandOutputSchema>;
 
-const chatRowContentSchema = z.union([z.string(), toolOutputSchema, commandOutputSchema, tasklistOutputSchema]);
+const chatRowContentSchema = z.union([
+  z.string(),
+  toolOutputSchema,
+  effectRowSchema,
+  commandOutputSchema,
+  tasklistOutputSchema,
+]);
 
 export type ChatRowContent = z.infer<typeof chatRowContentSchema>;
 
@@ -65,6 +72,10 @@ export type ChatRow = z.infer<typeof chatRowSchema>;
 
 export function createRow(kind: ChatRow["kind"], content: ChatRowContent, style?: ChatRowStyle): ChatRow {
   return { id: `row_${createId()}`, kind, content, style: style ?? undefined };
+}
+
+export function isEffectRow(content: ChatRowContent | undefined): content is EffectRow {
+  return typeof content === "object" && "command" in content && "effect" in content;
 }
 
 export function isToolOutput(content: ChatRowContent | undefined): content is ToolOutput {

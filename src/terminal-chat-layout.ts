@@ -10,6 +10,7 @@ import type { TranscriptStatus } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
 import { highlightCode, resolveLanguage } from "./code-highlight";
 import { formatRelativeTime } from "./datetime";
+import type { EffectRow } from "./effect-contract";
 import type { FooterStatus } from "./footer-status-contract";
 import type { PrState } from "./gh-contract";
 import { t } from "./i18n";
@@ -372,7 +373,6 @@ export function layoutPending(input: {
           : t("rpc.status.queued.unknown")
         : t("rpc.status.accepted");
   const running = presentation.state.kind === "running";
-  const blink = !running || Math.abs(presentation.frame) % PENDING_FRAME_COUNT < PENDING_FRAME_COUNT / 2;
   // Marker carries the kind color, the text a shimmer sweep (running) or dim (queued/accepted).
   const markerRole: TerminalStyleRole = running
     ? "pending"
@@ -384,7 +384,7 @@ export function layoutPending(input: {
   let shimmerOffset = 0;
   const lines: TerminalLine[] = wrapTerminalProse(text, Math.max(24, input.columns - 2)).map((line, index) => {
     const marker: TerminalSpan = {
-      text: index === 0 ? `${blink ? GLYPH_FILLED : GLYPH_HOLLOW} ` : "  ",
+      text: index === 0 ? `${pendingMarkerGlyph(running, input.now)} ` : "  ",
       role: markerRole,
     };
     const body: TerminalSpan[] = running
@@ -718,7 +718,24 @@ export function layoutFooterStatus(status: FooterStatus, columns: number): Termi
 }
 
 const TASKLIST_VISIBLE_LIMIT = 5;
-const TASKLIST_PULSE_MS = 500;
+const MARKER_PULSE_MS = 500;
+
+/** Work in flight, wherever it is drawn: the marker pulses between absent and active. A settled
+ *  glyph never appears in the cycle, so nothing mid-pulse can be misread as finished. */
+function pulseGlyph(filled: boolean): string {
+  return filled ? GLYPH_FISHEYE : GLYPH_HOLLOW;
+}
+
+function markerPulseFilled(now: number): boolean {
+  return Math.floor(now / MARKER_PULSE_MS) % 2 === 0;
+}
+
+/** Only a running turn pulses. A queued or accepted one has not started, and a steady fisheye would
+ *  claim it had. */
+function pendingMarkerGlyph(running: boolean, now: number): string {
+  if (!running) return GLYPH_FILLED;
+  return pulseGlyph(markerPulseFilled(now));
+}
 
 function taskItemRole(status: TasklistItemStatus): TerminalStyleRole {
   switch (status) {
@@ -733,7 +750,7 @@ function taskItemRole(status: TasklistItemStatus): TerminalStyleRole {
 
 // Gentle glyph pulse for the active item, not a brightness blink (which pulls focus off the transcript).
 function taskItemGlyph(status: TasklistItemStatus, pulseFilled: boolean): string {
-  if (status === "in_progress") return pulseFilled ? GLYPH_FISHEYE : GLYPH_HOLLOW;
+  if (status === "in_progress") return pulseGlyph(pulseFilled);
   return tasklistMarker(status);
 }
 
@@ -752,7 +769,7 @@ export function layoutTranscriptTasklist(
   const notDone = sorted.filter((item) => item.status !== "done");
   const visible = notDone.slice(0, TASKLIST_VISIBLE_LIMIT);
   const overflow = notDone.length - visible.length;
-  const pulseFilled = !animating || Math.floor(now / TASKLIST_PULSE_MS) % 2 === 0;
+  const pulseFilled = !animating || markerPulseFilled(now);
   const count = ` ${done}/${total}`;
   const lines: TerminalLine[] = [
     {
@@ -806,14 +823,18 @@ function toolMarkerRole(status: TranscriptStatus): TerminalStyleRole {
   }
 }
 
-function toolMarkerGlyph(headerState: ToolHeaderState | undefined, status: TranscriptStatus): string {
+function toolMarkerGlyph(
+  headerState: ToolHeaderState | undefined,
+  status: TranscriptStatus,
+  pulseFilled: boolean,
+): string {
   switch (headerState) {
     case "on":
       return GLYPH_FISHEYE;
     case "off":
       return GLYPH_HOLLOW;
     default:
-      return status === "active" ? GLYPH_FISHEYE : GLYPH_FILLED;
+      return status === "active" ? pulseGlyph(pulseFilled) : GLYPH_FILLED;
   }
 }
 
@@ -832,10 +853,12 @@ export function layoutTranscriptTool(input: {
   parts: ToolOutputPart[];
   status: TranscriptStatus;
   columns: number;
+  now: number;
+  animating: boolean;
 }): TerminalScene {
   const contentWidth = Math.max(24, input.columns - 2);
   const headerState = input.parts.find((part) => part.kind === "tool-header")?.state;
-  const marker = `${toolMarkerGlyph(headerState, input.status)} `;
+  const marker = `${toolMarkerGlyph(headerState, input.status, !input.animating || markerPulseFilled(input.now))} `;
   const markerRole = toolHeaderMarkerRole(headerState, input.status);
   const editPath = input.parts.find((part) => part.kind === "edit-header")?.path;
   const diffLang = editPath ? resolveLanguage(extname(editPath).slice(1)) : null;
@@ -871,6 +894,38 @@ export function layoutTranscriptTool(input: {
   };
 }
 
+const EFFECT_LABEL = "Effect";
+
+// An effect reports work the harness already did, so the row is settled the moment it is drawn: a
+// dim marker, never a phase glyph, and no outcome to colour it. It shares the tool row's body
+// primitives, not its top-level layout, because none of that row's progress and verdict apply here.
+export function layoutTranscriptEffect(input: { row: EffectRow; columns: number }): TerminalScene {
+  const contentWidth = Math.max(24, input.columns - 2);
+  const header: TerminalLine = {
+    spans: clipSpans(
+      [
+        { text: `${GLYPH_FILLED} `, role: "effect" },
+        { text: EFFECT_LABEL, role: "tool-label" },
+        { text: ` ${input.row.command}`, role: "effect" },
+      ],
+      contentWidth + 2,
+    ),
+  };
+  const body = layoutToolOutput(input.row.output).map((line) => {
+    const fitted = fitLine(line, contentWidth);
+    return {
+      spans: [
+        { text: " ".repeat(fitted.indent + 2), role: "plain" as const },
+        ...fitted.segments.flatMap((segment) => {
+          const base = toolRole(segment.role);
+          return base ? [{ text: segment.text, role: base }] : [];
+        }),
+      ],
+    };
+  });
+  return { lines: [header, ...body] };
+}
+
 export function layoutChatViewport(input: {
   presentation: ChatViewportPresentation;
   /** Rows whose tool output is still on screen ahead of the header that replaces it. The outcome is
@@ -898,9 +953,21 @@ export function layoutChatViewport(input: {
         row.id,
         row.status !== "active" && !input.held.has(row.id),
         insetScene(
-          layoutTranscriptTool({ parts: row.content.output.parts, status: row.status, columns: cw }),
+          layoutTranscriptTool({
+            parts: row.content.output.parts,
+            status: row.status,
+            columns: cw,
+            now: input.now,
+            animating: input.presentation.pending !== null,
+          }),
           CONTENT_COLUMN,
         ),
+      );
+    } else if (row.content.kind === "effect") {
+      append(
+        row.id,
+        true,
+        insetScene(layoutTranscriptEffect({ row: row.content.output, columns: cw }), CONTENT_COLUMN),
       );
     } else if (row.content.kind === "command-output") {
       const body = formatCommandOutput(row.content.output);

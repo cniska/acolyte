@@ -95,23 +95,6 @@ describe("localization baseline", () => {
 });
 
 describe("model-facing tool text", () => {
-  // A tool's instruction is hoisted into the system prompt for every turn, whether or not the
-  // tool gets used. Only a handoff between two tools earns that: anything a tool can say about
-  // itself belongs in its own description, next to its schema.
-  test("only cross-tool handoffs are hoisted into the system prompt", () => {
-    const hoisted = toolIds().filter((id) => toolDefinitionsById[id]?.instruction);
-    expect(hoisted.sort()).toEqual(["code-scan", "file-read", "tasklist-create"]);
-
-    for (const id of hoisted) {
-      const instruction = toolDefinitionsById[id]?.instruction ?? "";
-      const named = toolIds().filter((other) => instruction.includes(`\`${other}\``));
-      expect(named).toContain(id);
-      expect(named.length).toBeGreaterThan(1);
-    }
-  });
-
-  // A parameter fact belongs on the parameter, where it reaches the model inside the property
-  // being filled and dies with the field it documents.
   test("parameter contracts ship on their own parameters", () => {
     const described = (id: string, param: string): string => {
       const properties = (

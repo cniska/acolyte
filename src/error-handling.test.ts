@@ -109,8 +109,7 @@ describe("error handling helpers", () => {
     expect(errorKindFromErrorCode(TOOL_ERROR_CODES.searchFilesNoMatch)).toBe("no_match");
     expect(errorKindFromErrorCode(TOOL_ERROR_CODES.editFileFindNotFound)).toBe("no_match");
     expect(errorKindFromErrorCode(TOOL_ERROR_CODES.editFileMultiMatch)).toBe("ambiguous_match");
-    expect(errorKindFromErrorCode(TOOL_ERROR_CODES.editFileFindTooLarge)).toBe("too_large");
-    expect(errorKindFromErrorCode(TOOL_ERROR_CODES.editFileBatchTooLarge)).toBe("too_large");
+    expect(errorKindFromErrorCode(TOOL_ERROR_CODES.readFileTooLarge)).toBe("too_large");
     expect(errorKindFromErrorCode(TOOL_ERROR_CODES.scanCodeUnsupportedFile)).toBe("unsupported_file");
     expect(errorKindFromErrorCode(TOOL_ERROR_CODES.readFileRangeInvalid)).toBe("invalid_request");
     expect(errorKindFromErrorCode(TOOL_ERROR_CODES.sandboxViolation)).toBe("sandbox_violation");

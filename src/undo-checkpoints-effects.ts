@@ -72,14 +72,17 @@ export function attachUndoCheckpointSideEffects(options: {
   };
 
   const prevAfterAsync = options.session.onAfterToolAsync;
+  // This wrapper is installed over the lifecycle effects, so whatever they appended to the tool
+  // result passes through it untouched — dropping it would silently starve the model of lint output.
   options.session.onAfterToolAsync = async (postCtx: PostToolContext) => {
-    await prevAfterAsync?.(postCtx);
-    if (!options.writeToolSet.has(postCtx.toolId)) return;
+    const output = await prevAfterAsync?.(postCtx);
+    if (!options.writeToolSet.has(postCtx.toolId)) return output;
 
     const pending = pendingUndo.get(postCtx.toolCallId);
-    if (!pending) return;
+    if (!pending) return output;
     pendingUndo.delete(postCtx.toolCallId);
-    if (postCtx.status !== "succeeded") return;
+    if (postCtx.status !== "succeeded") return output;
     await commitUndoCheckpoint({ workspace: options.workspace, sessionId: options.sessionId, pending });
+    return output;
   };
 }

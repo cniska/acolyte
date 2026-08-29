@@ -1,6 +1,5 @@
 import type { TranslationLocale } from "./i18n/locales";
 import type { ActiveSkill } from "./skill-contract";
-import { toolDefinitionsById, toolIds } from "./tool-registry";
 import { createWorkspaceInstructions, resolveWorkspaceProfile } from "./workspace-profile";
 
 // What the terminal surface renders and when it speaks — neither derivable from the code.
@@ -22,12 +21,6 @@ const PROJECT_RULES_PRECEDENCE = "Project rules take precedence over generic gui
 
 function createRuntimeInstructions(workspace?: string): string {
   const lines: string[] = [];
-  // Read at call time, not module scope: the registry is built during its own module
-  // evaluation, so an import-time read is a TDZ crash whenever a cycle reaches here first.
-  for (const toolId of toolIds()) {
-    const tool = toolDefinitionsById[toolId];
-    if (tool?.instruction) lines.push(`- ${tool.instruction}`);
-  }
   if (workspace) {
     const profile = resolveWorkspaceProfile(workspace);
     for (const line of createWorkspaceInstructions(profile)) lines.push(`- ${line}`);

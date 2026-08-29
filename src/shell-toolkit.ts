@@ -20,7 +20,7 @@ function createRunCommandTool(input: ToolkitInput) {
     toolkit: "shell",
     category: "execute",
     description:
-      "Run a command in the repository and capture stdout/stderr. Give a binary in `cmd` and its arguments in `args`: there is no shell, so operators, pipes, and redirection do not work. Never use a command as a fallback for file discovery, reading, or editing when a dedicated tool exists.",
+      "Run a command in the repository and capture stdout/stderr. Give a binary in `cmd` and its arguments in `args`: there is no shell, so operators, pipes, and redirection do not work.",
     inputSchema: z.object({
       cmd: z.string().min(1),
       args: z.array(z.string()).optional(),

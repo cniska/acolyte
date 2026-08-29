@@ -68,6 +68,8 @@ Acolyte detects and stores a workspace profile with:
 
 The profile is used by lifecycle effects and tooling behavior, including format/lint runs on edited files and scoped test execution through detected test commands.
 
+The model receives the ecosystem, package manager, and test runner. Install, format, and lint stay host-owned: the model is told the harness runs them, not what they are.
+
 Profile detection is implemented by workspace detector modules and exposed via `resolveWorkspaceProfile`.
 
 ## Observability

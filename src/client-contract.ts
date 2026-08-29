@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ChatRequest, ChatResponse } from "./api";
 import { invariant } from "./assert";
+import { effectRowSchema } from "./effect-contract";
 import type { ErrorKind } from "./error-contract";
 import { rpcServerMessageSchema } from "./rpc-protocol";
 import { promptBreakdownSchema, tokenCountSchema, tokenUsageSchema } from "./session-contract";
@@ -43,6 +44,7 @@ const toolOutputEventSchema = z.object({
   content: toolOutputPartSchema,
   transient: z.boolean().optional(),
 });
+const effectEventSchema = z.object({ type: z.literal("effect"), row: effectRowSchema });
 const toolResultEventSchema = z.object({
   type: z.literal("tool-result"),
   toolCallId: z.string(),
@@ -92,6 +94,7 @@ export const streamEventSchema = z.discriminatedUnion("type", [
   reasoningEventSchema,
   toolCallEventSchema,
   toolOutputEventSchema,
+  effectEventSchema,
   toolResultEventSchema,
   streamUsageEventSchema,
   statusEventSchema,

@@ -480,6 +480,12 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
     });
   },
 
+  effect(ctx, chunk) {
+    if (chunk.type !== "effect") return;
+    ctx.debug("lifecycle.effect.row", { effect: chunk.row.effect, command: chunk.row.command });
+    ctx.emit({ type: "effect", row: chunk.row });
+  },
+
   tasklist(ctx, chunk) {
     if (chunk.type !== "tasklist") return;
     ctx.emit({ type: "tasklist", groupId: chunk.groupId, groupTitle: chunk.groupTitle, items: chunk.items });

@@ -62,7 +62,7 @@ describe("per-tool timeout", () => {
   test("returns effectOutput from lifecycle effects", async () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 500;
-    session.onAfterTool = () => ({ append: "Lint errors:\nsrc/foo.ts:1 missing semicolon" });
+    session.onAfterToolAsync = async () => ({ append: "Lint errors:\nsrc/foo.ts:1 missing semicolon" });
     const result = await runTool(session, "file-edit", "call_1", {}, async () => ({ ok: true }));
     expect(result.result).toEqual({ ok: true });
     expect(result.effectOutput).toBe("Lint errors:\nsrc/foo.ts:1 missing semicolon");
@@ -71,7 +71,7 @@ describe("per-tool timeout", () => {
   test("omits effectOutput when lifecycle effects return no feedback", async () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 500;
-    session.onAfterTool = () => undefined;
+    session.onAfterToolAsync = async () => undefined;
     const result = await runTool(session, "file-edit", "call_1", {}, async () => ({ ok: true }));
     expect(result.result).toEqual({ ok: true });
     expect(result.effectOutput).toBeUndefined();
@@ -128,19 +128,12 @@ describe("per-tool timeout", () => {
     const session = createSessionContext();
     session.toolTimeoutMs = 500;
     const events: string[] = [];
-    session.onBeforeTool = () => {
-      events.push("before-sync");
-      return { append: "before output" };
-    };
     session.onBeforeToolAsync = async () => {
-      events.push("before-async");
-    };
-    session.onAfterTool = () => {
-      events.push("after-sync");
-      return { append: "after output" };
+      events.push("before");
     };
     session.onAfterToolAsync = async () => {
-      events.push(`after-async:call-log-${session.callLog.length}`);
+      events.push(`after:call-log-${session.callLog.length}`);
+      return { append: "after output" };
     };
 
     const result = await runTool(session, "file-edit", "call_1", { path: "src/app.ts" }, async () => {
@@ -148,8 +141,8 @@ describe("per-tool timeout", () => {
       return { ok: true };
     });
 
-    expect(result).toEqual({ result: { ok: true }, effectOutput: "before output\nafter output" });
-    expect(events).toEqual(["before-sync", "before-async", "execute", "after-sync", "after-async:call-log-0"]);
+    expect(result).toEqual({ result: { ok: true }, effectOutput: "after output" });
+    expect(events).toEqual(["before", "execute", "after:call-log-0"]);
     expect(session.callLog).toHaveLength(1);
   });
 

@@ -43,8 +43,6 @@ function createCreateTasklistTool(input: ToolkitInput, state: Map<string, { titl
     toolkit: "tasklist",
     category: "meta",
     description: "Create an inline tasklist visible to the user. All items start as pending.",
-    instruction:
-      "Call `tasklist-create` once with all of a task's steps, then `tasklist-update` on the same `groupId` as each step's status changes.",
     inputSchema: createTasklistInputSchema,
     outputSchema: createTasklistOutputSchema,
     execute: async (toolInput, toolCallId) => {

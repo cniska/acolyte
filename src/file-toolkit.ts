@@ -105,8 +105,6 @@ function createReadFileTool(input: ToolkitInput) {
     category: "read",
     description:
       "Read a text file. I return the whole file as numbered lines under a `Lines: start-end of total` header. A file over the token ceiling fails with its line count; re-read it with `offset` (the 1-based first line) and `limit` (how many lines) to select the part you need. A file over the byte ceiling is not readable at any range — search it with `file-search`.",
-    instruction:
-      "Re-read a file with `file-read` immediately before editing it, and take the snippets and line numbers you pass to `file-edit` or `code-edit` from that read.",
     inputSchema: z.object({
       path: z.string().min(1),
       offset: z
@@ -184,22 +182,15 @@ function createEditFileTool(input: ToolkitInput) {
     toolkit: "file",
     category: "write",
     description:
-      "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `file-read` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `file-create`. For code renames or structural edits use `code-edit`.",
+      "Edit an existing file. Pass `edits` as an array of {find, replace} pairs. `find` is exact text that appears once in the file — extend it with surrounding lines until it is unique. Every edit in one call is located against the file as it was read, so edits in a batch do not shift each other, and all of them are applied together or none are.",
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z
         .array(
-          z.union([
-            z.object({
-              find: z.string().min(1),
-              replace: z.string(),
-            }),
-            z.object({
-              startLine: z.number().int().min(1, "Line numbers must be >= 1"),
-              endLine: z.number().int().min(1, "Line numbers must be >= 1"),
-              replace: z.string(),
-            }),
-          ]),
+          z.object({
+            find: z.string().min(1),
+            replace: z.string(),
+          }),
         )
         .min(1),
     }),

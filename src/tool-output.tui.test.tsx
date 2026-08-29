@@ -10,7 +10,7 @@ import { ansi, colorToFg } from "./tui/styles";
 import { renderPlain } from "./tui/test-utils";
 
 function renderChat(toolOutput: ToolOutputPart[], columns = 96): string {
-  const scene = layoutTranscriptTool({ parts: toolOutput, status: "complete", columns });
+  const scene = layoutTranscriptTool({ parts: toolOutput, status: "complete", columns, now: 0, animating: false });
   return renderPlain(<TerminalSceneRender scene={scene} />, columns);
 }
 
@@ -598,6 +598,8 @@ describe("tool output TUI — chat (Ink rendering)", () => {
         parts: [{ kind: "tool-header", labelKey: "tool.label.skill_activate", detail: "build", state }],
         status: "success",
         columns: 96,
+        now: 0,
+        animating: false,
       });
     expect(renderToString(<TerminalSceneRender scene={skillScene("on")} />)).toContain(`${colorToFg(palette.brand)}◈`);
     expect(renderToString(<TerminalSceneRender scene={skillScene("off")} />)).toContain(`${ansi.dim}◇`);
@@ -612,6 +614,8 @@ describe("tool output TUI — chat (Ink rendering)", () => {
       ],
       status: "complete",
       columns: 96,
+      now: 0,
+      animating: false,
     });
     const output = renderToString(<TerminalSceneRender scene={scene} />);
     // stderr is just another output channel — it must not be painted red (SGR 31).

@@ -6,6 +6,7 @@ import {
   commandOutputSchema,
   toolOutputSchema,
 } from "./chat-contract";
+import { effectRowSchema } from "./effect-contract";
 import { tasklistOutputSchema } from "./tasklist-contract";
 
 export const transcriptStatusSchema = z.enum([
@@ -24,6 +25,7 @@ export const transcriptContentSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("tool-output"), output: toolOutputSchema }),
   z.object({ kind: z.literal("command-output"), output: commandOutputSchema }),
   z.object({ kind: z.literal("tasklist"), output: tasklistOutputSchema }),
+  z.object({ kind: z.literal("effect"), output: effectRowSchema }),
 ]);
 export type TranscriptContent = z.infer<typeof transcriptContentSchema>;
 export const transcriptRowSchema = z.object({
@@ -51,6 +53,8 @@ export function migrateLegacyChatRow(row: ChatRow): TranscriptRow {
     return { id: row.id, kind: row.kind, status, content: { kind: "tool-output", output: row.content } };
   if ("header" in row.content)
     return { id: row.id, kind: row.kind, status, content: { kind: "command-output", output: row.content } };
+  if ("effect" in row.content)
+    return { id: row.id, kind: row.kind, status, content: { kind: "effect", output: row.content } };
   return { id: row.id, kind: row.kind, status, content: { kind: "tasklist", output: row.content } };
 }
 
@@ -74,6 +78,8 @@ export function legacyChatRowFromTranscript(row: TranscriptRow): ChatRow {
     case "command-output":
       return { id: row.id, kind: row.kind, content: row.content.output };
     case "tasklist":
+      return { id: row.id, kind: row.kind, content: row.content.output };
+    case "effect":
       return { id: row.id, kind: row.kind, content: row.content.output };
   }
 }

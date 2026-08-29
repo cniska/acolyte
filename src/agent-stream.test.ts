@@ -69,7 +69,6 @@ describe("tool results are retained verbatim across steps", () => {
       toolkit: "test",
       category: "execute",
       description: "run",
-      instruction: "run",
       inputSchema: {},
       // biome-ignore lint/suspicious/noExplicitAny: test stub
       outputSchema: { parse: (v: unknown) => v } as any,
@@ -122,7 +121,6 @@ describe("tool result prompt size", () => {
       toolkit: "test",
       category: "execute",
       description: "run",
-      instruction: "run",
       inputSchema: {},
       // biome-ignore lint/suspicious/noExplicitAny: test stub
       outputSchema: { parse: (v: unknown) => v } as any,
@@ -179,7 +177,6 @@ describe("onBeforeNextCall hook", () => {
       toolkit: "test",
       category: "execute",
       description: "noop",
-      instruction: "noop",
       inputSchema: {},
       // biome-ignore lint/suspicious/noExplicitAny: test stub
       outputSchema: { parse: (v: unknown) => v } as any,
@@ -598,7 +595,6 @@ describe("cancellation", () => {
       toolkit: "test",
       category: "execute",
       description: "noop",
-      instruction: "noop",
       inputSchema: {},
       // biome-ignore lint/suspicious/noExplicitAny: test stub
       outputSchema: { parse: (v: unknown) => v } as any,
@@ -762,7 +758,6 @@ describe("step separators", () => {
       toolkit: "test",
       category: "execute",
       description: "noop",
-      instruction: "noop",
       inputSchema: {},
       // biome-ignore lint/suspicious/noExplicitAny: test stub
       outputSchema: { parse: (v: unknown) => v } as any,

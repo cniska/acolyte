@@ -94,9 +94,13 @@ export type GenerateOptions = { timeoutMs: number };
 
 export type EffectResult = { type: "done"; output?: string };
 
+export type EffectInput = { paths?: string[] };
+
+/** Awaited, never fired and forgotten: a write's effects finish before the next write starts, so an
+ *  edit can never race the formatter rewriting the file underneath it. */
 export type Effect = {
   id: string;
-  run: (ctx: RunContext, paths?: string[]) => EffectResult;
+  run: (ctx: RunContext, input?: EffectInput) => Promise<EffectResult>;
 };
 
 export type RunControl = {

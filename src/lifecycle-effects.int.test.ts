@@ -1,83 +1,127 @@
-import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync } from "node:fs";
-import { writeFile } from "node:fs/promises";
+import { afterEach, beforeEach, expect, test } from "bun:test";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { attachLifecycleEffectHandlers } from "./lifecycle-effects";
-import { createRunContext, tempDir } from "./test-utils";
-import { toolsForAgent } from "./tool-registry";
+import type { SideEffectChunk } from "./agent-contract";
+import type { StreamEvent } from "./client-contract";
+import { attachLifecycleEffectHandlers, formatEffect, installEffect } from "./lifecycle-effects";
+import { createRunContext } from "./test-utils";
+import { createSessionContext } from "./tool-session";
 
-const { createDir, cleanupDirs } = tempDir();
-afterEach(() => cleanupDirs());
+// A formatter that rewrites the file and reports itself the way a real one does.
+const UPPERCASE =
+  "const f=process.argv[1];require('fs').writeFileSync(f,require('fs').readFileSync(f,'utf8').toUpperCase());console.error('Fixed 1 file.')";
 
-describe("lifecycle effects through tool dispatch", () => {
-  test("format effect fires after write tool succeeds", async () => {
-    const workspace = createDir("acolyte-effect-format-");
-    await writeFile(join(workspace, "demo.ts"), "const   x=1\n", "utf8");
+let workspace: string;
 
-    const { tools, session } = toolsForAgent({ workspace });
-    const debugEvents: Array<{ event: string }> = [];
-    const ctx = createRunContext({
-      workspace,
-      session,
-      debug: (event) => debugEvents.push({ event }),
-      policy: {
-        ...createRunContext().policy,
-        formatCommand: { bin: "bunx", args: ["biome", "check", "--write", "$FILES"] },
-      },
-    });
-    attachLifecycleEffectHandlers(ctx, session);
+beforeEach(() => {
+  workspace = mkdtempSync(join(tmpdir(), "acolyte-effects-"));
+});
 
-    await tools.editFile.execute(
-      { path: join(workspace, "demo.ts"), edits: [{ find: "x=1", replace: "x = 1" }] },
-      "call_1",
-    );
+afterEach(() => {
+  rmSync(workspace, { recursive: true, force: true });
+});
 
-    expect(debugEvents.some((e) => e.event === "lifecycle.effect.format")).toBe(true);
+function runFormat(sink: SideEffectChunk[], emitted: StreamEvent[] = []) {
+  const ctx = createRunContext({
+    workspace,
+    policy: {
+      ...createRunContext().policy,
+      formatCommand: { bin: "node", args: ["-e", UPPERCASE, "$FILES"] },
+    },
+    sideEffectSink: (event) => sink.push(event),
+    emit: (event) => emitted.push(event),
+  });
+  return formatEffect.run(ctx, { paths: ["a.txt"] });
+}
+
+test("a format that rewrites the file draws its own effect row", async () => {
+  writeFileSync(join(workspace, "a.txt"), "hello");
+  const events: SideEffectChunk[] = [];
+  const result = await runFormat(events);
+
+  expect(readFileSync(join(workspace, "a.txt"), "utf8")).toBe("HELLO");
+
+  const effects = events.filter((event) => event.type === "effect");
+  expect(effects).toHaveLength(1);
+  const emitted = effects[0];
+  expect(emitted?.type === "effect" && emitted.row.effect).toBe("format");
+  expect(emitted?.type === "effect" && emitted.row.command).toContain("a.txt");
+  expect(JSON.stringify(effects)).toContain("Fixed 1 file.");
+
+  // An effect is not a tool call, so it never borrows the tool-output channel.
+  expect(events.filter((event) => event.type === "tool-output")).toEqual([]);
+
+  // Nothing about the effect reaches the model: it is host-owned work the model must not repeat.
+  expect(result.output).toBeUndefined();
+});
+
+test("an effect emits no tool result, since it was never a tool call", async () => {
+  writeFileSync(join(workspace, "a.txt"), "hello");
+  const emitted: StreamEvent[] = [];
+  await runFormat([], emitted);
+
+  expect(emitted.filter((event) => event.type === "tool-result")).toEqual([]);
+});
+
+test("a format that changes nothing draws no row at all", async () => {
+  writeFileSync(join(workspace, "a.txt"), "HELLO");
+  const events: SideEffectChunk[] = [];
+  const result = await runFormat(events);
+
+  expect(events).toEqual([]);
+  expect(result).toEqual({ type: "done" });
+});
+
+// A linter that fails the way a real one does when handed a path that is not there.
+const COMPLAIN = "console.error('No such file or directory');process.exit(1)";
+
+test("a write that removed the file runs no effects on its path", async () => {
+  const events: SideEffectChunk[] = [];
+  const ctx = createRunContext({
+    workspace,
+    policy: {
+      ...createRunContext().policy,
+      formatCommand: { bin: "node", args: ["-e", UPPERCASE, "$FILES"] },
+      lintCommand: { bin: "node", args: ["-e", COMPLAIN, "$FILES"] },
+    },
+    sideEffectSink: (event) => events.push(event),
+  });
+  const session = createSessionContext();
+  attachLifecycleEffectHandlers(ctx, session);
+
+  const output = await session.onAfterToolAsync?.({
+    toolId: "file-delete",
+    toolCallId: "call_1",
+    args: { path: "gone.txt" },
+    status: "succeeded",
+    result: {},
   });
 
-  test("effects do not fire for read tools", async () => {
-    const workspace = createDir("acolyte-effect-read-");
-    await writeFile(join(workspace, "a.txt"), "ok", "utf8");
+  expect(events).toEqual([]);
+  expect(output).toBeUndefined();
+});
 
-    const { tools, session } = toolsForAgent({ workspace });
-    const debugEvents: Array<{ event: string }> = [];
-    const ctx = createRunContext({
-      workspace,
-      session,
-      debug: (event) => debugEvents.push({ event }),
-      policy: {
-        ...createRunContext().policy,
-        formatCommand: { bin: "bunx", args: ["biome", "check", "--write", "$FILES"] },
-      },
-    });
-    attachLifecycleEffectHandlers(ctx, session);
-
-    await tools.readFile.execute({ path: join(workspace, "a.txt") }, "call_2");
-
-    expect(debugEvents.some((e) => e.event === "lifecycle.effect.format")).toBe(false);
+test("an install that had to run draws a row, and one that was already there draws none", async () => {
+  const installCommand = { bin: "node", args: ["-e", "console.log('installed 1 package')"] };
+  const events: SideEffectChunk[] = [];
+  const ctx = createRunContext({
+    workspace,
+    policy: { ...createRunContext().policy, installCommand },
+    sideEffectSink: (event) => events.push(event),
   });
 
-  test("install effect skips when depsDir exists", async () => {
-    const workspace = createDir("acolyte-effect-install-");
-    mkdirSync(join(workspace, "node_modules"), { recursive: true });
-    await writeFile(join(workspace, "src.ts"), "const x = 1;\n", "utf8");
+  await installEffect.run(ctx, { paths: [] });
 
-    const { tools, session } = toolsForAgent({ workspace });
-    const debugEvents: Array<{ event: string }> = [];
-    const ctx = createRunContext({
-      workspace,
-      session,
-      debug: (event) => debugEvents.push({ event }),
-      policy: {
-        ...createRunContext().policy,
-        installCommand: { bin: "npm", args: ["install"] },
-      },
-    });
-    session.workspaceProfile = { depsDir: "node_modules" };
-    attachLifecycleEffectHandlers(ctx, session);
+  const rows = events.filter((event) => event.type === "effect");
+  expect(rows).toHaveLength(1);
+  const row = rows[0];
+  expect(row?.type === "effect" && row.row.effect).toBe("install");
+  expect(JSON.stringify(rows)).toContain("installed 1 package");
 
-    await tools.readFile.execute({ path: join(workspace, "src.ts") }, "call_3");
+  // The workspace is installed now, so the next tool call waits for nothing and shows nothing.
+  events.length = 0;
+  await installEffect.run(ctx, { paths: [] });
 
-    expect(debugEvents.some((e) => e.event === "lifecycle.effect.install")).toBe(false);
-  });
+  expect(events).toEqual([]);
 });

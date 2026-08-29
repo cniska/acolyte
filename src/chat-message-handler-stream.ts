@@ -1,6 +1,7 @@
 import { type ChatRow, createRow, type RowOutcome } from "./chat-contract";
 import type { TranscriptRow } from "./chat-transcript-contract";
 import type { StreamEvent } from "./client-contract";
+import type { EffectRow } from "./effect-contract";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { createId } from "./short-id";
 import type { TasklistItem } from "./tasklist-contract";
@@ -26,6 +27,7 @@ export type MessageStreamState = {
   onTextEnd: () => void;
   onToolCall: () => void;
   onOutput: (entry: OutputEntry) => void;
+  onEffect: (row: EffectRow) => void;
   onToolResult: (entry: ToolResultEntry) => void;
   onTasklist: (entry: { groupId: string; groupTitle: string; items: TasklistItem[] }) => void;
   onProgressError: (error: string) => void;
@@ -296,6 +298,17 @@ export function createMessageStreamState(input: {
     for (const callId of [...heldRows.keys()]) releaseCall(callId);
   }
 
+  /** An effect's row is settled the moment it arrives — the harness already did the work, and no
+   *  result is coming — so it is appended whole rather than opened and later closed. */
+  function renderEffect(row: EffectRow): void {
+    sealAgentRow();
+    drainOutput();
+    const rowId = `row_${createId()}`;
+    lastNoticeKey = null;
+    input.setRows((current) => [...current, { id: rowId, kind: "tool" as const, content: row }]);
+    upsertTranscriptRow({ id: rowId, kind: "tool", status: "complete", content: { kind: "effect", output: row } });
+  }
+
   function markToolResult(entry: ToolResultEntry): void {
     const budgetExhausted =
       entry.isError &&
@@ -441,6 +454,9 @@ export function createMessageStreamState(input: {
         case "tool-output":
           state.onOutput(event);
           break;
+        case "effect":
+          state.onEffect(event.row);
+          break;
         case "tool-result":
           state.onToolResult(event);
           break;
@@ -483,6 +499,7 @@ export function createMessageStreamState(input: {
 
     onOutput: enqueueOutput,
 
+    onEffect: renderEffect,
     onToolResult: markToolResult,
 
     onTasklist: (entry) => {

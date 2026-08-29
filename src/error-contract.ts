@@ -1,11 +1,7 @@
 export const TOOL_ERROR_CODES = {
   sandboxViolation: "E_SANDBOX_VIOLATION",
   editFileMultiMatch: "E_EDIT_FILE_MULTI_MATCH",
-  editFileBatchTooLarge: "E_EDIT_FILE_BATCH_TOO_LARGE",
-  editFileFindTooLarge: "E_EDIT_FILE_FIND_TOO_LARGE",
   editFileFindNotFound: "E_EDIT_FILE_FIND_NOT_FOUND",
-  editFileWouldClearFile: "E_EDIT_FILE_WOULD_CLEAR_FILE",
-  editFileReplaceTooLarge: "E_EDIT_FILE_REPLACE_TOO_LARGE",
   editCodeNoMatch: "E_EDIT_CODE_NO_MATCH",
   editCodeAmbiguousTarget: "E_EDIT_CODE_AMBIGUOUS_TARGET",
   editCodeReplacementMetaMismatch: "E_EDIT_CODE_REPLACEMENT_META_MISMATCH",

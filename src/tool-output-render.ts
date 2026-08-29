@@ -79,8 +79,7 @@ export function createToolOutputState(options: { surface: ToolOutputSurface }): 
       if (entry.transient) {
         const live = liveByCallId.get(entry.toolCallId) ?? [];
         live.push(entry.content);
-        while (live.length > OUTPUT_WINDOW_ROWS) live.shift();
-        liveByCallId.set(entry.toolCallId, live);
+        liveByCallId.set(entry.toolCallId, lastContentRows(live, OUTPUT_WINDOW_ROWS));
       } else {
         // A call has one header. A tool that only learns what its header says by doing the work
         // refines it in place, so the row it placed on arrival is the row that stays.

@@ -12,9 +12,7 @@ import { createDiff } from "./diff-ops";
 import { collectWorkspaceFiles, displayPathForDiff, isBinaryExtension, resolveSearchScopeFiles } from "./tool-utils";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
 
-export type FindReplaceEdit = { find: string; replace: string };
-export type LineRangeEdit = { startLine: number; endLine: number; replace: string };
-export type FileEdit = FindReplaceEdit | LineRangeEdit;
+export type FileEdit = { find: string; replace: string };
 
 export type FileReadOptions = {
   offset?: number;
@@ -28,12 +26,6 @@ export type FileReadResult = {
   endLine: number;
 };
 
-const MAX_FIND_SNIPPET_LINES = 8;
-const MAX_FIND_SNIPPET_CHARS = 500;
-const MAX_FIND_REPLACE_LINES = 24;
-const MAX_FIND_REPLACE_CHARS = 1600;
-const MAX_BATCH_EDIT_LINES = 32;
-const MAX_BATCH_EDIT_CHARS = 2400;
 // `readFileContent` materializes the whole file to slice lines, so this bounds daemon
 // memory rather than the model's budget — it never binds a legitimate whole-file read.
 export const FILE_READ_MAX_BYTES = 5 * 1024 * 1024;
@@ -228,71 +220,25 @@ export async function editFile(input: {
 }): Promise<string> {
   const absPath = ensurePathWithinSandbox(input.path, input.workspace);
   const raw = await readFile(absPath, "utf8");
-  const lines = raw.split("\n");
 
   // Locate all match ranges in the original text.
   const ranges: Array<{ start: number; end: number; replace: string }> = [];
   for (const edit of input.edits) {
-    if ("find" in edit) {
-      if (!edit.find) throw new Error("Find text cannot be empty");
-      const findLineCount = edit.find.split("\n").length;
-      if (findLineCount > MAX_FIND_SNIPPET_LINES || edit.find.length > MAX_FIND_SNIPPET_CHARS) {
-        throw createToolError(
-          TOOL_ERROR_CODES.editFileFindTooLarge,
-          "find must be a short unique snippet (a few lines), not a large portion of the file. Use just enough context to uniquely identify the edit location.",
-          undefined,
-        );
-      }
-      const replaceLineCount = edit.replace.split("\n").length;
-      if (replaceLineCount > MAX_FIND_REPLACE_LINES || edit.replace.length > MAX_FIND_REPLACE_CHARS) {
-        throw createToolError(
-          TOOL_ERROR_CODES.editFileReplaceTooLarge,
-          "replace must contain only the changed region for a find/replace edit, not a large block or whole-file rewrite. Use a line-range edit for larger replacements.",
-          undefined,
-        );
-      }
-      const count = raw.split(edit.find).length - 1;
-      if (count === 0) {
-        throw createToolError(
-          TOOL_ERROR_CODES.editFileFindNotFound,
-          `Find text not found in file: ${edit.find.slice(0, 60)}`,
-          undefined,
-        );
-      }
-      if (count > 1) {
-        const message = `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Provide a longer, more unique snippet to match exactly one location. For local rewrites in one file, batch unique snippets or use a single line-range edit for one contiguous block. Use code-edit only for structural code changes.`;
-        throw createToolError(TOOL_ERROR_CODES.editFileMultiMatch, message, undefined);
-      }
-      const start = raw.indexOf(edit.find);
-      ranges.push({ start, end: start + edit.find.length, replace: edit.replace });
-    } else {
-      const { startLine, endLine, replace } = edit;
-      if (startLine < 1 || endLine < 1) throw new Error("Line numbers must be >= 1");
-      if (startLine > endLine) throw new Error(`startLine (${startLine}) must be <= endLine (${endLine})`);
-      const clampedEnd = Math.min(endLine, lines.length); // silently clamp — model almost always means "to end of file"
-      // `lines` keeps the empty element a trailing newline produces; the guard has to compare
-      // against the lines that hold content, which is what a read reported to the model.
-      const contentLineCount = lines[lines.length - 1] === "" ? lines.length - 1 : lines.length;
-      if (startLine === 1 && clampedEnd >= contentLineCount && replace.trim().length === 0) {
-        throw createToolError(
-          TOOL_ERROR_CODES.editFileWouldClearFile,
-          "line-range edit would clear the entire file. Use a bounded range edit, or file-delete if the file should be removed.",
-          undefined,
-        );
-      }
-      // Convert 1-based inclusive line range to character offsets.
-      let charStart = 0;
-      for (let i = 0; i < startLine - 1; i++) {
-        charStart += (lines[i]?.length ?? 0) + 1;
-      }
-      let charEnd = charStart;
-      for (let i = startLine - 1; i <= clampedEnd - 1; i++) {
-        charEnd += (lines[i]?.length ?? 0) + 1;
-      }
-      // If clampedEnd is the last line and file doesn't end with \n, don't overshoot.
-      if (clampedEnd === lines.length && !raw.endsWith("\n")) charEnd -= 1;
-      ranges.push({ start: charStart, end: charEnd, replace });
+    if (!edit.find) throw new Error("Find text cannot be empty");
+    const count = raw.split(edit.find).length - 1;
+    if (count === 0) {
+      throw createToolError(
+        TOOL_ERROR_CODES.editFileFindNotFound,
+        `Find text not found in file: ${edit.find.slice(0, 60)}`,
+        undefined,
+      );
     }
+    if (count > 1) {
+      const message = `Find text matched ${count} locations (${edit.find.slice(0, 40)}…). Extend the snippet with surrounding lines so it matches exactly one location. Use code-edit to rename every occurrence of a symbol.`;
+      throw createToolError(TOOL_ERROR_CODES.editFileMultiMatch, message, undefined);
+    }
+    const start = raw.indexOf(edit.find);
+    ranges.push({ start, end: start + edit.find.length, replace: edit.replace });
   }
 
   // Check for overlaps.
@@ -302,43 +248,6 @@ export async function editFile(input: {
     const curr = ranges[i];
     if (prev && curr && curr.start < prev.end)
       throw new Error("Edit regions overlap. Use fewer, non-overlapping find snippets.");
-  }
-
-  const hasFindReplaceEdit = input.edits.some((edit) => "find" in edit);
-  const totalTouchedChars = ranges.reduce((sum, range) => sum + (range.end - range.start), 0);
-  const totalTouchedLines = ranges.reduce(
-    (sum, range) => sum + raw.slice(range.start, range.end).split("\n").length,
-    0,
-  );
-  if (
-    (hasFindReplaceEdit || input.edits.length > 1) &&
-    (totalTouchedChars > MAX_BATCH_EDIT_CHARS || totalTouchedLines > MAX_BATCH_EDIT_LINES)
-  ) {
-    throw createToolError(
-      TOOL_ERROR_CODES.editFileBatchTooLarge,
-      "file-edit batch rewrites too much of the file. Use short bounded snippets for local edits, a single line-range edit for one contiguous block, or code-edit for structural rewrites.",
-      undefined,
-    );
-  }
-
-  // Detect likely duplication: replace text ends with lines that already follow the edit point.
-  const DUPLICATION_MIN_LINES = 3;
-  for (const r of ranges) {
-    const afterRaw = raw.slice(r.end);
-    const afterEdit = afterRaw.startsWith("\n") ? afterRaw.slice(1) : afterRaw;
-    const replaceLines = r.replace.split("\n");
-    const afterLines = afterEdit.split("\n");
-    if (replaceLines.length >= DUPLICATION_MIN_LINES && afterLines.length >= DUPLICATION_MIN_LINES) {
-      const tail = replaceLines.slice(-DUPLICATION_MIN_LINES);
-      const head = afterLines.slice(0, DUPLICATION_MIN_LINES);
-      const allMatch = tail.every((line, i) => line === head[i]);
-      const nonTrivial = tail.some((line) => line.trim().length > 0);
-      if (allMatch && nonTrivial) {
-        throw new Error(
-          "Replace text ends with lines that already follow the edit point — this would duplicate content. Only include the new/changed lines in replace, not the surrounding context.",
-        );
-      }
-    }
   }
 
   // Apply in reverse order to preserve offsets.

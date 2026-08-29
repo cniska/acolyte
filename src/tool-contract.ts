@@ -18,7 +18,6 @@ export type ToolDefinition<TOutput = unknown> = {
   readonly description: string;
   // Optional: a tool whose description already carries its contract hoists nothing into
   // the system prompt.
-  readonly instruction?: string;
   readonly inputSchema: Record<string, unknown>;
   readonly outputSchema: z.ZodType<TOutput>;
   readonly execute: (input: unknown, toolCallId: string) => Promise<RunToolResult<TOutput>>;
@@ -83,10 +82,8 @@ export type SessionContext = {
   toolTimeoutMs?: number;
   featureFlags?: ResolvedFeatureFlags;
   onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
-  onBeforeTool?: (ctx: PreToolContext) => EffectOutput | undefined;
-  onAfterTool?: (ctx: PostToolContext) => EffectOutput | undefined;
   onBeforeToolAsync?: (ctx: PreToolContext) => Promise<void>;
-  onAfterToolAsync?: (ctx: PostToolContext) => Promise<void>;
+  onAfterToolAsync?: (ctx: PostToolContext) => Promise<EffectOutput | undefined>;
   workspaceProfile?: WorkspaceProfile;
   activeSkills?: ActiveSkill[];
 };
