@@ -44,6 +44,14 @@ function readIfPresent(workspace: string, path: string): string | null {
   }
 }
 
+function isPresent(workspace: string, path: string): boolean {
+  try {
+    return existsSync(ensurePathWithinSandbox(path, workspace));
+  } catch {
+    return false;
+  }
+}
+
 export const formatEffect: Effect = {
   id: "format",
   async run(ctx, input): Promise<EffectResult> {
@@ -78,27 +86,37 @@ export const lintEffect: Effect = {
 };
 
 // Keyed by workspace and holding the run itself, not a done-marker: two sessions reaching a fresh
-// checkout at once would otherwise both find nothing installed and both start installing.
-const installs = new Map<string, Promise<void>>();
+// checkout at once would otherwise both find nothing installed and both start installing. `settled`
+// separates a caller that waited for the install from one that arrived after it finished.
+type InstallRun = { result: Promise<CommandResult>; settled: boolean };
 
-function installOnce(ctx: RunContext, workspace: string, command: WorkspaceCommand): Promise<void> {
+const installs = new Map<string, InstallRun>();
+
+async function installOnce(
+  ctx: RunContext,
+  workspace: string,
+  command: WorkspaceCommand,
+): Promise<CommandResult | null> {
   const started = installs.get(workspace);
-  if (started) return started;
+  if (started) return started.settled ? null : started.result;
   const profile = ctx.session.workspaceProfile;
-  const alreadyInstalled = Boolean(profile?.depsDir && existsSync(join(workspace, profile.depsDir)));
-  const run = alreadyInstalled
-    ? Promise.resolve()
-    : runCommand(workspace, command, 60_000).then((result) => {
-        ctx.debug("lifecycle.effect.install", {
-          command: formatWorkspaceCommand(command),
-          has_errors: result.hasErrors,
-        });
-        // A failed install is not a settled one. Forget it so the next tool call tries again,
-        // rather than leaving the workspace without dependencies for the daemon's lifetime.
-        if (result.hasErrors) installs.delete(workspace);
+  if (profile?.depsDir && existsSync(join(workspace, profile.depsDir))) return null;
+  const entry: InstallRun = {
+    settled: false,
+    result: runCommand(workspace, command, 60_000).then((result) => {
+      ctx.debug("lifecycle.effect.install", {
+        command: formatWorkspaceCommand(command),
+        has_errors: result.hasErrors,
       });
-  installs.set(workspace, run);
-  return run;
+      // A failed install is not a settled one. Forget it so the next tool call tries again,
+      // rather than leaving the workspace without dependencies for the daemon's lifetime.
+      if (result.hasErrors) installs.delete(workspace);
+      else entry.settled = true;
+      return result;
+    }),
+  };
+  installs.set(workspace, entry);
+  return entry.result;
 }
 
 export const installEffect: Effect = {
@@ -106,7 +124,10 @@ export const installEffect: Effect = {
   async run(ctx): Promise<EffectResult> {
     const { workspace, policy } = ctx;
     if (!workspace || !policy.installCommand) return { type: "done" };
-    await installOnce(ctx, workspace, policy.installCommand);
+    const result = await installOnce(ctx, workspace, policy.installCommand);
+    // An install holds up the tool that triggered it for as long as it takes, so the wait gets a
+    // row; a workspace whose dependencies were already there waited for nothing and draws none.
+    if (result) emitEffectRow(ctx, "install", formatWorkspaceCommand(policy.installCommand), commandLines(result));
     return { type: "done" };
   },
 };
@@ -133,6 +154,9 @@ async function postToolSideEffects(ctx: RunContext, postCtx: PostToolContext): P
   if (!WRITE_TOOL_SET.has(postCtx.toolId)) return undefined;
   const path = typeof postCtx.args.path === "string" ? postCtx.args.path.trim() : "";
   if (!path) return undefined;
+  // A write that removed the file leaves nothing to format or lint, and a linter pointed at a path
+  // that is gone reports it missing.
+  if (!ctx.workspace || !isPresent(ctx.workspace, path)) return undefined;
   const effectInput: EffectInput = { paths: [path] };
   const outputs: string[] = [];
   for (const effect of POST_EFFECTS) {

@@ -10,7 +10,7 @@ resolve → prepare → generate → finalize
 
 - **resolve** — pick model and policy
 - **prepare** — build base agent input, tools, session context, and policy state
-- **generate** — run model + tool loop; effects (format, lint) apply per-tool-result via callback; the model terminates with a native `end_turn` (a step with no tool calls), and that step's text is the final response
+- **generate** — run model + tool loop; effects (install, format, lint) apply per-tool-call via callback; the model terminates with a native `end_turn` (a step with no tool calls), and that step's text is the final response
 - **finalize** — accept the terminal step, emit final response and summary events
 
 ## Terminal-step classification
@@ -28,6 +28,8 @@ The model completes by emitting a no-tool-call step whose text is the final resp
 - effects are lifecycle-owned side effects applied per-tool-result via the session's async before/after-tool callbacks
 - the lifecycle configures the callbacks during context creation; tool execution awaits them, so a write's effects finish before its result reaches the model and before the next write starts
 - an effect that changed something draws its own transcript row, naming the command and its output; one that changed nothing stays silent, though the trace records every run
+- format and lint take the written path and run only while it exists, so a write that deleted the file runs neither
+- install runs before every non-discovery tool and is deduped per workspace: the calls that wait on the run draw a row, and calls arriving after it draw none
 - format reaches the model only as the system prompt's statement that the harness formats and lints what it writes; lint errors are appended to the tool result
 - current effects are driven by detected workspace commands (install, format, lint)
 
@@ -73,7 +75,7 @@ The model completes by emitting a no-tool-call step whose text is the final resp
 - `src/lifecycle-contract.ts` — type definitions for lifecycle events, inputs, and runtime contexts
 - `src/lifecycle-policy.ts` — lifecycle policy configuration and constraints
 - `src/lifecycle-constants.ts` — configuration constants for step limits, timeouts, and thresholds
-- `src/lifecycle-effects.ts` — lifecycle-owned effects (format, lint) applied per-tool-result via callback
+- `src/lifecycle-effects.ts` — lifecycle-owned effects (install, format, lint) applied per-tool-call via callback
 - `src/lifecycle-usage.ts` — token usage tracking and prompt breakdown totals
 - `src/agent-contract.ts` — agent interface, stream types (`StreamChunk`, `GenerateResult`)
 - `src/workspace-profile.ts` — workspace profile resolution, caching, and instruction generation

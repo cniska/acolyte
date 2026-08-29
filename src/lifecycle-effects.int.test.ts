@@ -4,8 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SideEffectChunk } from "./agent-contract";
 import type { StreamEvent } from "./client-contract";
-import { formatEffect } from "./lifecycle-effects";
+import { attachLifecycleEffectHandlers, formatEffect, installEffect } from "./lifecycle-effects";
 import { createRunContext } from "./test-utils";
+import { createSessionContext } from "./tool-session";
 
 // A formatter that rewrites the file and reports itself the way a real one does.
 const UPPERCASE =
@@ -70,4 +71,57 @@ test("a format that changes nothing draws no row at all", async () => {
 
   expect(events).toEqual([]);
   expect(result).toEqual({ type: "done" });
+});
+
+// A linter that fails the way a real one does when handed a path that is not there.
+const COMPLAIN = "console.error('No such file or directory');process.exit(1)";
+
+test("a write that removed the file runs no effects on its path", async () => {
+  const events: SideEffectChunk[] = [];
+  const ctx = createRunContext({
+    workspace,
+    policy: {
+      ...createRunContext().policy,
+      formatCommand: { bin: "node", args: ["-e", UPPERCASE, "$FILES"] },
+      lintCommand: { bin: "node", args: ["-e", COMPLAIN, "$FILES"] },
+    },
+    sideEffectSink: (event) => events.push(event),
+  });
+  const session = createSessionContext();
+  attachLifecycleEffectHandlers(ctx, session);
+
+  const output = await session.onAfterToolAsync?.({
+    toolId: "file-delete",
+    toolCallId: "call_1",
+    args: { path: "gone.txt" },
+    status: "succeeded",
+    result: {},
+  });
+
+  expect(events).toEqual([]);
+  expect(output).toBeUndefined();
+});
+
+test("an install that had to run draws a row, and one that was already there draws none", async () => {
+  const installCommand = { bin: "node", args: ["-e", "console.log('installed 1 package')"] };
+  const events: SideEffectChunk[] = [];
+  const ctx = createRunContext({
+    workspace,
+    policy: { ...createRunContext().policy, installCommand },
+    sideEffectSink: (event) => events.push(event),
+  });
+
+  await installEffect.run(ctx, { paths: [] });
+
+  const rows = events.filter((event) => event.type === "effect");
+  expect(rows).toHaveLength(1);
+  const row = rows[0];
+  expect(row?.type === "effect" && row.row.effect).toBe("install");
+  expect(JSON.stringify(rows)).toContain("installed 1 package");
+
+  // The workspace is installed now, so the next tool call waits for nothing and shows nothing.
+  events.length = 0;
+  await installEffect.run(ctx, { paths: [] });
+
+  expect(events).toEqual([]);
 });
