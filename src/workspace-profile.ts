@@ -1,3 +1,4 @@
+import { errorMessage } from "./error-contract";
 import { runCommand as runProcess } from "./tool-utils";
 import type { WorkspaceCommand, WorkspaceProfile } from "./workspace-contract";
 import { detectWorkspaceProfile } from "./workspace-detectors";
@@ -20,10 +21,12 @@ export async function runCommand(
   try {
     const { code, stdout, stderr } = await runProcess([command.bin, ...command.args], workspace, undefined, timeoutMs);
     return { hasErrors: code !== 0, stdout: stdout.trim(), stderr: stderr.trim() };
-  } catch {
+  } catch (error) {
     // An absent binary is not a workspace failure — the ecosystem was detected, the tool is not
-    // installed.
-    return { hasErrors: false, stdout: "", stderr: "" };
+    // installed. Anything else the spawn refused is a real failure and says so.
+    const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "";
+    if (code === "ENOENT") return { hasErrors: false, stdout: "", stderr: "" };
+    return { hasErrors: true, stdout: "", stderr: errorMessage(error) };
   }
 }
 
