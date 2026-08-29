@@ -111,6 +111,67 @@ describe("tool results are retained verbatim across steps", () => {
   });
 });
 
+describe("tool result prompt size", () => {
+  // The truncation ceiling is pinned as a literal so a change to the production constant
+  // has to be restated here rather than ratifying itself.
+  const TRUNCATION_CEILING = 30_000;
+
+  function bulkTool(resultChars: number, effectOutput?: string): ToolDefinition {
+    return {
+      id: "run-cmd",
+      toolkit: "test",
+      category: "execute",
+      description: "run",
+      instruction: "run",
+      inputSchema: {},
+      // biome-ignore lint/suspicious/noExplicitAny: test stub
+      outputSchema: { parse: (v: unknown) => v } as any,
+      async execute() {
+        return { result: { kind: "run-cmd", output: "x".repeat(resultChars) }, effectOutput };
+      },
+    };
+  }
+
+  async function toolResultPayload(tool: ToolDefinition) {
+    const turns: LanguageModelV4StreamPart[][] = [
+      [{ type: "tool-call", toolCallId: "tc_1", toolName: "run-cmd", input: "{}" }, finishPart("tool-calls")],
+      [
+        { type: "text-start", id: "t_1" },
+        { type: "text-delta", id: "t_1", delta: "done" },
+        { type: "text-end", id: "t_1" },
+        finishPart("stop"),
+      ],
+    ];
+    const model = scriptedModel(turns, []);
+    const stream = createAgentStream(model, "sys", { "run-cmd": tool }, noopRateLimiter);
+    const { fullStream, getFullOutput } = await stream("go", {});
+    const chunks: StreamChunk[] = [];
+    const reader = fullStream.getReader();
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      chunks.push(next.value);
+    }
+    await getFullOutput();
+    const chunk = chunks.find((c) => c.type === "tool-result");
+    return chunk?.type === "tool-result" ? chunk.payload : undefined;
+  }
+
+  test("reports the truncated size a large result reaches the model at, not its raw size", async () => {
+    const payload = await toolResultPayload(bulkTool(90_000));
+
+    expect(payload?.promptChars).toBe(TRUNCATION_CEILING);
+  });
+
+  test("counts appended effect output toward the size", async () => {
+    const effectOutput = "lint: 3 problems";
+    const payload = await toolResultPayload(bulkTool(64, effectOutput));
+
+    const resultChars = JSON.stringify({ kind: "run-cmd", output: "x".repeat(64) }).length;
+    expect(payload?.promptChars).toBe(resultChars + 1 + effectOutput.length);
+  });
+});
+
 describe("onBeforeNextCall hook", () => {
   function echoTool(): ToolDefinition {
     return {

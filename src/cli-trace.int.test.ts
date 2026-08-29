@@ -258,6 +258,36 @@ describe("traceMode", () => {
     expect(rows[2]?.offset).toBeUndefined();
   });
 
+  test("json output carries stored fields the verbose display drops", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_1",
+      event: "lifecycle.model_usage",
+      fields: { input_tokens: 8623, output_tokens: 214, cache_read_tokens: 8192 },
+    });
+    store.write({
+      timestamp: "2026-01-01T00:00:00.100Z",
+      taskId: "task_1",
+      event: "lifecycle.tool.result",
+      fields: { tool: "file-read", duration_ms: 12, is_error: false, result_chars: 4096, tool_call_id: "call_1" },
+    });
+
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode(["task", "task_1", "--json"], deps);
+    const rows = output()
+      .split("\n")
+      .map((line) => JSON.parse(line) as Record<string, string>);
+
+    expect(rows[0]).toMatchObject({
+      event: "lifecycle.model_usage",
+      input_tokens: "8623",
+      output_tokens: "214",
+      cache_read_tokens: "8192",
+    });
+    expect(rows[1]).toMatchObject({ result_chars: "4096", tool_call_id: "call_1" });
+  });
+
   test("compact output shows BLOCKED for budget exhaustion", async () => {
     const store = createTestStore();
     store.write({

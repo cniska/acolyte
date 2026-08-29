@@ -10,6 +10,7 @@ import type { RateLimiter } from "./rate-limiter";
 import { createRunContext } from "./test-utils";
 import { WRITE_TOOL_SET } from "./tool-registry";
 import { createSessionContext } from "./tool-session";
+import { traceEventDisplayFields } from "./trace-event-catalog";
 
 const noopRateLimiter: RateLimiter = {
   async beforeCall() {},
@@ -364,6 +365,8 @@ describe("phaseGenerate", () => {
     expect(toolResult).toMatchObject({ type: "tool-result", toolName: "file-edit", isError: true });
     const traceResult = debugEvents.find((event) => event.event === "lifecycle.tool.result");
     expect(traceResult?.fields).toMatchObject({ tool: "file-edit", is_error: true });
+    // A null would persist as an empty string; an unknown size has to be absent instead.
+    expect(traceResult?.fields).not.toHaveProperty("result_chars");
   });
 
   test("emits the embedding-unavailable kind for a failed memory search", async () => {
@@ -474,6 +477,108 @@ describe("phaseGenerate", () => {
     expect(ctx.currentError).toBeUndefined();
     const traceResult = debugEvents.find((event) => event.event === "lifecycle.tool.result");
     expect(traceResult?.fields).toMatchObject({ tool: "test-run", is_error: true });
+  });
+
+  test("records the prompt size the stream measured for a tool result", async () => {
+    const debugEvents: LifecycleDebugEvent[] = [];
+    const result = { kind: "file-read", path: "src/a.ts", content: "a".repeat(500) };
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "tool-call" as const,
+              payload: { toolCallId: "call_1", toolName: "file-read", args: { path: "src/a.ts" } },
+            },
+            {
+              type: "tool-result" as const,
+              payload: { toolCallId: "call_1", toolName: "file-read", result, promptChars: 4096 },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [] };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    const traceResult = debugEvents.find((event) => event.event === "lifecycle.tool.result");
+    expect(traceResult?.fields).toMatchObject({ tool: "file-read", result_chars: 4096 });
+  });
+
+  test("records model usage token counts under the field names the trace catalog renders", async () => {
+    const debugEvents: LifecycleDebugEvent[] = [];
+    const ctx = createRunContext({
+      request: { model: "gpt-5-mini", message: "test", history: [] },
+      debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
+      agent: {
+        id: "test-agent",
+        name: "test-agent",
+        instructions: "",
+        model: {} as RunContext["agent"]["model"],
+        tools: {},
+        async stream() {
+          const chunks = [
+            {
+              type: "model-usage" as const,
+              payload: {
+                inputTokens: 8623,
+                outputTokens: 214,
+                cacheReadTokens: 8192,
+                cacheWriteTokens: 128,
+                reasoningTokens: 64,
+              },
+            },
+          ];
+          return {
+            fullStream: new ReadableStream({
+              start(controller) {
+                for (const chunk of chunks) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            async getFullOutput() {
+              return { text: "Done.", toolCalls: [] };
+            },
+          };
+        },
+      },
+    });
+
+    await phaseGenerate(ctx, { timeoutMs: 1000 });
+
+    const usage = debugEvents.find((event) => event.event === "lifecycle.model_usage");
+    expect(usage?.fields).toEqual({
+      input_tokens: 8623,
+      output_tokens: 214,
+      cache_read_tokens: 8192,
+      cache_write_tokens: 128,
+      reasoning_tokens: 64,
+    });
+    expect(traceEventDisplayFields("lifecycle.model_usage")).toEqual([
+      "input_tokens",
+      "output_tokens",
+      "cache_read_tokens",
+      "cache_write_tokens",
+      "reasoning_tokens",
+    ]);
   });
 
   test("fails fast when fullOutput rejects outside the reader chain", async () => {
