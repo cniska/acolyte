@@ -28,7 +28,7 @@ function semanticLines(): string[] {
 test("CLI and chat project the same semantic tool layout", () => {
   const lines = semanticLines();
   expect(renderToolOutput(parts, contentWidth)).toBe(lines.join("\n"));
-  const scene = layoutTranscriptTool({ parts, status: "complete", columns });
+  const scene = layoutTranscriptTool({ parts, status: "complete", columns, now: 0, animating: false });
   expect(renderPlain(<TerminalSceneRender scene={scene} />, columns)).toBe(
     `◆ ${lines[0]}\n${lines
       .slice(1)

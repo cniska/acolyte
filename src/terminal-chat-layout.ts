@@ -372,7 +372,6 @@ export function layoutPending(input: {
           : t("rpc.status.queued.unknown")
         : t("rpc.status.accepted");
   const running = presentation.state.kind === "running";
-  const blink = !running || Math.abs(presentation.frame) % PENDING_FRAME_COUNT < PENDING_FRAME_COUNT / 2;
   // Marker carries the kind color, the text a shimmer sweep (running) or dim (queued/accepted).
   const markerRole: TerminalStyleRole = running
     ? "pending"
@@ -384,7 +383,7 @@ export function layoutPending(input: {
   let shimmerOffset = 0;
   const lines: TerminalLine[] = wrapTerminalProse(text, Math.max(24, input.columns - 2)).map((line, index) => {
     const marker: TerminalSpan = {
-      text: index === 0 ? `${blink ? GLYPH_FILLED : GLYPH_HOLLOW} ` : "  ",
+      text: index === 0 ? `${pulseGlyph(markerPulseFilled(input.now, running))} ` : "  ",
       role: markerRole,
     };
     const body: TerminalSpan[] = running
@@ -718,7 +717,17 @@ export function layoutFooterStatus(status: FooterStatus, columns: number): Termi
 }
 
 const TASKLIST_VISIBLE_LIMIT = 5;
-const TASKLIST_PULSE_MS = 500;
+const MARKER_PULSE_MS = 500;
+
+/** Work in flight, wherever it is drawn: the marker pulses between absent and active. A settled
+ *  glyph never appears in the cycle, so nothing mid-pulse can be misread as finished. */
+function pulseGlyph(filled: boolean): string {
+  return filled ? GLYPH_FISHEYE : GLYPH_HOLLOW;
+}
+
+function markerPulseFilled(now: number, animating: boolean): boolean {
+  return !animating || Math.floor(now / MARKER_PULSE_MS) % 2 === 0;
+}
 
 function taskItemRole(status: TasklistItemStatus): TerminalStyleRole {
   switch (status) {
@@ -733,7 +742,7 @@ function taskItemRole(status: TasklistItemStatus): TerminalStyleRole {
 
 // Gentle glyph pulse for the active item, not a brightness blink (which pulls focus off the transcript).
 function taskItemGlyph(status: TasklistItemStatus, pulseFilled: boolean): string {
-  if (status === "in_progress") return pulseFilled ? GLYPH_FISHEYE : GLYPH_HOLLOW;
+  if (status === "in_progress") return pulseGlyph(pulseFilled);
   return tasklistMarker(status);
 }
 
@@ -752,7 +761,7 @@ export function layoutTranscriptTasklist(
   const notDone = sorted.filter((item) => item.status !== "done");
   const visible = notDone.slice(0, TASKLIST_VISIBLE_LIMIT);
   const overflow = notDone.length - visible.length;
-  const pulseFilled = !animating || Math.floor(now / TASKLIST_PULSE_MS) % 2 === 0;
+  const pulseFilled = markerPulseFilled(now, animating);
   const count = ` ${done}/${total}`;
   const lines: TerminalLine[] = [
     {
@@ -806,14 +815,20 @@ function toolMarkerRole(status: TranscriptStatus): TerminalStyleRole {
   }
 }
 
-function toolMarkerGlyph(headerState: ToolHeaderState | undefined, status: TranscriptStatus): string {
+function toolMarkerGlyph(
+  headerState: ToolHeaderState | undefined,
+  status: TranscriptStatus,
+  pulseFilled: boolean,
+): string {
   switch (headerState) {
     case "on":
       return GLYPH_FISHEYE;
     case "off":
       return GLYPH_HOLLOW;
+    case "effect":
+      return GLYPH_FILLED;
     default:
-      return status === "active" ? GLYPH_FISHEYE : GLYPH_FILLED;
+      return status === "active" ? pulseGlyph(pulseFilled) : GLYPH_FILLED;
   }
 }
 
@@ -823,6 +838,8 @@ function toolHeaderMarkerRole(headerState: ToolHeaderState | undefined, status: 
       return "skill-on";
     case "off":
       return "skill-off";
+    case "effect":
+      return "effect";
     default:
       return toolMarkerRole(status);
   }
@@ -832,10 +849,12 @@ export function layoutTranscriptTool(input: {
   parts: ToolOutputPart[];
   status: TranscriptStatus;
   columns: number;
+  now: number;
+  animating: boolean;
 }): TerminalScene {
   const contentWidth = Math.max(24, input.columns - 2);
   const headerState = input.parts.find((part) => part.kind === "tool-header")?.state;
-  const marker = `${toolMarkerGlyph(headerState, input.status)} `;
+  const marker = `${toolMarkerGlyph(headerState, input.status, markerPulseFilled(input.now, input.animating))} `;
   const markerRole = toolHeaderMarkerRole(headerState, input.status);
   const editPath = input.parts.find((part) => part.kind === "edit-header")?.path;
   const diffLang = editPath ? resolveLanguage(extname(editPath).slice(1)) : null;
@@ -898,7 +917,13 @@ export function layoutChatViewport(input: {
         row.id,
         row.status !== "active" && !input.held.has(row.id),
         insetScene(
-          layoutTranscriptTool({ parts: row.content.output.parts, status: row.status, columns: cw }),
+          layoutTranscriptTool({
+            parts: row.content.output.parts,
+            status: row.status,
+            columns: cw,
+            now: input.now,
+            animating: input.presentation.pending !== null,
+          }),
           CONTENT_COLUMN,
         ),
       );

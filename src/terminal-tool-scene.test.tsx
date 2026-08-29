@@ -18,7 +18,7 @@ const parts = [
 ];
 
 test("semantic tool scene renders the tool label and a status-colored marker", () => {
-  const scene = layoutTranscriptTool({ parts, status: "success", columns: 32 });
+  const scene = layoutTranscriptTool({ parts, status: "success", columns: 32, now: 0, animating: false });
   expect(renderPlain(<TerminalSceneRender scene={scene} />, 32)).toStartWith("◆ Edit");
   expect(renderToString(<TerminalSceneRender scene={scene} />)).toContain(`${colorToFg("green")}◆ `);
 });
@@ -31,6 +31,8 @@ test("diff-add rows paint the full row width with the tinted band and green text
     ],
     status: "success",
     columns: 40,
+    now: 0,
+    animating: false,
   });
   const output = renderToString(<TerminalSceneRender scene={scene} />);
   const diffLine = stripAnsi(output)
@@ -47,6 +49,68 @@ test("semantic skill-toggle tools retain their distinct markers", () => {
     parts: [{ kind: "tool-header" as const, labelKey: "tool.label.skill_activate", state: "on" as const }],
     status: "success",
     columns: 32,
+    now: 0,
+    animating: false,
   });
   expect(renderPlain(<TerminalSceneRender scene={scene} />, 32)).toStartWith("◈");
+});
+
+test("a running tool alternates between hollow and fisheye as the clock advances", () => {
+  const markerAt = (now: number) =>
+    renderPlain(
+      <TerminalSceneRender
+        scene={layoutTranscriptTool({
+          parts: [{ kind: "tool-header" as const, labelKey: "tool.label.shell_run", detail: "bun test" }],
+          status: "active",
+          columns: 32,
+          now,
+          animating: true,
+        })}
+      />,
+      32,
+    ).slice(0, 1);
+
+  expect(markerAt(0)).toBe("◈");
+  expect(markerAt(500)).toBe("◇");
+  expect(markerAt(1000)).toBe("◈");
+});
+
+test("a settled tool keeps the filled marker whatever the clock says", () => {
+  const markerAt = (now: number) =>
+    renderPlain(
+      <TerminalSceneRender
+        scene={layoutTranscriptTool({
+          parts: [{ kind: "tool-header" as const, labelKey: "tool.label.shell_run", detail: "bun test" }],
+          status: "success",
+          columns: 32,
+          now,
+          animating: true,
+        })}
+      />,
+      32,
+    ).slice(0, 1);
+
+  expect(markerAt(0)).toBe("◆");
+  expect(markerAt(500)).toBe("◆");
+});
+
+test("an effect row is dim and settled, never a phase glyph", () => {
+  const scene = layoutTranscriptTool({
+    parts: [
+      {
+        kind: "tool-header" as const,
+        labelKey: "tool.label.effect",
+        detail: "biome check --write src/a.ts",
+        state: "effect" as const,
+      },
+      { kind: "shell-output" as const, stream: "stderr" as const, text: "Fixed 1 file." },
+    ],
+    status: "active",
+    columns: 48,
+    now: 500,
+    animating: true,
+  });
+  const plain = renderPlain(<TerminalSceneRender scene={scene} />, 48);
+  expect(plain).toStartWith("◆ Effect biome check --write src/a.ts");
+  expect(plain).toContain("Fixed 1 file.");
 });

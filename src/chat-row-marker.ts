@@ -19,21 +19,22 @@ const MARKERS: Record<ChatRow["kind"], string> = {
   system: " ",
 };
 
-const SKILL_STATE_MARKERS = {
+const HEADER_STATE_MARKERS = {
   on: { glyph: GLYPH_FISHEYE, color: palette.brand },
   off: { glyph: GLYPH_HOLLOW, color: palette.dim },
+  effect: { glyph: GLYPH_FILLED, color: palette.dim },
 } as const;
 
-function skillStateMarker(row: ChatRow): { glyph: string; color: string } | undefined {
+function headerStateMarker(row: ChatRow): { glyph: string; color: string } | undefined {
   if (row.kind !== "tool" || !isToolOutput(row.content)) return undefined;
   const first = row.content.parts[0];
   if (first?.kind !== "tool-header" || !first.state) return undefined;
-  return SKILL_STATE_MARKERS[first.state];
+  return HEADER_STATE_MARKERS[first.state];
 }
 
 export function rowMarker(row: ChatRow): { glyph: string; color?: string } {
-  const skillMarker = skillStateMarker(row);
-  if (skillMarker) return skillMarker;
+  const stateMarker = headerStateMarker(row);
+  if (stateMarker) return stateMarker;
   const color =
     (row.style?.outcome && OUTCOME_COLORS[row.style.outcome]) ??
     row.style?.markerColor ??

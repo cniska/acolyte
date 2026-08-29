@@ -128,7 +128,7 @@ test("rows, pending, and tasklist live region renders in order with indent", () 
 
           ◆ on it
 
-          ◆ Working… (5s · 1 tool)
+          ◈ Working… (5s · 1 tool)
 
           Plan 1/2
           ◈ step two
@@ -170,7 +170,7 @@ test("queued messages live region renders below the pending indicator", () => {
         │ ❯ first${" ".repeat(48)}│
         ╰${"─".repeat(56)}╯
 
-          ◆ Working… (5s)
+          ◈ Working… (5s)
 
 
           ❯ next up

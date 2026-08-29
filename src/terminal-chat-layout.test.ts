@@ -69,7 +69,7 @@ describe("layoutTranscriptTool diff highlighting", () => {
     removed: 1,
   });
   const bodyLine = (parts: ToolOutputPart[]) =>
-    layoutTranscriptTool({ parts, status: "success", columns: 80 }).lines[1];
+    layoutTranscriptTool({ parts, status: "success", columns: 80, now: 0, animating: false }).lines[1];
   const rolesOf = (spans: TerminalSpan[]) => spans.map((span) => span.role);
   const codeText = (spans: TerminalSpan[]) =>
     spans

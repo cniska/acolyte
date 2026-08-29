@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { layoutPending } from "./terminal-chat-layout";
 
-test("pending layout carries running details, blink frame, and queued rows", () => {
+test("pending layout carries running details, pulse marker, and queued rows", () => {
   const scene = layoutPending({
     presentation: {
       state: { kind: "running", toolCalls: 2 },
@@ -14,10 +14,29 @@ test("pending layout carries running details, blink frame, and queued rows", () 
     columns: 80,
   });
   expect(scene.lines[0]?.spans.map((span) => span.text).join("")).toContain("Working… (1m 5s · 2 tools · ↑10 ↓2)");
-  expect(scene.lines[0]?.spans[0]?.text).toBe("◇ ");
+  expect(scene.lines[0]?.spans[0]?.text).toBe("◈ ");
   expect(scene.lines[1]?.spans.map((span) => span.text).join("")).toBe("");
   expect(scene.lines[2]?.spans.map((span) => span.text).join("")).toBe("");
   expect(scene.lines[3]?.spans.map((span) => span.text).join("")).toBe("❯ next task");
+});
+
+test("the pending marker alternates between hollow and fisheye as the clock advances", () => {
+  const markerAt = (now: number) =>
+    layoutPending({
+      presentation: {
+        state: { kind: "running", toolCalls: 0 },
+        frame: 0,
+        startedAt: 0,
+        queuedMessages: [],
+        runningUsage: null,
+      },
+      now,
+      columns: 80,
+    }).lines[0]?.spans[0]?.text;
+
+  expect(markerAt(0)).toBe("◈ ");
+  expect(markerAt(500)).toBe("◇ ");
+  expect(markerAt(1000)).toBe("◈ ");
 });
 
 test("each queued message is padded to a sent message's vertical rhythm", () => {
