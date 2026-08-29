@@ -384,7 +384,7 @@ describe("editCode", () => {
         "call_12",
       ),
     ).rejects.toMatchObject({
-      code: TOOL_ERROR_CODES.editCodeNoMatch,
+      code: TOOL_ERROR_CODES.editCodeAmbiguousTarget,
       message: expect.stringContaining('target: "local" or target: "member"'),
     });
   });

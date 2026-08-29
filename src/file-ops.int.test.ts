@@ -430,7 +430,7 @@ describe("editFile", () => {
     const { tools } = toolsForAgent({ workspace });
     await expect(
       tools.editFile.execute({ path: filePath, edits: [{ startLine: 1, endLine: 99, replace: "" }] }, "call_edit_lr8"),
-    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileLineRangeTooLarge });
+    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileWouldClearFile });
   });
 
   test("line-range rejects a whole-file clear stated in the line numbers a read reports", async () => {
@@ -441,7 +441,7 @@ describe("editFile", () => {
     // A read of this file reports 3 lines, so 1-3 is the honest way to name every line.
     await expect(
       tools.editFile.execute({ path: filePath, edits: [{ startLine: 1, endLine: 3, replace: "" }] }, "call_edit_lr9"),
-    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileLineRangeTooLarge });
+    ).rejects.toMatchObject({ code: TOOL_ERROR_CODES.editFileWouldClearFile });
   });
 });
 

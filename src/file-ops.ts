@@ -275,7 +275,7 @@ export async function editFile(input: {
       const contentLineCount = lines[lines.length - 1] === "" ? lines.length - 1 : lines.length;
       if (startLine === 1 && clampedEnd >= contentLineCount && replace.trim().length === 0) {
         throw createToolError(
-          TOOL_ERROR_CODES.editFileLineRangeTooLarge,
+          TOOL_ERROR_CODES.editFileWouldClearFile,
           "line-range edit would clear the entire file. Use a bounded range edit, or file-delete if the file should be removed.",
           undefined,
         );

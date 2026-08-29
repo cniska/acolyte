@@ -23,6 +23,18 @@ describe("withToolError", () => {
       expect(wrapped.code).toBe("E_EDIT_FILE_MULTI_MATCH");
     }
   });
+
+  test("names a missing path instead of leaving the raw errno unclassified", async () => {
+    const source = Object.assign(new Error("no such file or directory, open 'src/gone.ts'"), { code: "ENOENT" });
+    try {
+      await withToolError("file-read", async () => Promise.reject(source));
+      invariant(false, "expected withToolError to throw");
+    } catch (error) {
+      const wrapped = error as Error & { code?: string; kind?: string };
+      expect(wrapped.code).toBe("E_FILE_NOT_FOUND");
+      expect(wrapped.kind).toBe("file_not_found");
+    }
+  });
 });
 
 describe("per-tool timeout", () => {

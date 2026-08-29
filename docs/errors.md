@@ -10,9 +10,13 @@ Error codes and kinds are generic contracts shared across tools, lifecycle, and 
 
 Runtime code throws coded errors, not untyped string failures, when the failure should carry structured meaning. `ToolError` extends `CodedError` with a code and optional kind. Generic app/runtime failures may still be normalized into coded errors when they need stable handling downstream.
 
+## Codes, kinds, and categories
+
+A code identifies one failure, a kind classifies what sort of failure it is, and a category is the coarse bucket the turn's error stats count. Kind derives from the code, and every tool code declares one. A missing path is named at the tool boundary, where the filesystem's errno becomes `E_FILE_NOT_FOUND`.
+
 ## Lifecycle boundary
 
-Lifecycle consumes tool errors generically through error categories. Step budget exhaustion uses `E_BUDGET_EXHAUSTED` code.
+Lifecycle counts tool errors in the coarse categories and records the precise code and kind on each error event. Step budget exhaustion uses `E_BUDGET_EXHAUSTED` code.
 
 ## Transport boundary
 
