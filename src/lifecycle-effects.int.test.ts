@@ -31,42 +31,42 @@ function runFormat(sink: SideEffectChunk[], emitted: StreamEvent[] = []) {
     sideEffectSink: (event) => sink.push(event),
     emit: (event) => emitted.push(event),
   });
-  return formatEffect.run(ctx, { paths: ["a.txt"], toolCallId: "call_1" });
+  return formatEffect.run(ctx, { paths: ["a.txt"] });
 }
 
-test("a format that rewrites the file draws its own effect row", () => {
+test("a format that rewrites the file draws its own effect row", async () => {
   writeFileSync(join(workspace, "a.txt"), "hello");
   const events: SideEffectChunk[] = [];
-  const result = runFormat(events);
+  const result = await runFormat(events);
 
   expect(readFileSync(join(workspace, "a.txt"), "utf8")).toBe("HELLO");
 
-  const outputs = events.filter((event) => event.type === "tool-output");
-  const header = outputs[0];
-  expect(header?.type === "tool-output" && header.content).toMatchObject({
-    kind: "tool-header",
-    labelKey: "tool.label.effect",
-    state: "effect",
-  });
-  expect(header?.type === "tool-output" && header.toolCallId).toBe("call_1:format");
-  expect(JSON.stringify(outputs)).toContain("Fixed 1 file.");
+  const effects = events.filter((event) => event.type === "effect");
+  expect(effects).toHaveLength(1);
+  const emitted = effects[0];
+  expect(emitted?.type === "effect" && emitted.row.effect).toBe("format");
+  expect(emitted?.type === "effect" && emitted.row.command).toContain("a.txt");
+  expect(JSON.stringify(effects)).toContain("Fixed 1 file.");
+
+  // An effect is not a tool call, so it never borrows the tool-output channel.
+  expect(events.filter((event) => event.type === "tool-output")).toEqual([]);
 
   // Nothing about the effect reaches the model: it is host-owned work the model must not repeat.
   expect(result.output).toBeUndefined();
 });
 
-test("an effect emits no tool result, since it was never a tool call", () => {
+test("an effect emits no tool result, since it was never a tool call", async () => {
   writeFileSync(join(workspace, "a.txt"), "hello");
   const emitted: StreamEvent[] = [];
-  runFormat([], emitted);
+  await runFormat([], emitted);
 
   expect(emitted.filter((event) => event.type === "tool-result")).toEqual([]);
 });
 
-test("a format that changes nothing draws no row at all", () => {
+test("a format that changes nothing draws no row at all", async () => {
   writeFileSync(join(workspace, "a.txt"), "HELLO");
   const events: SideEffectChunk[] = [];
-  const result = runFormat(events);
+  const result = await runFormat(events);
 
   expect(events).toEqual([]);
   expect(result).toEqual({ type: "done" });

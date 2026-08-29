@@ -15,53 +15,53 @@ function ctxWith(overrides: Parameters<typeof createRunContext>[0] = {}) {
 }
 
 describe("formatEffect", () => {
-  test("returns done when workspace is undefined", () => {
+  test("returns done when workspace is undefined", async () => {
     const ctx = ctxWith({ workspace: undefined });
-    expect(formatEffect.run(ctx, { paths: ["/ws/src/a.ts"] })).toEqual({ type: "done" });
+    expect(await formatEffect.run(ctx, { paths: ["/ws/src/a.ts"] })).toEqual({ type: "done" });
   });
 
-  test("returns done when no format command is configured", () => {
+  test("returns done when no format command is configured", async () => {
     const ctx = ctxWith({
       policy: { ...createRunContext().policy, formatCommand: undefined },
     });
-    expect(formatEffect.run(ctx, { paths: ["/ws/src/a.ts"] })).toEqual({ type: "done" });
+    expect(await formatEffect.run(ctx, { paths: ["/ws/src/a.ts"] })).toEqual({ type: "done" });
   });
 
-  test("returns done when paths are empty", () => {
+  test("returns done when paths are empty", async () => {
     const ctx = ctxWith();
-    expect(formatEffect.run(ctx, { paths: [] })).toEqual({ type: "done" });
+    expect(await formatEffect.run(ctx, { paths: [] })).toEqual({ type: "done" });
   });
 });
 
 describe("installEffect", () => {
-  test("returns done when workspace is undefined", () => {
+  test("returns done when workspace is undefined", async () => {
     const ctx = ctxWith({ workspace: undefined });
-    expect(installEffect.run(ctx, { paths: [] })).toEqual({ type: "done" });
+    expect(await installEffect.run(ctx, { paths: [] })).toEqual({ type: "done" });
   });
 
-  test("returns done when no install command is configured", () => {
+  test("returns done when no install command is configured", async () => {
     const ctx = ctxWith({
       policy: { ...createRunContext().policy, installCommand: undefined },
     });
-    expect(installEffect.run(ctx, { paths: [] })).toEqual({ type: "done" });
+    expect(await installEffect.run(ctx, { paths: [] })).toEqual({ type: "done" });
   });
 });
 
 describe("lintEffect", () => {
-  test("returns done when workspace is undefined", () => {
+  test("returns done when workspace is undefined", async () => {
     const ctx = ctxWith({ workspace: undefined });
-    expect(lintEffect.run(ctx, { paths: ["/ws/src/a.ts"] })).toEqual({ type: "done" });
+    expect(await lintEffect.run(ctx, { paths: ["/ws/src/a.ts"] })).toEqual({ type: "done" });
   });
 
-  test("returns done when no lint command is configured", () => {
+  test("returns done when no lint command is configured", async () => {
     const ctx = ctxWith({
       policy: { ...createRunContext().policy, lintCommand: undefined },
     });
-    expect(lintEffect.run(ctx, { paths: ["/ws/src/a.ts"] })).toEqual({ type: "done" });
+    expect(await lintEffect.run(ctx, { paths: ["/ws/src/a.ts"] })).toEqual({ type: "done" });
   });
 
-  test("returns done when paths are empty", () => {
+  test("returns done when paths are empty", async () => {
     const ctx = ctxWith();
-    expect(lintEffect.run(ctx, { paths: [] })).toEqual({ type: "done" });
+    expect(await lintEffect.run(ctx, { paths: [] })).toEqual({ type: "done" });
   });
 });

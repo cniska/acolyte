@@ -32,6 +32,7 @@ export async function runCommand(
   cmd: string[],
   workspace: string,
   envOverride?: Record<string, string>,
+  timeoutMs?: number,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   const env = envWithoutGitState(envOverride);
   const proc = Bun.spawn({
@@ -41,16 +42,21 @@ export async function runCommand(
     stderr: "pipe",
     env,
   });
-  const [stdoutText, stderrText] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-  ]);
-  const exitCode = await proc.exited;
-  return {
-    code: exitCode,
-    stdout: stdoutText,
-    stderr: stderrText,
-  };
+  const timer = timeoutMs === undefined ? null : setTimeout(() => proc.kill(), timeoutMs);
+  try {
+    const [stdoutText, stderrText] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+    ]);
+    const exitCode = await proc.exited;
+    return {
+      code: exitCode,
+      stdout: stdoutText,
+      stderr: stderrText,
+    };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 // Directories always excluded regardless of .gitignore — these are either internal

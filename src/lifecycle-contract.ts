@@ -94,13 +94,13 @@ export type GenerateOptions = { timeoutMs: number };
 
 export type EffectResult = { type: "done"; output?: string };
 
-/** The call whose completion ran this effect. Its id anchors the effect's own transcript row to
- *  the write that caused it. */
-export type EffectInput = { paths?: string[]; toolCallId?: string };
+export type EffectInput = { paths?: string[] };
 
+/** Awaited, never fired and forgotten: a write's effects finish before the next write starts, so an
+ *  edit can never race the formatter rewriting the file underneath it. */
 export type Effect = {
   id: string;
-  run: (ctx: RunContext, input?: EffectInput) => EffectResult;
+  run: (ctx: RunContext, input?: EffectInput) => Promise<EffectResult>;
 };
 
 export type RunControl = {

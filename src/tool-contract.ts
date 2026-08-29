@@ -82,10 +82,8 @@ export type SessionContext = {
   toolTimeoutMs?: number;
   featureFlags?: ResolvedFeatureFlags;
   onDebug?: (event: `lifecycle.${string}`, data: Record<string, unknown>) => void;
-  onBeforeTool?: (ctx: PreToolContext) => EffectOutput | undefined;
-  onAfterTool?: (ctx: PostToolContext) => EffectOutput | undefined;
   onBeforeToolAsync?: (ctx: PreToolContext) => Promise<void>;
-  onAfterToolAsync?: (ctx: PostToolContext) => Promise<void>;
+  onAfterToolAsync?: (ctx: PostToolContext) => Promise<EffectOutput | undefined>;
   workspaceProfile?: WorkspaceProfile;
   activeSkills?: ActiveSkill[];
 };

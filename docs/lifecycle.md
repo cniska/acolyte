@@ -25,9 +25,9 @@ The model completes by emitting a no-tool-call step whose text is the final resp
 
 ## Effects
 
-- effects are lifecycle-owned side effects applied per-tool-result via the `onToolResult` callback on the session
-- the lifecycle configures the callback during context creation; tool execution calls it after each successful tool
-- an effect that changed something draws its own transcript row, naming the command and its output; one that changed nothing stays silent
+- effects are lifecycle-owned side effects applied per-tool-result via the session's async before/after-tool callbacks
+- the lifecycle configures the callbacks during context creation; tool execution awaits them, so a write's effects finish before its result reaches the model and before the next write starts
+- an effect that changed something draws its own transcript row, naming the command and its output; one that changed nothing stays silent, though the trace records every run
 - format reaches the model only as the system prompt's statement that the harness formats and lints what it writes; lint errors are appended to the tool result
 - current effects are driven by detected workspace commands (install, format, lint)
 

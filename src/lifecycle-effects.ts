@@ -28,22 +28,11 @@ function commandLines(result: CommandResult): ShellLine[] {
   return lines;
 }
 
-/** Draws the effect's own row: the command it ran and what the command said. An effect is host-owned
- *  work with no call behind it, so the row is marked resolved — nothing is coming to close it. */
-function emitEffectRow(ctx: RunContext, toolCallId: string, effectId: string, command: string, lines: ShellLine[]) {
-  const sink = ctx.sideEffectSink;
-  if (!sink) return;
-  const effectCallId = `${toolCallId}:${effectId}`;
-  sink({
-    type: "tool-output",
-    toolName: "effect",
-    toolCallId: effectCallId,
-    resolved: true,
-    content: { kind: "tool-header", labelKey: "tool.label.effect", detail: command, state: "effect" },
+function emitEffectRow(ctx: RunContext, effect: string, command: string, lines: ShellLine[]): void {
+  ctx.sideEffectSink?.({
+    type: "effect",
+    row: { effect, command, output: shellTailParts(lines, OUTPUT_WINDOW_ROWS) },
   });
-  for (const content of shellTailParts(lines, OUTPUT_WINDOW_ROWS)) {
-    sink({ type: "tool-output", toolName: "effect", toolCallId: effectCallId, resolved: true, content });
-  }
 }
 
 function readIfPresent(workspace: string, path: string): string | null {
@@ -56,55 +45,65 @@ function readIfPresent(workspace: string, path: string): string | null {
 
 export const formatEffect: Effect = {
   id: "format",
-  run(ctx, input): EffectResult {
+  async run(ctx, input): Promise<EffectResult> {
     const paths = input?.paths ?? [];
     if (!ctx.workspace || !ctx.policy.formatCommand || paths.length === 0) return { type: "done" };
     const workspace = ctx.workspace;
-    // A formatter's own report of what it touched varies by tool and version, so what changed is
-    // read from the files themselves. Silence here means the write was already well-formed.
+    // A formatter's account of what it touched varies by tool and version, so what changed is read
+    // from the files themselves.
     const before = paths.map((path) => readIfPresent(workspace, path));
-    const result = runCommandWithFiles(workspace, ctx.policy.formatCommand, paths);
+    const result = await runCommandWithFiles(workspace, ctx.policy.formatCommand, paths);
     const rewritten = paths.filter((path, index) => readIfPresent(workspace, path) !== before[index]);
-    if (rewritten.length === 0) return { type: "done" };
     const command = formatWorkspaceCommand(resolveCommandFiles(ctx.policy.formatCommand, paths));
-    ctx.debug("lifecycle.effect.format", { files: paths.length, rewritten: rewritten.length });
-    if (input?.toolCallId) emitEffectRow(ctx, input.toolCallId, "format", command, commandLines(result));
+    // The trace keeps every run; the transcript keeps only the ones that changed something.
+    ctx.debug("lifecycle.effect.format", { command, files: paths.length, rewritten: rewritten.length });
+    if (rewritten.length > 0) emitEffectRow(ctx, "format", command, commandLines(result));
     return { type: "done" };
   },
 };
 
 export const lintEffect: Effect = {
   id: "lint",
-  run(ctx, input): EffectResult {
+  async run(ctx, input): Promise<EffectResult> {
     const paths = input?.paths ?? [];
     if (!ctx.workspace || !ctx.policy.lintCommand || paths.length === 0) return { type: "done" };
-    const result = runCommandWithFiles(ctx.workspace, ctx.policy.lintCommand, paths);
-    if (!result.hasErrors) return { type: "done" };
+    const result = await runCommandWithFiles(ctx.workspace, ctx.policy.lintCommand, paths);
     const command = formatWorkspaceCommand(resolveCommandFiles(ctx.policy.lintCommand, paths));
-    ctx.debug("lifecycle.effect.lint", { files: paths.length, has_errors: true });
-    if (input?.toolCallId) emitEffectRow(ctx, input.toolCallId, "lint", command, commandLines(result));
+    ctx.debug("lifecycle.effect.lint", { command, files: paths.length, has_errors: result.hasErrors });
+    if (!result.hasErrors) return { type: "done" };
+    emitEffectRow(ctx, "lint", command, commandLines(result));
     return { type: "done", output: `Effect: ${command}\nLint errors:\n${renderCommandResult(result)}` };
   },
 };
 
-const installedWorkspaces = new Set<string>();
+// Keyed by workspace and holding the run itself, not a done-marker: two sessions reaching a fresh
+// checkout at once would otherwise both find nothing installed and both start installing.
+const installs = new Map<string, Promise<void>>();
 
 export const installEffect: Effect = {
   id: "install",
-  run(ctx): EffectResult {
-    if (!ctx.workspace || !ctx.policy.installCommand) return { type: "done" };
-    if (installedWorkspaces.has(ctx.workspace)) return { type: "done" };
-    const profile = ctx.session.workspaceProfile;
-    if (profile?.depsDir && existsSync(join(ctx.workspace, profile.depsDir))) {
-      installedWorkspaces.add(ctx.workspace);
+  async run(ctx): Promise<EffectResult> {
+    const { workspace, policy } = ctx;
+    if (!workspace || !policy.installCommand) return { type: "done" };
+    const inFlight = installs.get(workspace);
+    if (inFlight) {
+      await inFlight;
       return { type: "done" };
     }
-    const result = runCommand(ctx.workspace, ctx.policy.installCommand, 60_000);
-    ctx.debug("lifecycle.effect.install", {
-      command: formatWorkspaceCommand(ctx.policy.installCommand),
-      has_errors: result.hasErrors,
+    const profile = ctx.session.workspaceProfile;
+    if (profile?.depsDir && existsSync(join(workspace, profile.depsDir))) {
+      installs.set(workspace, Promise.resolve());
+      return { type: "done" };
+    }
+    const command = policy.installCommand;
+    const run = runCommand(workspace, command, 60_000).then((result) => {
+      ctx.debug("lifecycle.effect.install", {
+        command: formatWorkspaceCommand(command),
+        has_errors: result.hasErrors,
+      });
     });
-    installedWorkspaces.add(ctx.workspace);
+    installs.set(workspace, run);
+    await run;
     return { type: "done" };
   },
 };
@@ -117,24 +116,24 @@ function mergeEffectOutputs(a: EffectOutput | undefined, b: EffectOutput | undef
   return append ? { append } : undefined;
 }
 
-function preToolSideEffects(ctx: RunContext, preCtx: PreToolContext): EffectOutput | undefined {
-  if (DISCOVERY_TOOL_SET.has(preCtx.toolId)) return undefined;
+async function preToolSideEffects(ctx: RunContext, preCtx: PreToolContext): Promise<void> {
+  if (DISCOVERY_TOOL_SET.has(preCtx.toolId)) return;
   for (const effect of PRE_EFFECTS) {
-    effect.run(ctx);
+    await effect.run(ctx);
   }
-  return undefined;
 }
 
-function postToolSideEffects(ctx: RunContext, postCtx: PostToolContext): EffectOutput | undefined {
+// Effects run one after another, and all of them before the tool's result is assembled: the next
+// write cannot start while a formatter is still rewriting the file this one produced.
+async function postToolSideEffects(ctx: RunContext, postCtx: PostToolContext): Promise<EffectOutput | undefined> {
   if (postCtx.status !== "succeeded") return undefined;
   if (!WRITE_TOOL_SET.has(postCtx.toolId)) return undefined;
   const path = typeof postCtx.args.path === "string" ? postCtx.args.path.trim() : "";
   if (!path) return undefined;
-  const effectInput: EffectInput = { paths: [path], toolCallId: postCtx.toolCallId };
-  // Effect output is appended to the tool result string in agent-stream, so keep it stable and model-readable.
+  const effectInput: EffectInput = { paths: [path] };
   const outputs: string[] = [];
   for (const effect of POST_EFFECTS) {
-    const result = effect.run(ctx, effectInput);
+    const result = await effect.run(ctx, effectInput);
     if (result.output) outputs.push(result.output);
   }
   const append = outputs.filter((out) => out.trim().length > 0).join("\n");
@@ -142,8 +141,12 @@ function postToolSideEffects(ctx: RunContext, postCtx: PostToolContext): EffectO
 }
 
 export function attachLifecycleEffectHandlers(ctx: RunContext, session: SessionContext): void {
-  const prevBefore = session.onBeforeTool;
-  const prevAfter = session.onAfterTool;
-  session.onBeforeTool = (preCtx) => mergeEffectOutputs(prevBefore?.(preCtx), preToolSideEffects(ctx, preCtx));
-  session.onAfterTool = (postCtx) => mergeEffectOutputs(prevAfter?.(postCtx), postToolSideEffects(ctx, postCtx));
+  const prevBefore = session.onBeforeToolAsync;
+  const prevAfter = session.onAfterToolAsync;
+  session.onBeforeToolAsync = async (preCtx) => {
+    await prevBefore?.(preCtx);
+    await preToolSideEffects(ctx, preCtx);
+  };
+  session.onAfterToolAsync = async (postCtx) =>
+    mergeEffectOutputs(await prevAfter?.(postCtx), await postToolSideEffects(ctx, postCtx));
 }

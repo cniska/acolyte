@@ -71,10 +71,6 @@ type ToolRunInput<T> = {
   options?: { timeoutMs?: number; skipStepBudget?: boolean };
 };
 
-type BeforeToolResult = {
-  preOutput?: EffectOutput;
-};
-
 type ToolExecutionResult<T> = {
   result: T;
   taskFailed: boolean;
@@ -108,25 +104,23 @@ function assertStepBudget(input: Pick<ToolRunInput<unknown>, "session" | "option
 
 async function runBeforeToolEffects(
   input: Pick<ToolRunInput<unknown>, "session" | "toolId" | "toolCallId" | "args">,
-): Promise<BeforeToolResult> {
+): Promise<void> {
+  if (!input.session.onBeforeToolAsync) return;
   const ctx: PreToolContext = { toolId: input.toolId, toolCallId: input.toolCallId, args: input.args };
-  const preOutput = input.session.onBeforeTool?.(ctx);
-  if (input.session.onBeforeToolAsync) {
-    try {
-      await input.session.onBeforeToolAsync(ctx);
-    } catch (error) {
-      debugEffectFailure(input.session, "before", input.toolId, input.toolCallId, error);
-    }
+  try {
+    await input.session.onBeforeToolAsync(ctx);
+  } catch (error) {
+    debugEffectFailure(input.session, "before", input.toolId, input.toolCallId, error);
   }
-  return { preOutput };
 }
 
-async function runAfterToolEffects(session: SessionContext, ctx: PostToolContext): Promise<void> {
-  if (!session.onAfterToolAsync) return;
+async function runAfterToolEffects(session: SessionContext, ctx: PostToolContext): Promise<EffectOutput | undefined> {
+  if (!session.onAfterToolAsync) return undefined;
   try {
-    await session.onAfterToolAsync(ctx);
+    return await session.onAfterToolAsync(ctx);
   } catch (error) {
     debugEffectFailure(session, "after", ctx.toolId, ctx.toolCallId, error);
+    return undefined;
   }
 }
 
@@ -176,13 +170,6 @@ async function finalizeExecutedTool<T>(
     return;
   }
 
-  await runAfterToolEffects(input.session, {
-    toolId: input.toolId,
-    toolCallId: input.toolCallId,
-    args: input.args,
-    status: "succeeded",
-    result: execution.result,
-  });
   recordToolSuccess(input.session, input.toolId, input.args, execution.result);
 }
 
@@ -220,20 +207,21 @@ export async function runTool<T = unknown>(
   return withToolError(toolId, async () => {
     const input: ToolRunInput<T> = { session, toolId, toolCallId, args, execute, options };
     assertStepBudget(input);
-    const { preOutput } = await runBeforeToolEffects(input);
+    await runBeforeToolEffects(input);
     const timeoutMs = resolveTimeoutMs(session, options);
     let execution = await executeToolTask(input, timeoutMs);
     try {
       if (execution.taskFailed) throw execution.taskError;
-      const postOutput = session.onAfterTool?.({
+      // Effects finish before the result is assembled: what they appended is part of what the
+      // model reads, and the next write cannot begin until they are done.
+      const postOutput = await runAfterToolEffects(session, {
         toolId,
         toolCallId,
         args: args,
         status: "succeeded",
         result: execution.result,
       });
-      const append = [preOutput?.append, postOutput?.append].filter(Boolean).join("\n");
-      return { result: execution.result, effectOutput: append || undefined };
+      return { result: execution.result, effectOutput: postOutput?.append || undefined };
     } catch (error) {
       execution = { result: undefined as T, taskFailed: true, taskError: error };
       throw error;

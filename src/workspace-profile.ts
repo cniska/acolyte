@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { runCommand as runProcess } from "./tool-utils";
 import type { WorkspaceCommand, WorkspaceProfile } from "./workspace-contract";
 import { detectWorkspaceProfile } from "./workspace-detectors";
 
@@ -11,24 +11,20 @@ export function renderCommandResult(result: CommandResult): string {
 }
 
 // A formatter reports what it rewrote on its way out and exits 0, so both streams are read on
-// every path: a success here carries the account of what changed, not just an absence of errors.
-export function runCommand(workspace: string, command: WorkspaceCommand, timeoutMs = 30_000): CommandResult {
-  const { bin, args } = command;
-  const run = spawnSync(bin, [...args], {
-    cwd: workspace,
-    timeout: timeoutMs,
-    maxBuffer: 1024 * 1024,
-    encoding: "utf-8",
-  });
-  const stdout = (run.stdout ?? "").trim();
-  const stderr = (run.stderr ?? "").trim();
-  // An absent binary is not a workspace failure — the ecosystem was detected, the tool is not
-  // installed. Nothing to report and nothing to fix.
-  if (run.error && "code" in run.error && run.error.code === "ENOENT") {
+// every path: a success carries the account of what changed, not just an absence of errors.
+export async function runCommand(
+  workspace: string,
+  command: WorkspaceCommand,
+  timeoutMs = 30_000,
+): Promise<CommandResult> {
+  try {
+    const { code, stdout, stderr } = await runProcess([command.bin, ...command.args], workspace, undefined, timeoutMs);
+    return { hasErrors: code !== 0, stdout: stdout.trim(), stderr: stderr.trim() };
+  } catch {
+    // An absent binary is not a workspace failure — the ecosystem was detected, the tool is not
+    // installed.
     return { hasErrors: false, stdout: "", stderr: "" };
   }
-  if (run.error) return { hasErrors: true, stdout, stderr: stderr || String(run.error) };
-  return { hasErrors: run.status !== 0, stdout, stderr };
 }
 
 export function resolveCommandFiles(command: WorkspaceCommand, filePaths: string[]): WorkspaceCommand {
@@ -36,7 +32,11 @@ export function resolveCommandFiles(command: WorkspaceCommand, filePaths: string
   return { bin: command.bin, args };
 }
 
-export function runCommandWithFiles(workspace: string, command: WorkspaceCommand, filePaths: string[]): CommandResult {
+export async function runCommandWithFiles(
+  workspace: string,
+  command: WorkspaceCommand,
+  filePaths: string[],
+): Promise<CommandResult> {
   if (filePaths.length === 0) return { hasErrors: false, stdout: "", stderr: "" };
   return runCommand(workspace, resolveCommandFiles(command, filePaths));
 }
