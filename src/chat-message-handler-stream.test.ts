@@ -1043,6 +1043,7 @@ describe("effect rows", () => {
     state.onOutput({
       toolCallId: "call_1:format",
       toolName: "effect",
+      resolved: true,
       content: {
         kind: "tool-header",
         labelKey: "tool.label.effect",

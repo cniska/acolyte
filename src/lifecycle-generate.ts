@@ -477,6 +477,7 @@ const CHUNK_HANDLERS: Record<StreamChunk["type"], ChunkHandler> = {
       toolName: chunk.toolName,
       content: chunk.content,
       transient: chunk.transient,
+      resolved: chunk.resolved,
     });
   },
 

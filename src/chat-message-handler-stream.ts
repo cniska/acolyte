@@ -8,7 +8,14 @@ import type { ToolOutputPart, ToolOutputSurface } from "./tool-output-contract";
 import { createToolOutputState } from "./tool-output-render";
 import { REVEAL_FRAME_MS } from "./tool-policy";
 
-type OutputEntry = { toolCallId: string; toolName: string; content: ToolOutputPart; transient?: boolean };
+type OutputEntry = {
+  toolCallId: string;
+  toolName: string;
+  content: ToolOutputPart;
+  transient?: boolean;
+  /** Output that belongs to no tool call: its row is finished on arrival and nothing will close it. */
+  resolved?: boolean;
+};
 
 type ToolResultEntry = {
   toolCallId: string;
@@ -195,10 +202,6 @@ export function createMessageStreamState(input: {
     paragraphPending = false;
   }
 
-  function isEffectOutput(entry: OutputEntry): boolean {
-    return entry.content.kind === "tool-header" && entry.content.state === "effect";
-  }
-
   function renderOutput(entry: OutputEntry): void {
     const update = toolOutput.push(entry);
     if (!update) return;
@@ -213,10 +216,9 @@ export function createMessageStreamState(input: {
       drainOutput();
       const rowId = `row_${createId()}`;
       toolRowIdByCallId.set(entry.toolCallId, rowId);
-      // An effect is host-owned work that has already run, so no tool result is coming to close its
-      // row. Left unresolved it would read as live and front-anchor promotion for the rest of the
-      // session, so it opens finished instead.
-      if (!isEffectOutput(entry)) unresolvedCallIds.add(entry.toolCallId);
+      // Output with no call behind it has nothing coming to close its row. Left unresolved it would
+      // read as live and front-anchor promotion for the rest of the session.
+      if (!entry.resolved) unresolvedCallIds.add(entry.toolCallId);
       lastNoticeKey = null;
       input.setRows((current) => {
         return [...current, { id: rowId, kind: "tool" as const, content: { parts: update.items } }];
@@ -224,7 +226,7 @@ export function createMessageStreamState(input: {
       upsertTranscriptRow({
         id: rowId,
         kind: "tool",
-        status: isEffectOutput(entry) ? "complete" : "active",
+        status: entry.resolved ? "complete" : "active",
         content: { kind: "tool-output", output: { parts: update.items } },
       });
       return;

@@ -42,6 +42,9 @@ const toolOutputEventSchema = z.object({
   toolName: z.string(),
   content: toolOutputPartSchema,
   transient: z.boolean().optional(),
+  /** Output that belongs to no tool call, so no tool result will follow it. Its row is finished the
+   *  moment it arrives; left waiting it would read as live for the rest of the session. */
+  resolved: z.boolean().optional(),
 });
 const toolResultEventSchema = z.object({
   type: z.literal("tool-result"),

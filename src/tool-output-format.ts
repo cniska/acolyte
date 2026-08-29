@@ -9,6 +9,8 @@ export type ToolOutputListener = (event: {
   toolCallId?: string;
   /** Output from a tool still running. Replaced by the parts emitted when it finishes. */
   transient?: boolean;
+  /** Output that belongs to no tool call, so no tool result will follow it. */
+  resolved?: boolean;
 }) => void;
 
 const TOOL_LABEL_KEYS: Record<string, string> = {

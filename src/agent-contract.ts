@@ -69,7 +69,14 @@ export type StreamChunk =
 // faithful — a tool can only emit them from inside its `execute`, between its tool-call and
 // tool-result chunks.
 export type SideEffectChunk =
-  | { type: "tool-output"; toolName: string; content: ToolOutputPart; toolCallId?: string; transient?: boolean }
+  | {
+      type: "tool-output";
+      toolName: string;
+      content: ToolOutputPart;
+      toolCallId?: string;
+      transient?: boolean;
+      resolved?: boolean;
+    }
   | { type: "tasklist"; groupId: string; groupTitle: string; items: TasklistItem[] }
   | { type: "skill-activated"; skill: ActiveSkill }
   | { type: "skill-deactivated"; name: string };

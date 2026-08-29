@@ -28,9 +28,8 @@ function commandLines(result: CommandResult): ShellLine[] {
   return lines;
 }
 
-/** Draws the effect's own row: the command it ran and what the command said. The header's `effect`
- *  state is what tells the renderer the row is already finished — an effect is host-owned work with
- *  no call behind it, so no tool result is ever coming to close it. */
+/** Draws the effect's own row: the command it ran and what the command said. An effect is host-owned
+ *  work with no call behind it, so the row is marked resolved — nothing is coming to close it. */
 function emitEffectRow(ctx: RunContext, toolCallId: string, effectId: string, command: string, lines: ShellLine[]) {
   const sink = ctx.sideEffectSink;
   if (!sink) return;
@@ -39,10 +38,11 @@ function emitEffectRow(ctx: RunContext, toolCallId: string, effectId: string, co
     type: "tool-output",
     toolName: "effect",
     toolCallId: effectCallId,
+    resolved: true,
     content: { kind: "tool-header", labelKey: "tool.label.effect", detail: command, state: "effect" },
   });
   for (const content of shellTailParts(lines, OUTPUT_WINDOW_ROWS)) {
-    sink({ type: "tool-output", toolName: "effect", toolCallId: effectCallId, content });
+    sink({ type: "tool-output", toolName: "effect", toolCallId: effectCallId, resolved: true, content });
   }
 }
 
