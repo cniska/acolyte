@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { z } from "zod";
+import { appConfig } from "./app-config";
 import { printIndentedDim, printToolResult } from "./cli-format";
 import { errorMessage } from "./error-contract";
 import { t } from "./i18n";
@@ -60,7 +61,7 @@ export async function toolMode(args: string[], deps: ToolModeDeps): Promise<void
   }
 
   const workspace = resolve(process.cwd());
-  const { tools, session } = toolsForAgent({ workspace });
+  const { tools, session } = toolsForAgent({ workspace, features: appConfig.features });
   session.workspaceProfile = resolveWorkspaceProfile(workspace);
 
   const available = Object.values<ToolDefinition>(tools);
