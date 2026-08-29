@@ -2,8 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import { ghInstalled } from "./gh-ops";
 import { expectIntent } from "./test-utils";
+import type { ToolDefinition } from "./tool-contract";
 import { renderToolOutput } from "./tool-output-render";
-import { toolDefinitionsById, toolIds, toolIdsByCategory, toolsForAgent } from "./tool-registry";
+import { toolsForAgent } from "./tool-registry";
 
 describe("toolsets", () => {
   test("returns all tools", () => {
@@ -52,9 +53,17 @@ describe("toolsets", () => {
   });
 });
 
+function defaultToolsById(): Record<string, ToolDefinition> {
+  return Object.fromEntries(Object.values(toolsForAgent().tools).map((tool) => [tool.id, tool]));
+}
+
+function defaultToolIds(): string[] {
+  return Object.keys(defaultToolsById()).sort();
+}
+
 describe("toolIds", () => {
   test("returns the default tool ids in sorted order", () => {
-    const ids = toolIds();
+    const ids = defaultToolIds();
     expect(ids).toEqual([...ids].sort());
     expect(ids).toContain("file-read");
     expect(ids).toContain("file-edit");
@@ -67,9 +76,11 @@ describe("toolIds", () => {
   });
 });
 
-describe("toolIdsByCategory", () => {
+describe("write category", () => {
   test("write category returns the default write tools only", () => {
-    const ids = toolIdsByCategory("write");
+    const ids = Object.values(defaultToolsById())
+      .filter((tool) => tool.category === "write")
+      .map((tool) => tool.id);
     expect(ids).toContain("file-edit");
     expect(ids).toContain("code-edit");
     expect(ids).toContain("file-create");
@@ -106,7 +117,7 @@ describe("model-facing tool text", () => {
   test("parameter contracts ship on their own parameters", () => {
     const described = (id: string, param: string): string => {
       const properties = (
-        toolDefinitionsById[id]?.inputSchema as { properties?: Record<string, { description?: string }> }
+        defaultToolsById()[id]?.inputSchema as { properties?: Record<string, { description?: string }> }
       )?.properties;
       return properties?.[param]?.description ?? "";
     };
@@ -121,17 +132,17 @@ describe("model-facing tool text", () => {
   // Whether to commit at all is the user's call, and no other surface carries it: soul.md is
   // silent, and a workspace without an equivalent project rule would lose it entirely.
   test("git-commit states that committing waits for the user", () => {
-    expectIntent(toolDefinitionsById["git-commit"]?.description ?? "", [["only when the user asks"]]);
+    expectIntent(defaultToolsById()["git-commit"]?.description ?? "", [["only when the user asks"]]);
   });
 
   // Vocabulary a tool no longer supports must be gone from the schema surface, not merely
   // de-emphasized, and a tool's trigger ships with its schema rather than in the system prompt.
   test("tool descriptions carry each tool's own contract", () => {
-    const readDescription = toolDefinitionsById["file-read"]?.description ?? "";
+    const readDescription = defaultToolsById()["file-read"]?.description ?? "";
     expect(readDescription).not.toContain("aroundLine");
     expect(readDescription).not.toContain("contextLines");
     expectIntent(readDescription, [["offset"], ["limit"], ["token ceiling"]]);
-    expectIntent(toolDefinitionsById["session-search"]?.description ?? "", [
+    expectIntent(defaultToolsById()["session-search"]?.description ?? "", [
       ["keyword"],
       ["already in context"],
       ["rather than asking the user to repeat"],

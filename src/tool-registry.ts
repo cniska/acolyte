@@ -136,31 +136,11 @@ function collectTools(
   return combined;
 }
 
-function asToolDefinitionsById(entries: ToolMap): Record<string, ToolDefinition> {
-  const byId: Record<string, ToolDefinition> = {};
+function assertToolsAreIdentified(entries: ToolMap): void {
   for (const tool of Object.values(entries)) {
     invariant(typeof tool.id === "string" && tool.id.trim().length > 0, "tool id is required");
     invariant(typeof tool.category === "string" && tool.category.trim().length > 0, `tool ${tool.id} missing category`);
-    byId[tool.id] = tool;
   }
-  return byId;
-}
-
-export const toolDefinitionsById = asToolDefinitionsById(
-  collectTools(resolve(process.cwd()), createSessionContext(), DEFAULT_FEATURE_FLAGS),
-);
-
-export function toolIds(): string[] {
-  return Object.values(toolDefinitionsById)
-    .map((tool) => tool.id)
-    .sort();
-}
-
-export function toolIdsByCategory(category: ToolCategory): string[] {
-  return Object.values(toolDefinitionsById)
-    .filter((tool) => tool.category === category)
-    .map((tool) => tool.id)
-    .sort();
 }
 
 export function toolsForAgent(options?: {
@@ -195,6 +175,7 @@ export function toolsForAgent(options?: {
     const nativeIds = new Set(Object.keys(base));
     Object.assign(base, bindMcpTools(options.mcpListings, session, nativeIds, options.sessionId));
   }
+  assertToolsAreIdentified(base);
   const idsInCategory = (category: ToolCategory): ReadonlySet<string> =>
     new Set(
       Object.values(base)
