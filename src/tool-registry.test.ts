@@ -53,7 +53,7 @@ describe("toolsets", () => {
 });
 
 describe("toolIds", () => {
-  test("returns all registered tool ids in sorted order", () => {
+  test("returns the default tool ids in sorted order", () => {
     const ids = toolIds();
     expect(ids).toEqual([...ids].sort());
     expect(ids).toContain("file-read");
@@ -68,7 +68,7 @@ describe("toolIds", () => {
 });
 
 describe("toolIdsByCategory", () => {
-  test("write category returns write tools only", () => {
+  test("write category returns the default write tools only", () => {
     const ids = toolIdsByCategory("write");
     expect(ids).toContain("file-edit");
     expect(ids).toContain("code-edit");
@@ -87,8 +87,9 @@ describe("toolIdsByCategory", () => {
 describe("localization baseline", () => {
   test("tool ids stay language-neutral", () => {
     const toolNamePattern = /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/;
-    for (const name of Object.keys(toolDefinitionsById)) {
-      expect(name).toMatch(toolNamePattern);
+    const everyTool = toolsForAgent({ features: { ...DEFAULT_FEATURE_FLAGS, undoCheckpoints: true } }).tools;
+    for (const tool of Object.values(everyTool)) {
+      expect(tool.id).toMatch(toolNamePattern);
     }
   });
 
