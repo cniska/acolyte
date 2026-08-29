@@ -5,6 +5,7 @@ import type {
   SharedV4ProviderOptions,
 } from "@ai-sdk/provider";
 import type { ReasoningLevel } from "./config-contract";
+import type { EffectRow } from "./effect-contract";
 import type { ActiveSkill } from "./skill-contract";
 import type { TasklistItem } from "./tasklist-contract";
 import type { ToolDefinition } from "./tool-contract";
@@ -64,19 +65,13 @@ export type StreamChunk =
   | { type: "model-usage"; payload: ModelUsagePayload }
   | SideEffectChunk;
 
-// Effects a tool raises mid-execute (output rows, tasklists, skill lifecycle). They ride the
-// same ordered `fullStream` as text and tool calls so the transcript order is structurally
-// faithful — a tool can only emit them from inside its `execute`, between its tool-call and
-// tool-result chunks.
+// Work raised outside the model's own chunks: a tool's output rows, tasklists and skill lifecycle
+// from inside its `execute`, and a lifecycle effect's row from the write that triggered it. They
+// ride the same ordered `fullStream` as text and tool calls, so the transcript order is
+// structurally faithful.
 export type SideEffectChunk =
-  | {
-      type: "tool-output";
-      toolName: string;
-      content: ToolOutputPart;
-      toolCallId?: string;
-      transient?: boolean;
-      resolved?: boolean;
-    }
+  | { type: "tool-output"; toolName: string; content: ToolOutputPart; toolCallId?: string; transient?: boolean }
+  | { type: "effect"; row: EffectRow }
   | { type: "tasklist"; groupId: string; groupTitle: string; items: TasklistItem[] }
   | { type: "skill-activated"; skill: ActiveSkill }
   | { type: "skill-deactivated"; name: string };

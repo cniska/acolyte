@@ -1,5 +1,5 @@
 import { stdout as output } from "node:process";
-import { type ChatRow, isToolOutput } from "./chat-contract";
+import { type ChatRow, isEffectRow, isToolOutput } from "./chat-contract";
 import { rowMarker } from "./chat-row-marker";
 import { formatAgentReplyOutput, formatIndentedDim, TOOL_BODY_INDENT } from "./cli-format";
 import { renderToolOutput } from "./tool-output-render";
@@ -74,6 +74,17 @@ export function createStdoutRowProjector(): {
     writeStream(row.id, assistantMarker, delta);
   }
 
+  // Run mode prints a finished line and cannot revise it, which is exactly what an effect is: the
+  // harness already did the work, so there is nothing to open and later settle.
+  function renderEffect(row: ChatRow): void {
+    if (!isEffectRow(row.content) || emittedRowIds.has(row.id)) return;
+    const marker = rowMarker(row);
+    writeLine(formatMarkerLine(marker.glyph, marker.color, `Effect ${row.content.command}`));
+    const body = renderToolOutput(row.content.output, Math.max(24, (output.columns ?? 120) - TOOL_BODY_INDENT));
+    if (body.trim()) writeLine(formatIndentedDim(body));
+    hasPrintedProgress = true;
+  }
+
   function renderTool(row: ChatRow): void {
     if (!isToolOutput(row.content)) return;
     const parts = row.content.parts;
@@ -114,7 +125,8 @@ export function createStdoutRowProjector(): {
             renderAssistant(row);
             break;
           case "tool":
-            renderTool(row);
+            if (isEffectRow(row.content)) renderEffect(row);
+            else renderTool(row);
             break;
           case "system":
             if (!emittedRowIds.has(row.id) && typeof row.content === "string") {

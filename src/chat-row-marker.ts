@@ -1,4 +1,4 @@
-import { type ChatRow, isToolOutput, type RowOutcome } from "./chat-contract";
+import { type ChatRow, isEffectRow, isToolOutput, type RowOutcome } from "./chat-contract";
 import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW, GLYPH_USER } from "./chat-glyphs";
 import { palette } from "./palette";
 
@@ -22,7 +22,6 @@ const MARKERS: Record<ChatRow["kind"], string> = {
 const HEADER_STATE_MARKERS = {
   on: { glyph: GLYPH_FISHEYE, color: palette.brand },
   off: { glyph: GLYPH_HOLLOW, color: palette.dim },
-  effect: { glyph: GLYPH_FILLED, color: palette.dim },
 } as const;
 
 function headerStateMarker(row: ChatRow): { glyph: string; color: string } | undefined {
@@ -33,6 +32,8 @@ function headerStateMarker(row: ChatRow): { glyph: string; color: string } | und
 }
 
 export function rowMarker(row: ChatRow): { glyph: string; color?: string } {
+  // Harness work, already done: dim and settled, with no verdict to colour it.
+  if (isEffectRow(row.content)) return { glyph: GLYPH_FILLED, color: palette.dim };
   const stateMarker = headerStateMarker(row);
   if (stateMarker) return stateMarker;
   const color =

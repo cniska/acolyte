@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { layoutTranscriptTool } from "./terminal-chat-layout";
+import { layoutTranscriptEffect, layoutTranscriptTool } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { renderToString } from "./tui";
 import { stripAnsi } from "./tui/serialize";
@@ -95,20 +95,13 @@ test("a settled tool keeps the filled marker whatever the clock says", () => {
 });
 
 test("an effect row is dim and settled, never a phase glyph", () => {
-  const scene = layoutTranscriptTool({
-    parts: [
-      {
-        kind: "tool-header" as const,
-        labelKey: "tool.label.effect",
-        detail: "biome check --write src/a.ts",
-        state: "effect" as const,
-      },
-      { kind: "shell-output" as const, stream: "stderr" as const, text: "Fixed 1 file." },
-    ],
-    status: "active",
+  const scene = layoutTranscriptEffect({
+    row: {
+      effect: "format",
+      command: "biome check --write src/a.ts",
+      output: [{ kind: "shell-output" as const, stream: "stderr" as const, text: "Fixed 1 file." }],
+    },
     columns: 48,
-    now: 500,
-    animating: true,
   });
   const plain = renderPlain(<TerminalSceneRender scene={scene} />, 48);
   expect(plain).toStartWith("◆ Effect biome check --write src/a.ts");

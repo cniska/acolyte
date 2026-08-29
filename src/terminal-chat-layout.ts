@@ -10,6 +10,7 @@ import type { TranscriptStatus } from "./chat-transcript-contract";
 import type { ChatViewportPresentation, PendingPresentation } from "./chat-viewport-contract";
 import { highlightCode, resolveLanguage } from "./code-highlight";
 import { formatRelativeTime } from "./datetime";
+import type { EffectRow } from "./effect-contract";
 import type { FooterStatus } from "./footer-status-contract";
 import type { PrState } from "./gh-contract";
 import { t } from "./i18n";
@@ -832,8 +833,6 @@ function toolMarkerGlyph(
       return GLYPH_FISHEYE;
     case "off":
       return GLYPH_HOLLOW;
-    case "effect":
-      return GLYPH_FILLED;
     default:
       return status === "active" ? pulseGlyph(pulseFilled) : GLYPH_FILLED;
   }
@@ -845,8 +844,6 @@ function toolHeaderMarkerRole(headerState: ToolHeaderState | undefined, status: 
       return "skill-on";
     case "off":
       return "skill-off";
-    case "effect":
-      return "effect";
     default:
       return toolMarkerRole(status);
   }
@@ -897,6 +894,38 @@ export function layoutTranscriptTool(input: {
   };
 }
 
+const EFFECT_LABEL = "Effect";
+
+// An effect reports work the harness already did, so the row is settled the moment it is drawn: a
+// dim marker, never a phase glyph, and no outcome to colour it. It shares the tool row's body
+// primitives, not its top-level layout, because none of that row's progress and verdict apply here.
+export function layoutTranscriptEffect(input: { row: EffectRow; columns: number }): TerminalScene {
+  const contentWidth = Math.max(24, input.columns - 2);
+  const header: TerminalLine = {
+    spans: clipSpans(
+      [
+        { text: `${GLYPH_FILLED} `, role: "effect" },
+        { text: EFFECT_LABEL, role: "tool-label" },
+        { text: ` ${input.row.command}`, role: "effect" },
+      ],
+      contentWidth + 2,
+    ),
+  };
+  const body = layoutToolOutput(input.row.output).map((line) => {
+    const fitted = fitLine(line, contentWidth);
+    return {
+      spans: [
+        { text: " ".repeat(fitted.indent + 2), role: "plain" as const },
+        ...fitted.segments.flatMap((segment) => {
+          const base = toolRole(segment.role);
+          return base ? [{ text: segment.text, role: base }] : [];
+        }),
+      ],
+    };
+  });
+  return { lines: [header, ...body] };
+}
+
 export function layoutChatViewport(input: {
   presentation: ChatViewportPresentation;
   /** Rows whose tool output is still on screen ahead of the header that replaces it. The outcome is
@@ -933,6 +962,12 @@ export function layoutChatViewport(input: {
           }),
           CONTENT_COLUMN,
         ),
+      );
+    } else if (row.content.kind === "effect") {
+      append(
+        row.id,
+        true,
+        insetScene(layoutTranscriptEffect({ row: row.content.output, columns: cw }), CONTENT_COLUMN),
       );
     } else if (row.content.kind === "command-output") {
       const body = formatCommandOutput(row.content.output);

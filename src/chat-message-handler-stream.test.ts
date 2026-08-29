@@ -1040,16 +1040,10 @@ describe("effect rows", () => {
   test("an effect row is finished on arrival, with no tool result to close it", () => {
     const { transcript, state } = transcriptHarness();
 
-    state.onOutput({
-      toolCallId: "call_1:format",
-      toolName: "effect",
-      resolved: true,
-      content: {
-        kind: "tool-header",
-        labelKey: "tool.label.effect",
-        detail: "biome check --write a.ts",
-        state: "effect",
-      },
+    state.onEffect({
+      effect: "format",
+      command: "biome check --write a.ts",
+      output: [{ kind: "shell-output", stream: "stderr", text: "Fixed 1 file." }],
     });
 
     expect(transcript).toHaveLength(1);
