@@ -98,7 +98,8 @@ describe("write category", () => {
 describe("localization baseline", () => {
   test("tool ids stay language-neutral", () => {
     const toolNamePattern = /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/;
-    const everyTool = toolsForAgent({ features: { ...DEFAULT_FEATURE_FLAGS, undoCheckpoints: true } }).tools;
+    const allFlagsOn = Object.fromEntries(Object.keys(DEFAULT_FEATURE_FLAGS).map((flag) => [flag, true]));
+    const everyTool = toolsForAgent({ features: allFlagsOn as typeof DEFAULT_FEATURE_FLAGS }).tools;
     for (const tool of Object.values(everyTool)) {
       expect(tool.id).toMatch(toolNamePattern);
     }

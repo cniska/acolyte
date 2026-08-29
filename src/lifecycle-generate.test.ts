@@ -11,8 +11,6 @@ import { createRunContext } from "./test-utils";
 import { createSessionContext } from "./tool-session";
 import { traceEventDisplayFields } from "./trace-event-catalog";
 
-const writeTools = new Set(["code-edit", "file-create", "file-delete", "file-edit", "git-add", "git-commit"]);
-
 const noopRateLimiter: RateLimiter = {
   async beforeCall() {},
   onResponse() {},
@@ -732,7 +730,6 @@ describe("phaseGenerate", () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
     const session = createSessionContext();
-    session.writeTools = writeTools;
     session.maxToolCallsPerRequest = 100;
     // Threshold is ceil(0.9 * 100) = 90; pre-fill the call log to the crossing point.
     for (let i = 0; i < 90; i++) session.callLog.push({ toolName: "file-read", args: {}, status: "succeeded" });
@@ -786,7 +783,6 @@ describe("phaseGenerate", () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
     const session = createSessionContext();
-    session.writeTools = writeTools;
 
     const turns: LanguageModelV4StreamPart[][] = [
       [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
@@ -829,7 +825,6 @@ describe("phaseGenerate", () => {
     const promptCapture: LanguageModelV4Message[][] = [];
     const debugEvents: LifecycleDebugEvent[] = [];
     const session = createSessionContext();
-    session.writeTools = writeTools;
 
     const turns: LanguageModelV4StreamPart[][] = [
       [{ type: "tool-call", toolCallId: "tc_1", toolName: "noop", input: "{}" }, finishPart("tool-calls")],
