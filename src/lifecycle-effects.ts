@@ -5,6 +5,7 @@ import type { EffectOutput, PostToolContext, PreToolContext, SessionContext } fr
 import { type ShellLine, shellTailParts } from "./tool-output-format";
 import { OUTPUT_WINDOW_ROWS } from "./tool-policy";
 import { DISCOVERY_TOOL_SET, WRITE_TOOL_SET } from "./tool-registry";
+import type { WorkspaceCommand } from "./workspace-contract";
 import {
   type CommandResult,
   formatWorkspaceCommand,
@@ -80,30 +81,29 @@ export const lintEffect: Effect = {
 // checkout at once would otherwise both find nothing installed and both start installing.
 const installs = new Map<string, Promise<void>>();
 
+function installOnce(ctx: RunContext, workspace: string, command: WorkspaceCommand): Promise<void> {
+  const started = installs.get(workspace);
+  if (started) return started;
+  const profile = ctx.session.workspaceProfile;
+  const alreadyInstalled = Boolean(profile?.depsDir && existsSync(join(workspace, profile.depsDir)));
+  const run = alreadyInstalled
+    ? Promise.resolve()
+    : runCommand(workspace, command, 60_000).then((result) => {
+        ctx.debug("lifecycle.effect.install", {
+          command: formatWorkspaceCommand(command),
+          has_errors: result.hasErrors,
+        });
+      });
+  installs.set(workspace, run);
+  return run;
+}
+
 export const installEffect: Effect = {
   id: "install",
   async run(ctx): Promise<EffectResult> {
     const { workspace, policy } = ctx;
     if (!workspace || !policy.installCommand) return { type: "done" };
-    const inFlight = installs.get(workspace);
-    if (inFlight) {
-      await inFlight;
-      return { type: "done" };
-    }
-    const profile = ctx.session.workspaceProfile;
-    if (profile?.depsDir && existsSync(join(workspace, profile.depsDir))) {
-      installs.set(workspace, Promise.resolve());
-      return { type: "done" };
-    }
-    const command = policy.installCommand;
-    const run = runCommand(workspace, command, 60_000).then((result) => {
-      ctx.debug("lifecycle.effect.install", {
-        command: formatWorkspaceCommand(command),
-        has_errors: result.hasErrors,
-      });
-    });
-    installs.set(workspace, run);
-    await run;
+    await installOnce(ctx, workspace, policy.installCommand);
     return { type: "done" };
   },
 };
