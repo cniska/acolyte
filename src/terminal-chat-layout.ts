@@ -383,9 +383,7 @@ export function layoutPending(input: {
   let shimmerOffset = 0;
   const lines: TerminalLine[] = wrapTerminalProse(text, Math.max(24, input.columns - 2)).map((line, index) => {
     const marker: TerminalSpan = {
-      // Only a running turn pulses. A queued or accepted one has not started, and a steady fisheye
-      // would claim it had.
-      text: index === 0 ? `${running ? pulseGlyph(markerPulseFilled(input.now, true)) : GLYPH_FILLED} ` : "  ",
+      text: index === 0 ? `${pendingMarkerGlyph(running, input.now)} ` : "  ",
       role: markerRole,
     };
     const body: TerminalSpan[] = running
@@ -727,8 +725,15 @@ function pulseGlyph(filled: boolean): string {
   return filled ? GLYPH_FISHEYE : GLYPH_HOLLOW;
 }
 
-function markerPulseFilled(now: number, animating: boolean): boolean {
-  return !animating || Math.floor(now / MARKER_PULSE_MS) % 2 === 0;
+function markerPulseFilled(now: number): boolean {
+  return Math.floor(now / MARKER_PULSE_MS) % 2 === 0;
+}
+
+/** Only a running turn pulses. A queued or accepted one has not started, and a steady fisheye would
+ *  claim it had. */
+function pendingMarkerGlyph(running: boolean, now: number): string {
+  if (!running) return GLYPH_FILLED;
+  return pulseGlyph(markerPulseFilled(now));
 }
 
 function taskItemRole(status: TasklistItemStatus): TerminalStyleRole {
@@ -763,7 +768,7 @@ export function layoutTranscriptTasklist(
   const notDone = sorted.filter((item) => item.status !== "done");
   const visible = notDone.slice(0, TASKLIST_VISIBLE_LIMIT);
   const overflow = notDone.length - visible.length;
-  const pulseFilled = markerPulseFilled(now, animating);
+  const pulseFilled = !animating || markerPulseFilled(now);
   const count = ` ${done}/${total}`;
   const lines: TerminalLine[] = [
     {
@@ -856,7 +861,7 @@ export function layoutTranscriptTool(input: {
 }): TerminalScene {
   const contentWidth = Math.max(24, input.columns - 2);
   const headerState = input.parts.find((part) => part.kind === "tool-header")?.state;
-  const marker = `${toolMarkerGlyph(headerState, input.status, markerPulseFilled(input.now, input.animating))} `;
+  const marker = `${toolMarkerGlyph(headerState, input.status, !input.animating || markerPulseFilled(input.now))} `;
   const markerRole = toolHeaderMarkerRole(headerState, input.status);
   const editPath = input.parts.find((part) => part.kind === "edit-header")?.path;
   const diffLang = editPath ? resolveLanguage(extname(editPath).slice(1)) : null;
