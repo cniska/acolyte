@@ -195,6 +195,10 @@ export function createMessageStreamState(input: {
     paragraphPending = false;
   }
 
+  function isEffectOutput(entry: OutputEntry): boolean {
+    return entry.content.kind === "tool-header" && entry.content.state === "effect";
+  }
+
   function renderOutput(entry: OutputEntry): void {
     const update = toolOutput.push(entry);
     if (!update) return;
@@ -209,7 +213,10 @@ export function createMessageStreamState(input: {
       drainOutput();
       const rowId = `row_${createId()}`;
       toolRowIdByCallId.set(entry.toolCallId, rowId);
-      unresolvedCallIds.add(entry.toolCallId);
+      // An effect is host-owned work that has already run, so no tool result is coming to close its
+      // row. Left unresolved it would read as live and front-anchor promotion for the rest of the
+      // session, so it opens finished instead.
+      if (!isEffectOutput(entry)) unresolvedCallIds.add(entry.toolCallId);
       lastNoticeKey = null;
       input.setRows((current) => {
         return [...current, { id: rowId, kind: "tool" as const, content: { parts: update.items } }];
@@ -217,7 +224,7 @@ export function createMessageStreamState(input: {
       upsertTranscriptRow({
         id: rowId,
         kind: "tool",
-        status: "active",
+        status: isEffectOutput(entry) ? "complete" : "active",
         content: { kind: "tool-output", output: { parts: update.items } },
       });
       return;

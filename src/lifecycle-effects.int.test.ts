@@ -55,12 +55,12 @@ test("a format that rewrites the file draws its own effect row", () => {
   expect(result.output).toBeUndefined();
 });
 
-test("the effect row closes itself, since no tool result is ever coming for it", () => {
+test("an effect emits no tool result, since it was never a tool call", () => {
   writeFileSync(join(workspace, "a.txt"), "hello");
   const emitted: StreamEvent[] = [];
   runFormat([], emitted);
 
-  expect(emitted).toContainEqual({ type: "tool-result", toolCallId: "call_1:format", toolName: "effect" });
+  expect(emitted.filter((event) => event.type === "tool-result")).toEqual([]);
 });
 
 test("a format that changes nothing draws no row at all", () => {

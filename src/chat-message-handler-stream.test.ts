@@ -1020,3 +1020,59 @@ describe("chat-message-handler-stream: presentation stays in sync on prune", () 
     state.dispose();
   });
 });
+
+describe("effect rows", () => {
+  function transcriptHarness() {
+    const rows: ChatRow[] = [];
+    const transcript: TranscriptRow[] = [];
+    const state = createMessageStreamState({
+      setRows: (updater) => {
+        rows.splice(0, rows.length, ...updater(rows));
+      },
+      setTranscriptPresentation: (updater) => {
+        transcript.splice(0, transcript.length, ...updater(transcript));
+      },
+      surface: "transcript",
+    });
+    return { rows, transcript, state };
+  }
+
+  test("an effect row is finished on arrival, with no tool result to close it", () => {
+    const { transcript, state } = transcriptHarness();
+
+    state.onOutput({
+      toolCallId: "call_1:format",
+      toolName: "effect",
+      content: {
+        kind: "tool-header",
+        labelKey: "tool.label.effect",
+        detail: "biome check --write a.ts",
+        state: "effect",
+      },
+    });
+
+    expect(transcript).toHaveLength(1);
+    expect(transcript[0]?.status).toBe("complete");
+
+    // A row left active front-anchors promotion for the rest of the session, so finalize() must
+    // find nothing to cancel here.
+    state.finalize();
+    expect(transcript[0]?.status).toBe("complete");
+    state.dispose();
+  });
+
+  test("an ordinary tool row still waits for its result", () => {
+    const { transcript, state } = transcriptHarness();
+
+    state.onOutput({
+      toolCallId: "call_1",
+      toolName: "shell-run",
+      content: { kind: "tool-header", labelKey: "tool.label.shell_run", detail: "bun test" },
+    });
+
+    expect(transcript[0]?.status).toBe("active");
+    state.onToolResult({ toolCallId: "call_1", toolName: "shell-run" });
+    expect(transcript[0]?.status).toBe("success");
+    state.dispose();
+  });
+});

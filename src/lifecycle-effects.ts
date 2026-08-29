@@ -28,9 +28,9 @@ function commandLines(result: CommandResult): ShellLine[] {
   return lines;
 }
 
-/** Draws the effect's own row: the command it ran and what the command said. The row is complete
- *  the moment it is emitted — an effect is host-owned work with no call behind it — so it closes
- *  itself rather than waiting on a tool result that will never arrive. */
+/** Draws the effect's own row: the command it ran and what the command said. The header's `effect`
+ *  state is what tells the renderer the row is already finished — an effect is host-owned work with
+ *  no call behind it, so no tool result is ever coming to close it. */
 function emitEffectRow(ctx: RunContext, toolCallId: string, effectId: string, command: string, lines: ShellLine[]) {
   const sink = ctx.sideEffectSink;
   if (!sink) return;
@@ -44,7 +44,6 @@ function emitEffectRow(ctx: RunContext, toolCallId: string, effectId: string, co
   for (const content of shellTailParts(lines, OUTPUT_WINDOW_ROWS)) {
     sink({ type: "tool-output", toolName: "effect", toolCallId: effectCallId, content });
   }
-  ctx.emit({ type: "tool-result", toolCallId: effectCallId, toolName: "effect" });
 }
 
 function readIfPresent(workspace: string, path: string): string | null {
