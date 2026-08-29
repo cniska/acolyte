@@ -46,8 +46,6 @@ function createScanCodeTool(input: ToolkitInput) {
     toolkit: "code",
     category: "search",
     description: "Scan a file or directory for structural code patterns using AST matching.",
-    instruction:
-      "Map structural targets with `code-scan` before `code-edit`, and reuse a match's `enclosingSymbol` as the `withinSymbol` of the edit.",
     inputSchema: z.object({
       path: z.string().min(1),
       pattern: z.string().min(1),

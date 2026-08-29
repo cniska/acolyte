@@ -136,7 +136,6 @@ describe("bindMcpTools", () => {
     const bound = Object.values(tools);
     expect(bound).toHaveLength(1);
     expect(bound[0]?.description).toBe("Read a file.");
-    expect(bound[0]?.instruction).toBeUndefined();
   });
 });
 

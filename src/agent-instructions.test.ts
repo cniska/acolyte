@@ -48,13 +48,12 @@ describe("createInstructions", () => {
     }
   });
 
-  test("hoists the tool handoffs", () => {
-    const out = createInstructions("Soul.");
-    expectIntent(out, [
-      ["`code-scan` before `code-edit`"],
-      ["re-read a file with `file-read` immediately before editing"],
-      ["`tasklist-create` once", "then `tasklist-update`"],
-    ]);
+  test("no tool sequences the model's work from the system prompt", () => {
+    const out = createInstructions("Soul.").toLowerCase();
+
+    for (const order of ["before `code-edit`", "immediately before editing", "you must read the file first"]) {
+      expect(out).not.toContain(order);
+    }
   });
 
   // A tool that only describes itself belongs in its own description, next to its schema.
@@ -153,7 +152,9 @@ describe("createInstructions reply language", () => {
 
   test("carries the language inside the output contract, not as a section of its own", () => {
     const out = createInstructions("Soul.", undefined, "", [], "sv");
-    const contractEnd = out.indexOf("\n\n", out.indexOf("Format as plain text"));
-    expect(out.indexOf("Reply in Swedish")).toBeLessThan(contractEnd);
+    const contractStart = out.indexOf("Format as plain text");
+    const languageAt = out.indexOf("Reply in Swedish");
+    expect(languageAt).toBeGreaterThan(contractStart);
+    expect(out.slice(contractStart, languageAt)).not.toContain("\n\n");
   });
 });

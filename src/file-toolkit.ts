@@ -105,8 +105,6 @@ function createReadFileTool(input: ToolkitInput) {
     category: "read",
     description:
       "Read a text file. I return the whole file as numbered lines under a `Lines: start-end of total` header. A file over the token ceiling fails with its line count; re-read it with `offset` (the 1-based first line) and `limit` (how many lines) to select the part you need. A file over the byte ceiling is not readable at any range — search it with `file-search`.",
-    instruction:
-      "Re-read a file with `file-read` immediately before editing it, and take the snippets and line numbers you pass to `file-edit` or `code-edit` from that read.",
     inputSchema: z.object({
       path: z.string().min(1),
       offset: z
@@ -184,7 +182,7 @@ function createEditFileTool(input: ToolkitInput) {
     toolkit: "file",
     category: "write",
     description:
-      "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs (for small surgical edits using exact text match) or {startLine, endLine, replace} objects (for larger block replacements). Line numbers MUST come from `file-read` output — do not guess. endLine must not exceed the file length. All edits are applied atomically. You MUST read the file first. For new files, use `file-create`. For code renames or structural edits use `code-edit`.",
+      "Edit an existing file. Pass `edits` as an array of either {find, replace} pairs, which match exact text, or {startLine, endLine, replace} objects, which address lines as `file-read` numbers them. Every edit in one call is located against that same content, so edits in a batch do not shift each other. An endLine past the last line is clamped to it. All edits in a call are applied together or none are.",
     inputSchema: z.object({
       path: z.string().min(1),
       edits: z

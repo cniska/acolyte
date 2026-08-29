@@ -7,10 +7,7 @@ import { toolsForAgent } from "./tool-registry";
 const INSTRUCTION_OVERHEAD_TOKENS = 300;
 
 function estimateToolTokens(tools: ReturnType<typeof toolsForAgent>["tools"]): number {
-  return Object.values(tools).reduce(
-    (sum, tool) => sum + estimateTokens([tool.id, tool.description, tool.instruction].join("\n")),
-    0,
-  );
+  return Object.values(tools).reduce((sum, tool) => sum + estimateTokens([tool.id, tool.description].join("\n")), 0);
 }
 
 export function phasePrepare(input: PhasePrepareInput): PhasePrepareResult {
