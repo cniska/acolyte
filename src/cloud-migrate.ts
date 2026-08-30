@@ -1,3 +1,5 @@
+import { CodedError } from "./coded-error";
+import { CLOUD_ERROR_CODES } from "./error-contract";
 import type { MemoryStore } from "./memory-contract";
 import { scopeFromKey } from "./memory-contract";
 import type { SessionStore } from "./session-contract";
@@ -22,6 +24,13 @@ export type CloudMigrationDeps = {
 // from every future session: only project and user scopes survive the move.
 function isDurable(scopeKey: string): boolean {
   return scopeKey.startsWith("proj_") || scopeKey.startsWith("user_");
+}
+
+// A refused credential rejects every remaining write too, so it ends the run instead of counting
+// itself once per record and reporting a copy that never had a chance.
+export function isCredentialRejection(error: unknown): boolean {
+  if (!(error instanceof CodedError)) return false;
+  return error.code === CLOUD_ERROR_CODES.unauthorized || error.code === CLOUD_ERROR_CODES.forbidden;
 }
 
 /**
@@ -52,7 +61,8 @@ export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise
     try {
       await deps.cloudMemory.write(record, scopeFromKey(record.scopeKey));
       summary.memories += 1;
-    } catch {
+    } catch (error) {
+      if (isCredentialRejection(error)) throw error;
       summary.failures += 1;
       advance();
       continue;
@@ -65,7 +75,8 @@ export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise
         await deps.cloudMemory.writeEmbedding(record.id, record.scopeKey, embedding);
         summary.embeddings += 1;
       }
-    } catch {
+    } catch (error) {
+      if (isCredentialRejection(error)) throw error;
       summary.embeddingFailures += 1;
     }
     advance();
@@ -75,7 +86,8 @@ export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise
     try {
       await deps.cloudSessions.saveSession(session);
       summary.sessions += 1;
-    } catch {
+    } catch (error) {
+      if (isCredentialRejection(error)) throw error;
       summary.failures += 1;
     }
     advance();

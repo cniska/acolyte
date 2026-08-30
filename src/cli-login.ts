@@ -1,5 +1,5 @@
 import { type CallbackResult, DEFAULT_CLOUD_URL } from "./cli-callback-server";
-import type { CloudMigrationSummary } from "./cloud-migrate";
+import { type CloudMigrationSummary, isCredentialRejection } from "./cloud-migrate";
 import type { Credentials } from "./credentials";
 import { errorMessage } from "./error-contract";
 import { t } from "./i18n";
@@ -41,8 +41,12 @@ async function completeLogin(deps: LoginModeDeps, url: string, token: string, co
       deps.printDim(t("cli.login.migrate.novectors", { embeddingFailures: summary.embeddingFailures }));
     }
   } catch (error) {
-    // The credentials are already stored, so the sign-in held: only the copy needs another run.
-    deps.printError(errorMessage(error));
+    deps.printError(
+      isCredentialRejection(error)
+        ? t("cli.login.migrate.rejected")
+        : t("cli.login.migrate.failed", { reason: errorMessage(error) }),
+    );
+    process.exitCode = 1;
   }
 }
 

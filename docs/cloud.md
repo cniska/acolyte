@@ -29,7 +29,7 @@ Credentials are stored in the config directory as `credentials` (mode 0600). See
 
 `acolyte login` copies the machine's existing data into the account: project- and user-scoped memories with their embeddings, and every stored session. Session-scoped memories and the retired-memory archive stay local.
 
-Cloud writes upsert on the record id, so signing in again copies only what a previous run left behind. A failed copy keeps the credentials and reports the count it could not move.
+Cloud writes upsert on the record id, so signing in again copies only what a previous run left behind. A rejected token ends the copy and exits non-zero; any other failure keeps the credentials and reports the count it could not move.
 
 Migration runs one direction. Disabling `cloudSync` returns the CLI to the local database without the records written while cloud storage was active.
 

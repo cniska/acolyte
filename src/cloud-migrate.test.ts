@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { CloudApiError } from "./cloud-client";
 import { migrateLocalDataToCloud } from "./cloud-migrate";
 import type { MemoryArchiveRecord, MemoryDisposition, MemoryRecord, MemoryStore } from "./memory-contract";
 import type { Session, SessionId, SessionStore } from "./session-contract";
@@ -28,6 +29,7 @@ function createFakeMemoryStore(options: {
   embeddingsFor?: string[];
   failWriteFor?: string[];
   failEmbeddingFor?: string[];
+  rejectTokenFor?: string[];
 }): FakeMemoryStore {
   const written: { record: MemoryRecord; scope?: string }[] = [];
   const embeddings: { id: string; scopeKey: string }[] = [];
@@ -40,6 +42,7 @@ function createFakeMemoryStore(options: {
     list: async () => options.records ?? [],
     listArchive: async () => options.archive ?? [],
     write: async (record: MemoryRecord, scope?: string) => {
+      if (options.rejectTokenFor?.includes(record.id)) throw new CloudApiError(401, "unauthorized");
       if (options.failWriteFor?.includes(record.id)) throw new Error("write refused");
       written.push({ record, scope });
     },
@@ -177,6 +180,23 @@ describe("migrateLocalDataToCloud", () => {
     expect(summary.memories).toBe(1);
     expect(summary.sessions).toBe(0);
     expect(cloud.written.map((entry) => entry.record.id)).toEqual(["mem_good0001"]);
+  });
+
+  test("stops the run when the cloud rejects the token", async () => {
+    const local = createFakeMemoryStore({
+      records: [createRecord({ id: "mem_proj0001" }), createRecord({ id: "mem_proj0002" })],
+    });
+    const cloud = createFakeMemoryStore({ rejectTokenFor: ["mem_proj0001"] });
+
+    const run = migrateLocalDataToCloud({
+      localMemory: local,
+      localSessions: createFakeSessionStore([createSession({ id: "sess_one" })]),
+      cloudMemory: cloud,
+      cloudSessions: createFakeSessionStore([]),
+    });
+
+    await expect(run).rejects.toBeInstanceOf(CloudApiError);
+    expect(cloud.written).toEqual([]);
   });
 
   test("counts a rejected embedding apart from its record", async () => {

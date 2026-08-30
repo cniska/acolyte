@@ -929,6 +929,15 @@
       }
     }
   },
+  "cli.login.migrate.failed": "Copying local data to the cloud failed: {reason}",
+  "@cli.login.migrate.failed": {
+    "description": "Shown when the whole copy ended in an error rather than in per-record failures. {reason} is the underlying error message.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
   "cli.login.migrate.failures": "{failures} records did not copy.",
   "@cli.login.migrate.failures": {
     "description": "Shown after the upload when some records were rejected. Every cloud write upserts on the record id, so signing in again copies only what is still missing. {failures} is a count.",
@@ -946,6 +955,10 @@
         "type": "int"
       }
     }
+  },
+  "cli.login.migrate.rejected": "The cloud rejected the token, so the copy stopped. Sign in again with a valid token.",
+  "@cli.login.migrate.rejected": {
+    "description": "Shown when the cloud refused the credentials during the copy that follows sign-in. Two sentences: the outcome, then the suggestion."
   },
   "cli.login.migrate.start": "Copying local memory and sessions to the cloud.",
   "@cli.login.migrate.start": {

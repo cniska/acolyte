@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { loginMode, logoutMode } from "./cli-login";
+import { CloudApiError } from "./cloud-client";
 
 afterEach(() => {
   process.exitCode = 0;
@@ -37,7 +38,7 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     },
     migrateToCloud: async () => {
       calls.push("migrateToCloud");
-      return { memories: 0, embeddings: 0, archived: 0, sessions: 0, failures: 0, embeddingFailures: 0 };
+      return { memories: 0, embeddings: 0, sessions: 0, failures: 0, embeddingFailures: 0 };
     },
     ...overrides,
   };
@@ -134,7 +135,7 @@ describe("loginMode", () => {
       parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
       migrateToCloud: async (url, token) => {
         targets.push(`${url} ${token}`);
-        return { memories: 3, embeddings: 3, archived: 0, sessions: 2, failures: 0, embeddingFailures: 0 };
+        return { memories: 3, embeddings: 3, sessions: 2, failures: 0, embeddingFailures: 0 };
       },
     });
 
@@ -149,7 +150,6 @@ describe("loginMode", () => {
       migrateToCloud: async () => ({
         memories: 3,
         embeddings: 3,
-        archived: 1,
         sessions: 2,
         failures: 0,
         embeddingFailures: 0,
@@ -168,7 +168,6 @@ describe("loginMode", () => {
       migrateToCloud: async () => ({
         memories: 1,
         embeddings: 1,
-        archived: 0,
         sessions: 0,
         failures: 4,
         embeddingFailures: 0,
@@ -180,7 +179,7 @@ describe("loginMode", () => {
     expect(output()).toContain("4");
   });
 
-  test("keeps the login when the copy fails", async () => {
+  test("keeps the credentials and fails when the copy fails", async () => {
     const { deps, calls, output } = createLoginDeps({
       parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
       migrateToCloud: async () => {
@@ -191,8 +190,23 @@ describe("loginMode", () => {
     await loginMode([], deps);
 
     expect(calls.filter((call) => call === "writeCredential")).toHaveLength(2);
-    expect(process.exitCode).toBe(0);
+    expect(process.exitCode).toBe(1);
     expect(output()).toContain("cloud unreachable");
+  });
+
+  test("names a rejected token instead of reporting a clean login", async () => {
+    const { deps, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_stale" : "https://custom.example.com"),
+      migrateToCloud: async () => {
+        throw new CloudApiError(401, "unauthorized");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(process.exitCode).toBe(1);
+    expect(output()).toContain("rejected the token");
+    expect(output()).not.toContain("unauthorized");
   });
 
   test("copies after an oauth login too", async () => {

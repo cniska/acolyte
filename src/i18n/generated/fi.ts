@@ -394,6 +394,10 @@ export const FI_MESSAGES = {
     { kind: "arg", name: "sessions" },
     { kind: "text", value: " istuntoa pilveen." },
   ],
+  "cli.login.migrate.failed": [
+    { kind: "text", value: "Paikallisten tietojen kopiointi pilveen epäonnistui: " },
+    { kind: "arg", name: "reason" },
+  ],
   "cli.login.migrate.failures": [
     { kind: "arg", name: "failures" },
     { kind: "text", value: " tietuetta jäi kopioimatta." },
@@ -401,6 +405,12 @@ export const FI_MESSAGES = {
   "cli.login.migrate.novectors": [
     { kind: "arg", name: "embeddingFailures" },
     { kind: "text", value: " muistia siirtyi ilman upotusta, ja ne haetaan avainsanoilla kunnes upotus on kopioitu." },
+  ],
+  "cli.login.migrate.rejected": [
+    {
+      kind: "text",
+      value: "Pilvi hylkäsi tunnuksen, joten kopiointi keskeytyi. Kirjaudu uudelleen kelvollisella tunnuksella.",
+    },
   ],
   "cli.login.migrate.start": [{ kind: "text", value: "Kopioidaan paikallinen muisti ja istunnot pilveen." }],
   "cli.login.saved": [{ kind: "text", value: "Kirjauduttu sisään." }],

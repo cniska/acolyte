@@ -398,6 +398,10 @@ export const SV_MESSAGES = {
     { kind: "arg", name: "sessions" },
     { kind: "text", value: " sessioner till molnet." },
   ],
+  "cli.login.migrate.failed": [
+    { kind: "text", value: "Kopieringen av lokala data till molnet misslyckades: " },
+    { kind: "arg", name: "reason" },
+  ],
   "cli.login.migrate.failures": [
     { kind: "arg", name: "failures" },
     { kind: "text", value: " poster kopierades inte." },
@@ -405,6 +409,9 @@ export const SV_MESSAGES = {
   "cli.login.migrate.novectors": [
     { kind: "arg", name: "embeddingFailures" },
     { kind: "text", value: " minnen kom utan sin inbäddning och hämtas med nyckelord tills den kopierats." },
+  ],
+  "cli.login.migrate.rejected": [
+    { kind: "text", value: "Molnet avvisade token, så kopieringen avbröts. Logga in igen med en giltig token." },
   ],
   "cli.login.migrate.start": [{ kind: "text", value: "Kopierar lokalt minne och sessioner till molnet." }],
   "cli.login.saved": [{ kind: "text", value: "Inloggad." }],

@@ -387,6 +387,10 @@ export const EN_MESSAGES = {
     { kind: "arg", name: "sessions" },
     { kind: "text", value: " sessions to the cloud." },
   ],
+  "cli.login.migrate.failed": [
+    { kind: "text", value: "Copying local data to the cloud failed: " },
+    { kind: "arg", name: "reason" },
+  ],
   "cli.login.migrate.failures": [
     { kind: "arg", name: "failures" },
     { kind: "text", value: " records did not copy." },
@@ -397,6 +401,9 @@ export const EN_MESSAGES = {
       kind: "text",
       value: " memories arrived without their embedding and are recalled by keyword until it is copied.",
     },
+  ],
+  "cli.login.migrate.rejected": [
+    { kind: "text", value: "The cloud rejected the token, so the copy stopped. Sign in again with a valid token." },
   ],
   "cli.login.migrate.start": [{ kind: "text", value: "Copying local memory and sessions to the cloud." }],
   "cli.login.saved": [{ kind: "text", value: "Logged in." }],
