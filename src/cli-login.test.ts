@@ -158,8 +158,7 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(output()).toContain("3");
-    expect(output()).toContain("2");
+    expect(output()).toContain("Copied 3 memories and 2 sessions");
   });
 
   test("names the records a copy left behind", async () => {
@@ -176,7 +175,24 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(output()).toContain("4");
+    expect(output()).toContain("4 records did not copy");
+  });
+
+  test("names the memories that arrived without an embedding", async () => {
+    const { deps, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
+      migrateToCloud: async () => ({
+        memories: 5,
+        embeddings: 3,
+        sessions: 0,
+        failures: 0,
+        embeddingFailures: 2,
+      }),
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("2 memories arrived without their embedding");
   });
 
   test("keeps the credentials and fails when the copy fails", async () => {
