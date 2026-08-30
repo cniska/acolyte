@@ -409,6 +409,7 @@ export const EN_MESSAGES = {
   "cli.login.saved": [{ kind: "text", value: "Logged in." }],
   "cli.login.timeout": [{ kind: "text", value: "Authentication timed out. Please try again." }],
   "cli.login.token.empty": [{ kind: "text", value: "Token cannot be empty." }],
+  "cli.login.url.insecure": [{ kind: "text", value: "The cloud URL must use HTTPS unless it targets localhost." }],
   "cli.login.waiting": [{ kind: "text", value: "Waiting for authentication…" }],
   "cli.login.welcome": [
     { kind: "text", value: "Logged in as " },

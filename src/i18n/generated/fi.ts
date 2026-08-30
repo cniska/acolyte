@@ -416,6 +416,9 @@ export const FI_MESSAGES = {
   "cli.login.saved": [{ kind: "text", value: "Kirjauduttu sisään." }],
   "cli.login.timeout": [{ kind: "text", value: "Tunnistautuminen aikakatkaistiin. Yritä uudelleen." }],
   "cli.login.token.empty": [{ kind: "text", value: "Tunnus ei voi olla tyhjä." }],
+  "cli.login.url.insecure": [
+    { kind: "text", value: "Pilven osoitteen on käytettävä HTTPS:ää, ellei se osoita localhostiin." },
+  ],
   "cli.login.waiting": [{ kind: "text", value: "Odotetaan tunnistautumista…" }],
   "cli.login.welcome": [
     { kind: "text", value: "Kirjauduttu sisään tunnuksella " },

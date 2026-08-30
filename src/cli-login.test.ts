@@ -129,6 +129,30 @@ describe("loginMode", () => {
     expect(output()).toContain("timed out");
   });
 
+  test("refuses a plaintext cloud url before storing anything", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "http://cloud.example.com"),
+    });
+
+    await loginMode([], deps);
+
+    expect(calls).not.toContain("writeCredential");
+    expect(calls).not.toContain("migrateToCloud");
+    expect(process.exitCode).toBe(1);
+    expect(output()).toContain("must use HTTPS");
+  });
+
+  test("allows a plaintext cloud url on localhost", async () => {
+    const { deps, calls } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "http://localhost:3000"),
+    });
+
+    await loginMode([], deps);
+
+    expect(calls.filter((call) => call === "writeCredential")).toHaveLength(2);
+    expect(process.exitCode).toBe(0);
+  });
+
   test("copies local data with the credentials the login obtained", async () => {
     const targets: string[] = [];
     const { deps } = createLoginDeps({

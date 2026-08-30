@@ -1,5 +1,6 @@
 import { type CallbackResult, DEFAULT_CLOUD_URL } from "./cli-callback-server";
 import { type CloudMigrationSummary, isCredentialRejection } from "./cloud-migrate";
+import { isSecureUrl } from "./config-contract";
 import type { Credentials } from "./credentials";
 import { errorMessage } from "./error-contract";
 import { t } from "./i18n";
@@ -26,6 +27,12 @@ type LoginModeDeps = {
  * record id, so signing in again copies whatever a failed run left behind.
  */
 async function completeLogin(deps: LoginModeDeps, url: string, token: string, confirmation: string): Promise<void> {
+  if (!isSecureUrl(url)) {
+    deps.printError(t("cli.login.url.insecure"));
+    process.exitCode = 1;
+    return;
+  }
+
   await deps.writeCredential("cloudToken", token);
   await deps.writeCredential("cloudUrl", url);
   deps.printDim(confirmation);

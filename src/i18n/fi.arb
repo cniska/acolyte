@@ -161,6 +161,7 @@
   "cli.login.migrate.start": "Kopioidaan paikallinen muisti ja istunnot pilveen.",
   "cli.login.saved": "Kirjauduttu sisään.",
   "cli.login.timeout": "Tunnistautuminen aikakatkaistiin. Yritä uudelleen.",
+  "cli.login.url.insecure": "Pilven osoitteen on käytettävä HTTPS:ää, ellei se osoita localhostiin.",
   "cli.login.token.empty": "Tunnus ei voi olla tyhjä.",
   "cli.login.waiting": "Odotetaan tunnistautumista…",
   "cli.login.welcome": "Kirjauduttu sisään tunnuksella {email}.",

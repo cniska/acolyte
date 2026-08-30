@@ -161,6 +161,7 @@
   "cli.login.migrate.start": "Kopierar lokalt minne och sessioner till molnet.",
   "cli.login.saved": "Inloggad.",
   "cli.login.timeout": "Autentiseringen tog för lång tid. Försök igen.",
+  "cli.login.url.insecure": "Molnadressen måste använda HTTPS om den inte pekar på localhost.",
   "cli.login.token.empty": "Token får inte vara tom.",
   "cli.login.waiting": "Väntar på autentisering…",
   "cli.login.welcome": "Inloggad som {email}.",

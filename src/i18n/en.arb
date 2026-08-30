@@ -976,6 +976,10 @@
   "@cli.login.token.empty": {
     "description": "Shown when the token prompt was submitted with no value."
   },
+  "cli.login.url.insecure": "The cloud URL must use HTTPS unless it targets localhost.",
+  "@cli.login.url.insecure": {
+    "description": "Shown when a custom cloud URL would send the token and the copied memories in plaintext. Keep HTTPS and localhost untranslated."
+  },
   "cli.login.waiting": "Waiting for authentication…",
   "@cli.login.waiting": {
     "description": "Progress line shown while waiting for the browser sign-in to complete."

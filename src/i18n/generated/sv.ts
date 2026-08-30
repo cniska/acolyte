@@ -417,6 +417,9 @@ export const SV_MESSAGES = {
   "cli.login.saved": [{ kind: "text", value: "Inloggad." }],
   "cli.login.timeout": [{ kind: "text", value: "Autentiseringen tog för lång tid. Försök igen." }],
   "cli.login.token.empty": [{ kind: "text", value: "Token får inte vara tom." }],
+  "cli.login.url.insecure": [
+    { kind: "text", value: "Molnadressen måste använda HTTPS om den inte pekar på localhost." },
+  ],
   "cli.login.waiting": [{ kind: "text", value: "Väntar på autentisering…" }],
   "cli.login.welcome": [
     { kind: "text", value: "Inloggad som " },
