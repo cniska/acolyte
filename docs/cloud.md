@@ -14,7 +14,7 @@ CLI → Cloud API (Vercel Edge) → Neon Postgres (pgvector)
 
 The CLI ships a `CloudClient` that implements `MemoryStore` and `SessionStore` over HTTP. When `cloudSync` is enabled, all memory and session operations route through the cloud API instead of local SQLite/JSON storage.
 
-The cloud API is a separate application, `app.acolyte.sh`, deployed on Vercel, fronting Neon Postgres with pgvector for embedding storage and similarity search. Its request and response schemas come from the shared [acolyte-cloud](https://github.com/cniska/acolyte-cloud) contract package.
+The cloud API is a separate application, `app.acolyte.sh`, deployed on Vercel, fronting Neon Postgres with pgvector for embedding storage and similarity search.
 
 ## Configuration
 
@@ -27,7 +27,7 @@ Credentials are stored in the config directory as `credentials` (mode 0600). See
 
 ## Migration
 
-`acolyte login` copies the machine's existing data into the account: project- and user-scoped memories with their embeddings, and every stored session. Session-scoped memories and the retired-memory archive stay local.
+`acolyte login` copies the machine's existing data into the account: project- and user-scoped memories with their embeddings, and every stored session. Session-scoped memories, the retired-memory archive, and the active-session pointer stay local.
 
 Cloud writes upsert on the record id, so signing in again copies only what a previous run left behind. A rejected token ends the copy and exits non-zero; any other failure keeps the credentials and reports the count it could not move.
 
