@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { gitEnv, tempDir } from "./test-utils";
+import { gitEnv, startTestServer, tempDir } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
 
@@ -42,7 +42,7 @@ function runCliThroughCommandSubstitution(
 ): { stdout: string; stderr: string; exitCode: number } {
   const quotedArgs = args.map((arg) => `'${arg.replaceAll("'", "'\\''")}'`).join(" ");
   const cliPath = join(import.meta.dir, "cli.ts").replaceAll("'", "'\\''");
-  const script = `out=$(bun run '${cliPath}' ${quotedArgs}); printf '%s' "$out"`;
+  const script = `out=$(bun run '${cliPath}' ${quotedArgs}); code=$?; printf '%s' "$out"; exit $code`;
   const result = Bun.spawnSync(["bash", "--noprofile", "--norc", "-c", script], {
     cwd,
     env,
@@ -144,5 +144,25 @@ describe("cli json output", () => {
 
     expect(result.exitCode).toBe(0);
     expectJsonStdout(result.stdout);
+  });
+
+  test("status --json reports a stopped daemon as parseable JSON", () => {
+    const home = createDir("acolyte-cli-json-home-");
+    const env = createIsolatedEnv(home);
+    const workspace = createDir("acolyte-cli-json-workspace-");
+    const init = Bun.spawnSync(["git", "init"], { cwd: workspace, env, stdout: "pipe", stderr: "pipe" });
+    expect(init.exitCode).toBe(0);
+    env.ACOLYTE_PROJECT_DIR = workspace;
+    const reserved = startTestServer(() => new Response("reserved"));
+    const port = reserved.port;
+    reserved.stop();
+    mkdirSync(join(workspace, ".acolyte"), { recursive: true });
+    writeFileSync(join(workspace, ".acolyte", "config.toml"), `port = ${port}\n`, "utf8");
+
+    const result = runCliThroughCommandSubstitution(["status", "--json"], env, workspace);
+
+    expect(result.exitCode).toBe(1);
+    expectJsonStdout(result.stdout);
+    expect(JSON.parse(result.stdout)).toEqual({ ok: false, state: "stopped", port });
   });
 });

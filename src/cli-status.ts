@@ -2,6 +2,7 @@ import type { appConfig as appConfigType } from "./app-config";
 import type { createClient as createClientType } from "./client-factory";
 import { t } from "./i18n";
 import type { apiUrlForPort as apiUrlForPortType, localServerStatus as localServerStatusType } from "./server-daemon";
+import { stoppedStatusPayloadSchema } from "./status-contract";
 import type { formatStatus as formatStatusType } from "./status-format";
 
 type StatusModeDeps = {
@@ -65,7 +66,14 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
     if (isServerConnectionFailure(error)) {
       const localStatus = await localServerStatus({ port: serverPort, apiKey: serverApiKey });
       if (!localStatus.running) {
-        printDim(t("cli.status.local_start_hint"));
+        if (json) {
+          printOutput(
+            JSON.stringify(stoppedStatusPayloadSchema.parse({ ok: false, state: "stopped", port: localStatus.port })),
+          );
+          process.exitCode = 1;
+        } else {
+          printDim(t("cli.status.local_start_hint"));
+        }
         return;
       }
     }

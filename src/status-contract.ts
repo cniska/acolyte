@@ -17,8 +17,15 @@ export const statusPayloadSchema = z
   })
   .catchall(z.union([z.boolean(), z.string(), z.number(), z.array(z.string())]));
 
+export const stoppedStatusPayloadSchema = z.object({
+  ok: z.literal(false),
+  state: z.literal("stopped"),
+  port: z.number().int().min(1),
+});
+
 export type StatusFields = Record<string, string | number | string[]>;
 export type StatusPayload = z.infer<typeof statusPayloadSchema>;
+export type StoppedStatusPayload = z.infer<typeof stoppedStatusPayloadSchema>;
 
 export function parseStatusFields(payload: unknown): StatusFields | null {
   const result = statusPayloadSchema.safeParse(payload);

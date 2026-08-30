@@ -56,7 +56,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **FR-23** — `acolyte run "<prompt>"` executes a one-shot task and exits; `--file <path>` adds file context.
 - **FR-24** — `acolyte skill <name> [prompt]` runs a one-shot task with a named skill active.
 - **FR-25** — `acolyte resume [id]` / `acolyte history` continue and list prior sessions; a session is resolvable by ID prefix.
-- **FR-26** — `acolyte start|stop|restart|ps|status` manage and report daemon lifecycle; `status` also reports daemon health, including memory storage and size and known resource misconfiguration.
+- **FR-26** — `acolyte start|stop|restart|ps|status` manage and report daemon lifecycle; `status` also reports daemon health, including memory storage and size and known resource misconfiguration. When the daemon is not running, `status --json` emits a stopped-state JSON object and exits non-zero; the human start hint appears only in text mode.
 - **FR-27** — `acolyte auth [provider]` authenticates a provider by API key or, where supported, subscription, and reports/removes credentials (see §5 SEC).
 - **FR-28** — `acolyte config list|set|unset` reads and writes runtime configuration at user or project scope.
 - **FR-29** — `acolyte memory list|add|restore` manages persistent memory notes and their archive (see §3 MEM).
