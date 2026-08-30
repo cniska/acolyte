@@ -27,7 +27,7 @@ Credentials are stored in the config directory as `credentials` (mode 0600). See
 
 ## Migration
 
-`acolyte login` copies the machine's existing data into the account: project- and user-scoped memories with their embeddings, the archive with its retirement lineage, and every stored session. Session-scoped memories stay local.
+`acolyte login` copies the machine's existing data into the account: project- and user-scoped memories with their embeddings, and every stored session. Session-scoped memories and the retired-memory archive stay local.
 
 Cloud writes upsert on the record id, so signing in again copies only what a previous run left behind. A failed copy keeps the credentials and reports the count it could not move.
 

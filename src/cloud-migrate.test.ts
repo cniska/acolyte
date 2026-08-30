@@ -123,7 +123,7 @@ describe("migrateLocalDataToCloud", () => {
     expect(cloud.written.map((entry) => entry.record.id)).toEqual(["mem_proj0001"]);
   });
 
-  test("recreates an archived record by retiring it with its own disposition", async () => {
+  test("leaves the archive behind", async () => {
     const archived: MemoryArchiveRecord = {
       ...createRecord({ id: "mem_gone0001" }),
       retiredAt: "2026-08-02T10:00:00.000Z",
@@ -139,10 +139,9 @@ describe("migrateLocalDataToCloud", () => {
       cloudSessions: createFakeSessionStore([]),
     });
 
-    expect(summary.archived).toBe(1);
-    expect(cloud.retired).toEqual([
-      { ids: ["mem_gone0001"], disposition: { kind: "superseded", by: ["mem_new00001"] } },
-    ]);
+    expect(summary.memories).toBe(0);
+    expect(cloud.written).toEqual([]);
+    expect(cloud.retired).toEqual([]);
     expect(cloud.embeddings).toEqual([]);
   });
 
@@ -200,19 +199,12 @@ describe("migrateLocalDataToCloud", () => {
     expect(summary.failures).toBe(0);
   });
 
-  test("reports progress once per record, archive row, and session", async () => {
+  test("reports progress once per record and session", async () => {
     const progress: string[] = [];
 
     await migrateLocalDataToCloud({
       localMemory: createFakeMemoryStore({
-        records: [createRecord({ id: "mem_proj0001" })],
-        archive: [
-          {
-            ...createRecord({ id: "mem_gone0001" }),
-            retiredAt: "2026-08-02T10:00:00.000Z",
-            disposition: { kind: "noise" },
-          },
-        ],
+        records: [createRecord({ id: "mem_proj0001" }), createRecord({ id: "mem_proj0002" })],
       }),
       localSessions: createFakeSessionStore([createSession({ id: "sess_one" })]),
       cloudMemory: createFakeMemoryStore({}),

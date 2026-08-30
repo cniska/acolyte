@@ -5,7 +5,6 @@ import type { SessionStore } from "./session-contract";
 export type CloudMigrationSummary = {
   memories: number;
   embeddings: number;
-  archived: number;
   sessions: number;
   failures: number;
   embeddingFailures: number;
@@ -28,21 +27,21 @@ function isDurable(scopeKey: string): boolean {
 /**
  * Copies local memory and sessions into a cloud account. Every cloud write upserts on the record's
  * id, so an interrupted run is repaired by running it again rather than by tracking what landed.
+ * The archive stays local: the cloud reaches an archive row only by retiring a live one, and that
+ * write-then-retire pair is neither atomic nor repeatable.
  */
 export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise<CloudMigrationSummary> {
   const records = (await deps.localMemory.list()).filter((record) => isDurable(record.scopeKey));
-  const archived = (await deps.localMemory.listArchive()).filter((record) => isDurable(record.scopeKey));
   const sessions = await deps.localSessions.listSessions();
 
   const summary: CloudMigrationSummary = {
     memories: 0,
     embeddings: 0,
-    archived: 0,
     sessions: 0,
     failures: 0,
     embeddingFailures: 0,
   };
-  const total = records.length + archived.length + sessions.length;
+  const total = records.length + sessions.length;
   let done = 0;
   const advance = (): void => {
     done += 1;
@@ -68,20 +67,6 @@ export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise
       }
     } catch {
       summary.embeddingFailures += 1;
-    }
-    advance();
-  }
-
-  // Retirement is the only way to place a record in the cloud archive, so the record is written
-  // first and then retired with the disposition it already carried. Retiring drops the embedding,
-  // which an archived record no longer has.
-  for (const record of archived) {
-    try {
-      await deps.cloudMemory.write(record, scopeFromKey(record.scopeKey));
-      await deps.cloudMemory.retire([record.id], record.disposition);
-      summary.archived += 1;
-    } catch {
-      summary.failures += 1;
     }
     advance();
   }
