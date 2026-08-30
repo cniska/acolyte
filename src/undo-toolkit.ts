@@ -30,12 +30,12 @@ function createUndoListTool(input: ToolkitInput) {
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "undo-list", toolCallId, toolInput, async () => {
         const sessionId = input.sessionId ?? "";
-        if (!sessionId || !input.session.featureFlags?.undoCheckpoints) {
+        if (!sessionId) {
           return {
             kind: "undo-list" as const,
             sessionId: sessionId || "unknown",
             entries: [],
-            output: "Undo checkpoints disabled.",
+            output: "No session, so no checkpoints were recorded.",
           };
         }
         const entries = await listUndoCheckpoints({
@@ -71,13 +71,13 @@ function createUndoRestoreTool(input: ToolkitInput) {
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "undo-restore", toolCallId, toolInput, async () => {
         const sessionId = input.sessionId ?? "";
-        if (!sessionId || !input.session.featureFlags?.undoCheckpoints) {
+        if (!sessionId) {
           return {
             kind: "undo-restore" as const,
             checkpointId: toolInput.checkpointId,
             restored: [],
             conflicts: [],
-            output: "Undo checkpoints disabled.",
+            output: "No session, so no checkpoints were recorded.",
           };
         }
         const result = await restoreUndoCheckpoint({
