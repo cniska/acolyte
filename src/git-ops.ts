@@ -1,3 +1,5 @@
+import { existsSync, realpathSync } from "node:fs";
+import { basename, dirname, join, relative } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import { createToolError } from "./tool-error";
 import { runCommand } from "./tool-utils";
@@ -19,6 +21,22 @@ export function hermeticGitEnv(overrides?: Record<string, string>): Record<strin
 }
 
 let gitVersion: string | null = null;
+
+// Git compares its own realpath'd top level against the path it is handed, so an alias such as
+// macOS `/var` -> `/private/var` reads as a path outside the repository. Resolving both sides the
+// same way keeps a temp-directory workspace inside its own repo, and the segments that do not exist
+// on disk are carried through so a file deleted since the ref still resolves.
+function canonicalPathForGit(pathInput: string): string {
+  const missingSegments: string[] = [];
+  let current = pathInput;
+  while (!existsSync(current)) {
+    missingSegments.unshift(basename(current));
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return join(realpathSync(current), ...missingSegments);
+}
 
 function gitUnavailable(message: string) {
   return createToolError(TOOL_ERROR_CODES.gitUnavailable, message, ERROR_KINDS.gitUnavailable);
@@ -79,18 +97,30 @@ export async function gitLog(
   return stdout.trim();
 }
 
+async function gitShowArgs(
+  workspace: string,
+  ref: string,
+  options?: { path?: string; contextLines?: number },
+  envOverride?: Record<string, string>,
+): Promise<string[]> {
+  if (!options?.path) {
+    const contextLines = Math.max(0, Math.min(20, options?.contextLines ?? 3));
+    return ["git", "show", "--no-color", `--unified=${contextLines}`, ref];
+  }
+  const absolutePath = ensurePathWithinSandbox(options.path, workspace);
+  const topLevel = await runCommand(["git", "rev-parse", "--show-toplevel"], workspace, envOverride);
+  if (topLevel.code !== 0) throw new Error(topLevel.stderr.trim() || "git rev-parse failed");
+  const repoPath = relative(canonicalPathForGit(topLevel.stdout.trim()), canonicalPathForGit(absolutePath));
+  return ["git", "show", "--no-color", `${ref}:${repoPath}`];
+}
+
 export async function gitShow(
   workspace: string,
   options?: { ref?: string; path?: string; contextLines?: number },
   envOverride?: Record<string, string>,
 ): Promise<string> {
-  const contextLines = Math.max(0, Math.min(20, options?.contextLines ?? 3));
   const ref = options?.ref?.trim() ? options.ref.trim() : "HEAD";
-  const args = ["git", "show", "--no-color", `--unified=${contextLines}`, ref];
-  if (options?.path) {
-    ensurePathWithinSandbox(options.path, workspace);
-    args.push("--", options.path);
-  }
+  const args = await gitShowArgs(workspace, ref, options, envOverride);
   const { code, stdout, stderr } = await runCommand(args, workspace, envOverride);
   if (code !== 0) throw new Error(stderr.trim() || "git show failed");
   return stdout.trim();
