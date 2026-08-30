@@ -1,6 +1,8 @@
 import { resolve } from "node:path";
 import { invariant } from "./assert";
 import { createCodeToolkit } from "./code-toolkit";
+import type { ResolvedFeatureFlags } from "./feature-flags-contract";
+import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import { createFileToolkit } from "./file-toolkit";
 import { createGhToolkit } from "./gh-toolkit";
 import { createGitToolkit } from "./git-toolkit";
@@ -46,6 +48,7 @@ export type Toolset = {
 
 export const TOOLKIT_REGISTRY: {
   id: string;
+  featureFlag?: keyof ResolvedFeatureFlags;
   createToolkit: (input: ToolkitInput) => ToolMap;
 }[] = [
   {
@@ -58,6 +61,7 @@ export const TOOLKIT_REGISTRY: {
   },
   {
     id: "undo",
+    featureFlag: "undoCheckpoints",
     createToolkit: (input) => createUndoToolkit(input),
   },
   {
@@ -106,6 +110,7 @@ const noopSkillDeactivated: SkillDeactivatedListener = () => {};
 function collectTools(
   workspace: string,
   session: SessionContext,
+  features: ResolvedFeatureFlags,
   onOutput: ToolOutputListener = noopOutput,
   onTasklist: TasklistListener = noopTasklist,
   onSkillActivated: SkillActivatedListener = noopSkillActivated,
@@ -114,6 +119,7 @@ function collectTools(
 ): ToolMap {
   const combined: ToolMap = {};
   for (const toolkit of TOOLKIT_REGISTRY) {
+    if (toolkit.featureFlag && !features[toolkit.featureFlag]) continue;
     Object.assign(
       combined,
       toolkit.createToolkit({
@@ -130,40 +136,25 @@ function collectTools(
   return combined;
 }
 
-function asToolDefinitionsById(entries: ToolMap): Record<string, ToolDefinition> {
-  const byId: Record<string, ToolDefinition> = {};
+function assertToolsAreIdentified(entries: ToolMap): void {
   for (const tool of Object.values(entries)) {
     invariant(typeof tool.id === "string" && tool.id.trim().length > 0, "tool id is required");
     invariant(typeof tool.category === "string" && tool.category.trim().length > 0, `tool ${tool.id} missing category`);
-    byId[tool.id] = tool;
   }
-  return byId;
 }
 
-export const toolDefinitionsById = asToolDefinitionsById(collectTools(resolve(process.cwd()), createSessionContext()));
-
-export function toolIds(): string[] {
-  return Object.values(toolDefinitionsById)
-    .map((tool) => tool.id)
-    .sort();
+function indexToolCategories(session: SessionContext, entries: ToolMap): void {
+  const idsInCategory = (category: ToolCategory): ReadonlySet<string> =>
+    new Set(
+      Object.values(entries)
+        .filter((tool) => tool.category === category)
+        .map((tool) => tool.id),
+    );
+  session.writeTools = idsInCategory("write");
+  session.readTools = idsInCategory("read");
+  session.searchTools = idsInCategory("search");
+  session.discoveryTools = new Set([...session.readTools, ...session.searchTools]);
 }
-
-export function toolIdsByCategory(category: ToolCategory): string[] {
-  return Object.values(toolDefinitionsById)
-    .filter((tool) => tool.category === category)
-    .map((tool) => tool.id)
-    .sort();
-}
-
-export const WRITE_TOOLS: readonly string[] = toolIdsByCategory("write");
-export const READ_TOOLS: readonly string[] = toolIdsByCategory("read");
-export const SEARCH_TOOLS: readonly string[] = toolIdsByCategory("search");
-export const DISCOVERY_TOOLS: readonly string[] = [...READ_TOOLS, ...SEARCH_TOOLS].sort();
-
-export const WRITE_TOOL_SET = new Set<string>(WRITE_TOOLS);
-export const READ_TOOL_SET = new Set<string>(READ_TOOLS);
-export const SEARCH_TOOL_SET = new Set<string>(SEARCH_TOOLS);
-export const DISCOVERY_TOOL_SET = new Set<string>(DISCOVERY_TOOLS);
 
 export function toolsForAgent(options?: {
   workspace?: string;
@@ -174,15 +165,19 @@ export function toolsForAgent(options?: {
   taskId?: string;
   sessionId?: string;
   mcpListings?: McpToolListing[];
+  features?: ResolvedFeatureFlags;
 }): {
   tools: Toolset;
   session: SessionContext;
 } {
   const workspace = options?.workspace ?? resolve(process.cwd());
-  const session = createSessionContext(options?.taskId, WRITE_TOOL_SET);
+  const features = options?.features ?? DEFAULT_FEATURE_FLAGS;
+  const session = createSessionContext(options?.taskId);
+  session.featureFlags = features;
   const base = collectTools(
     workspace,
     session,
+    features,
     options?.onOutput,
     options?.onTasklist,
     options?.onSkillActivated,
@@ -193,6 +188,8 @@ export function toolsForAgent(options?: {
     const nativeIds = new Set(Object.keys(base));
     Object.assign(base, bindMcpTools(options.mcpListings, session, nativeIds, options.sessionId));
   }
+  assertToolsAreIdentified(base);
+  indexToolCategories(session, base);
   return {
     tools: base as unknown as Toolset,
     session,

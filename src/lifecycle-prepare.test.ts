@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatRequest } from "./api";
 import { addActiveSkill } from "./chat-skill-activator";
+import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import { MAX_RECENT_TURNS } from "./lifecycle-constants";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { phasePrepare } from "./lifecycle-prepare";
@@ -30,6 +31,7 @@ describe("phasePrepare", () => {
       onTasklist: () => {},
       onSkillActivated: () => {},
       onSkillDeactivated: () => {},
+      features: DEFAULT_FEATURE_FLAGS,
       mcpListings: [],
     });
     expect(prepared.session.toolTimeoutMs).toBe(1_234);
@@ -50,6 +52,7 @@ describe("phasePrepare", () => {
       onTasklist: () => {},
       onSkillActivated: () => {},
       onSkillDeactivated: () => {},
+      features: DEFAULT_FEATURE_FLAGS,
       mcpListings: [],
     });
     const withRules = phasePrepare({
@@ -65,6 +68,7 @@ describe("phasePrepare", () => {
       onTasklist: () => {},
       onSkillActivated: () => {},
       onSkillDeactivated: () => {},
+      features: DEFAULT_FEATURE_FLAGS,
       mcpListings: [],
     });
     expect(withRules.promptUsage.systemPromptTokens).toBeGreaterThan(base.promptUsage.systemPromptTokens);
@@ -84,6 +88,7 @@ describe("phasePrepare", () => {
       onTasklist: () => {},
       onSkillActivated: () => {},
       onSkillDeactivated: () => {},
+      features: DEFAULT_FEATURE_FLAGS,
       mcpListings: [],
     });
     const drop = events.find((e) => e.event === "lifecycle.window.drop");
@@ -108,6 +113,7 @@ describe("phasePrepare", () => {
       onTasklist: () => {},
       onSkillActivated: () => {},
       onSkillDeactivated: () => {},
+      features: DEFAULT_FEATURE_FLAGS,
       mcpListings: [],
     });
     expect(prepared.session.activeSkills).toEqual(activeSkills);
@@ -128,6 +134,7 @@ describe("phasePrepare", () => {
       onTasklist: () => {},
       onSkillActivated: () => {},
       onSkillDeactivated: () => {},
+      features: DEFAULT_FEATURE_FLAGS,
       mcpListings: [],
     });
     expect(prepared.skillsForPrompt).toEqual(activeSkills);
@@ -152,6 +159,7 @@ describe("phasePrepare", () => {
       onTasklist: () => {},
       onSkillActivated: () => {},
       onSkillDeactivated: () => {},
+      features: DEFAULT_FEATURE_FLAGS,
       mcpListings: [],
     });
     expect(prepared.skillsForPrompt).toEqual([]);
@@ -180,6 +188,7 @@ describe("phasePrepare", () => {
       onTasklist: () => {},
       onSkillActivated: () => {},
       onSkillDeactivated: () => {},
+      features: DEFAULT_FEATURE_FLAGS,
       mcpListings: [],
     });
     addActiveSkill(prepared.session, { name: "tdd", instructions: "red green" });
@@ -199,6 +208,7 @@ describe("phasePrepare", () => {
       onTasklist: () => {},
       onSkillActivated: () => {},
       onSkillDeactivated: () => {},
+      features: DEFAULT_FEATURE_FLAGS,
       mcpListings: [],
     });
     expect(prepared.session.activeSkills).toBeUndefined();
@@ -218,6 +228,7 @@ describe("phasePrepare", () => {
       onTasklist: () => {},
       onSkillActivated: () => {},
       onSkillDeactivated: () => {},
+      features: DEFAULT_FEATURE_FLAGS,
       mcpListings: [],
     });
     expect(events).not.toContain("lifecycle.window.drop");

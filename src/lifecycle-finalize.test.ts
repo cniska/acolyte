@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { parseChatResponse } from "./client-contract";
+import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import { phaseFinalize } from "./lifecycle-finalize";
 import { createRunContext } from "./test-utils";
-import { createSessionContext } from "./tool-session";
+import { toolsForAgent } from "./tool-registry";
 import { missingCatalogDisplayFields } from "./trace-event-catalog";
 
 describe("ChatResponse error field", () => {
@@ -127,7 +128,7 @@ describe("phaseFinalize", () => {
   });
 
   test("counts recall probes separately and keeps them out of search/discovery", () => {
-    const session = createSessionContext("task_1");
+    const { session } = toolsForAgent({ taskId: "task_1" });
     session.callLog.push(
       { toolName: "memory-search", args: {}, taskId: "task_1", status: "succeeded" },
       { toolName: "session-search", args: {}, taskId: "task_1", status: "succeeded" },
@@ -155,6 +156,32 @@ describe("phaseFinalize", () => {
     // "search" category, and neither recall probe inflates pre-write discovery.
     expect(summary?.search_calls).toBe(1);
     expect(summary?.pre_write_discovery_calls).toBe(2);
+  });
+
+  test("counts writes and pre-write discovery from the session write set", () => {
+    const { session } = toolsForAgent({
+      taskId: "task_1",
+      features: { ...DEFAULT_FEATURE_FLAGS, undoCheckpoints: true },
+    });
+    session.callLog.push(
+      { toolName: "file-search", args: {}, taskId: "task_1", status: "succeeded" },
+      { toolName: "undo-restore", args: {}, taskId: "task_1", status: "succeeded" },
+      { toolName: "file-read", args: {}, taskId: "task_1", status: "succeeded" },
+    );
+    let summary: Record<string, unknown> | undefined;
+    const ctx = createRunContext({
+      taskId: "task_1",
+      session,
+      result: { text: "done", toolCalls: [] },
+      debug: (event, fields) => {
+        if (event === "lifecycle.summary") summary = fields;
+      },
+    });
+
+    phaseFinalize(ctx);
+
+    expect(summary?.write_calls).toBe(1);
+    expect(summary?.pre_write_discovery_calls).toBe(1);
   });
 
   test("lifecycle.summary debug event has all catalog display fields", () => {

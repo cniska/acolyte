@@ -8,7 +8,7 @@ function createUndoListTool(input: ToolkitInput) {
     id: "undo-list",
     toolkit: "undo",
     category: "meta",
-    description: "List recent undo checkpoints for the current session (if enabled).",
+    description: "List recent undo checkpoints for the current session.",
     inputSchema: z.object({
       limit: z.number().int().min(1).max(50).optional(),
     }),
@@ -30,12 +30,12 @@ function createUndoListTool(input: ToolkitInput) {
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "undo-list", toolCallId, toolInput, async () => {
         const sessionId = input.sessionId ?? "";
-        if (!sessionId || !input.session.featureFlags?.undoCheckpoints) {
+        if (!sessionId) {
           return {
             kind: "undo-list" as const,
-            sessionId: sessionId || "unknown",
+            sessionId: "unknown",
             entries: [],
-            output: "Undo checkpoints disabled.",
+            output: "No session, so no checkpoints were recorded.",
           };
         }
         const entries = await listUndoCheckpoints({
@@ -71,13 +71,13 @@ function createUndoRestoreTool(input: ToolkitInput) {
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "undo-restore", toolCallId, toolInput, async () => {
         const sessionId = input.sessionId ?? "";
-        if (!sessionId || !input.session.featureFlags?.undoCheckpoints) {
+        if (!sessionId) {
           return {
             kind: "undo-restore" as const,
             checkpointId: toolInput.checkpointId,
             restored: [],
             conflicts: [],
-            output: "Undo checkpoints disabled.",
+            output: "No session, so no checkpoints were recorded.",
           };
         }
         const result = await restoreUndoCheckpoint({

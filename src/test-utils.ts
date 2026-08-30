@@ -13,11 +13,11 @@ import type { Client, PendingState, StreamEvent } from "./client-contract";
 import { createErrorStats } from "./error-handling";
 import { DEFAULT_FEATURE_FLAGS } from "./feature-flags-contract";
 import type { LifecycleDeps } from "./lifecycle";
-import type { LifecycleInput, RunContext } from "./lifecycle-contract";
+import type { LifecycleInput, PhasePrepareInput, RunContext } from "./lifecycle-contract";
 import { defaultLifecyclePolicy } from "./lifecycle-policy";
 import { PLUGIN_MANIFEST_SCHEMA_ID } from "./plugin-contract";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
-import type { Toolset } from "./tool-registry";
+import { type Toolset, toolsForAgent } from "./tool-registry";
 import { createSessionContext } from "./tool-session";
 
 export function mockFetch(handler: (...args: Parameters<typeof fetch>) => Promise<Response>): {
@@ -531,8 +531,13 @@ export function createLifecycleDeps(overrides?: Partial<LifecycleDeps>): Lifecyc
       stepTimeoutMs: 1000,
       maxToolCallsPerRequest: 12,
     }),
-    phasePrepare: mock(() => ({
-      session: createSessionContext(),
+    phasePrepare: mock((input: PhasePrepareInput) => ({
+      session: toolsForAgent({
+        workspace: input.workspace,
+        taskId: input.taskId,
+        sessionId: input.request.sessionId,
+        features: input.features,
+      }).session,
       tools: {} as unknown as Toolset,
       baseAgentInput: "BASE_INPUT",
       skillsForPrompt: [],
