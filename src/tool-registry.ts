@@ -143,6 +143,19 @@ function assertToolsAreIdentified(entries: ToolMap): void {
   }
 }
 
+function indexToolCategories(session: SessionContext, entries: ToolMap): void {
+  const idsInCategory = (category: ToolCategory): ReadonlySet<string> =>
+    new Set(
+      Object.values(entries)
+        .filter((tool) => tool.category === category)
+        .map((tool) => tool.id),
+    );
+  session.writeTools = idsInCategory("write");
+  session.readTools = idsInCategory("read");
+  session.searchTools = idsInCategory("search");
+  session.discoveryTools = new Set([...session.readTools, ...session.searchTools]);
+}
+
 export function toolsForAgent(options?: {
   workspace?: string;
   onOutput?: ToolOutputListener;
@@ -176,16 +189,7 @@ export function toolsForAgent(options?: {
     Object.assign(base, bindMcpTools(options.mcpListings, session, nativeIds, options.sessionId));
   }
   assertToolsAreIdentified(base);
-  const idsInCategory = (category: ToolCategory): ReadonlySet<string> =>
-    new Set(
-      Object.values(base)
-        .filter((tool) => tool.category === category)
-        .map((tool) => tool.id),
-    );
-  session.writeTools = idsInCategory("write");
-  session.readTools = idsInCategory("read");
-  session.searchTools = idsInCategory("search");
-  session.discoveryTools = new Set([...session.readTools, ...session.searchTools]);
+  indexToolCategories(session, base);
   return {
     tools: base as unknown as Toolset,
     session,
