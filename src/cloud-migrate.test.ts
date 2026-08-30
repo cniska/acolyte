@@ -1,6 +1,7 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { CloudApiError } from "./cloud-client";
 import { migrateLocalDataToCloud } from "./cloud-migrate";
+import { setLogSink } from "./log";
 import type { MemoryArchiveRecord, MemoryDisposition, MemoryRecord, MemoryStore } from "./memory-contract";
 import type { Session, SessionId, SessionStore } from "./session-contract";
 import { createSession } from "./test-utils";
@@ -88,6 +89,17 @@ function createFakeSessionStore(sessions: Session[], failFor: SessionId[] = []):
 }
 
 describe("migrateLocalDataToCloud", () => {
+  let logLines: string[] = [];
+
+  beforeEach(() => {
+    logLines = [];
+    setLogSink((line) => logLines.push(line));
+  });
+
+  afterEach(() => {
+    setLogSink(null);
+  });
+
   test("copies durable records with their embeddings", async () => {
     const local = createFakeMemoryStore({
       records: [createRecord({ id: "mem_proj0001" }), createRecord({ id: "mem_user0001", scopeKey: "user_abc123" })],
@@ -180,6 +192,29 @@ describe("migrateLocalDataToCloud", () => {
     expect(summary.memories).toBe(1);
     expect(summary.sessions).toBe(0);
     expect(cloud.written.map((entry) => entry.record.id)).toEqual(["mem_good0001"]);
+  });
+
+  test("names every skipped record and session in the log", async () => {
+    await migrateLocalDataToCloud({
+      localMemory: createFakeMemoryStore({
+        records: [createRecord({ id: "mem_bad00001" }), createRecord({ id: "mem_novec0001" })],
+        embeddingsFor: ["mem_novec0001"],
+      }),
+      localSessions: createFakeSessionStore([createSession({ id: "sess_one" })]),
+      cloudMemory: createFakeMemoryStore({
+        failWriteFor: ["mem_bad00001"],
+        failEmbeddingFor: ["mem_novec0001"],
+      }),
+      cloudSessions: createFakeSessionStore([], ["sess_one" as SessionId]),
+    });
+
+    const logged = logLines.join("");
+    expect(logged).toContain("cloud.migrate.memory_failed");
+    expect(logged).toContain("mem_bad00001");
+    expect(logged).toContain("cloud.migrate.embedding_failed");
+    expect(logged).toContain("mem_novec0001");
+    expect(logged).toContain("cloud.migrate.session_failed");
+    expect(logged).toContain("sess_one");
   });
 
   test("stops the run when the cloud rejects the token", async () => {

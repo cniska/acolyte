@@ -1,5 +1,6 @@
 import { CodedError } from "./coded-error";
-import { CLOUD_ERROR_CODES } from "./error-contract";
+import { CLOUD_ERROR_CODES, errorMessage } from "./error-contract";
+import { log } from "./log";
 import type { MemoryStore } from "./memory-contract";
 import { scopeFromKey } from "./memory-contract";
 import type { SessionStore } from "./session-contract";
@@ -33,6 +34,14 @@ export function isCredentialRejection(error: unknown): boolean {
   return error.code === CLOUD_ERROR_CODES.unauthorized || error.code === CLOUD_ERROR_CODES.forbidden;
 }
 
+function warnSkipped(event: string, id: string, error: unknown): void {
+  log.warn(event, {
+    id,
+    code: error instanceof CodedError ? error.code : undefined,
+    error: errorMessage(error),
+  });
+}
+
 /**
  * Copies local memory and sessions into a cloud account. Every cloud write upserts on the record's
  * id, so an interrupted run is repaired by running it again rather than by tracking what landed.
@@ -63,6 +72,7 @@ export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise
       summary.memories += 1;
     } catch (error) {
       if (isCredentialRejection(error)) throw error;
+      warnSkipped("cloud.migrate.memory_failed", record.id, error);
       summary.failures += 1;
       advance();
       continue;
@@ -77,6 +87,7 @@ export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise
       }
     } catch (error) {
       if (isCredentialRejection(error)) throw error;
+      warnSkipped("cloud.migrate.embedding_failed", record.id, error);
       summary.embeddingFailures += 1;
     }
     advance();
@@ -88,6 +99,7 @@ export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise
       summary.sessions += 1;
     } catch (error) {
       if (isCredentialRejection(error)) throw error;
+      warnSkipped("cloud.migrate.session_failed", session.id, error);
       summary.failures += 1;
     }
     advance();
