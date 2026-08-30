@@ -22,6 +22,10 @@ function isTopLevelVersionCommand(command: string | undefined): boolean {
   return command === "version" || command === "--version" || command === "-V";
 }
 
+export function isJsonOutputCommand(args: string[]): boolean {
+  return args.includes("--json");
+}
+
 async function main(): Promise<void> {
   const { command, args, update } = parseGlobalArgsAndCommand(process.argv.slice(2));
 
@@ -46,8 +50,12 @@ async function main(): Promise<void> {
 
   setLogSink((line) => process.stderr.write(line));
 
-  if (update === "force" && command !== "update") {
+  const jsonOutput = isJsonOutputCommand(args);
+  if (update === "force" && command !== "update" && !jsonOutput) {
     await updateMode();
+  } else if (update === "auto" && !jsonOutput) {
+    const updated = await checkAndUpdateOnStartup();
+    if (updated) return;
   }
 
   const handler = commands[command];

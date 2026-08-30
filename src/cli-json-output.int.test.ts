@@ -6,9 +6,10 @@ import { gitEnv, tempDir } from "./test-utils";
 const { createDir, cleanupDirs } = tempDir();
 
 function createIsolatedEnv(home: string): Record<string, string> {
+  const env = { ...process.env };
+  delete env.ACOLYTE_SKIP_UPDATE;
   return gitEnv({
-    ...process.env,
-    ACOLYTE_SKIP_UPDATE: "1",
+    ...env,
     HOME: home,
     XDG_CONFIG_HOME: join(home, ".config"),
     XDG_DATA_HOME: join(home, ".local", "share"),
@@ -53,7 +54,7 @@ describe("cli json output", () => {
     mkdirSync(configHome, { recursive: true });
     writeFileSync(join(configHome, "config.json"), JSON.stringify({ locale: "en" }), "utf8");
 
-    const result = runCli(["config", "list", "--json", "--no-update"], createIsolatedEnv(home), workspace);
+    const result = runCli(["config", "list", "--json"], createIsolatedEnv(home), workspace);
 
     expect(result.exitCode).toBe(0);
     expectJsonStdout(result.stdout);
@@ -66,7 +67,33 @@ describe("cli json output", () => {
     const addResult = runCli(["memory", "add", "remember", "json", "output", "--no-update"], env, workspace);
     expect(addResult.exitCode).toBe(0);
 
-    const result = runCli(["memory", "list", "--json", "--no-update"], env, workspace);
+    const result = runCli(["memory", "list", "--json"], env, workspace);
+
+    expect(result.exitCode).toBe(0);
+    expectJsonStdout(result.stdout);
+  });
+
+  test("config list --json skips startup update output", () => {
+    const home = createDir("acolyte-cli-json-home-");
+    const workspace = createDir("acolyte-cli-json-workspace-");
+    const configHome = join(home, ".config", "acolyte");
+    mkdirSync(configHome, { recursive: true });
+    writeFileSync(join(configHome, "config.json"), JSON.stringify({ locale: "en" }), "utf8");
+
+    const result = runCli(["config", "list", "--json", "--update"], createIsolatedEnv(home), workspace);
+
+    expect(result.exitCode).toBe(0);
+    expectJsonStdout(result.stdout);
+  });
+
+  test("memory list --json skips startup update output", () => {
+    const home = createDir("acolyte-cli-json-home-");
+    const workspace = createDir("acolyte-cli-json-workspace-");
+    const env = createIsolatedEnv(home);
+    const addResult = runCli(["memory", "add", "remember", "json", "output", "--no-update"], env, workspace);
+    expect(addResult.exitCode).toBe(0);
+
+    const result = runCli(["memory", "list", "--json", "--update"], env, workspace);
 
     expect(result.exitCode).toBe(0);
     expectJsonStdout(result.stdout);
