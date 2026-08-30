@@ -93,6 +93,7 @@ const daemonDeps = {
   hasHelpFlag,
   port: appConfig.server.port,
   printDim,
+  printOutput,
   failCommand: () => {
     process.exitCode = 1;
   },
@@ -245,6 +246,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       historyMode(args, {
         hasHelpFlag,
         printDim,
+        printOutput,
         getSessionStore,
         commandError,
         commandHelp,
@@ -320,6 +322,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         isServerConnectionFailure,
         localServerStatus,
         printDim,
+        printOutput,
         printError,
         serverApiKey: appConfig.server.apiKey,
         serverPort: appConfig.server.port,
@@ -344,6 +347,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         ops: fileMemoryStore,
         hasHelpFlag,
         printDim,
+        printOutput,
         commandError,
         commandHelp,
       }),
@@ -359,6 +363,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       configMode(args, {
         hasHelpFlag,
         printDim,
+        printOutput,
         printError,
         readConfig,
         readConfigForScope,
@@ -424,6 +429,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         hasHelpFlag,
         logPath: serverLogPath(appConfig.server.port),
         printDim,
+        printOutput,
         printError,
         readFile,
         commandError,
@@ -451,6 +457,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         hasHelpFlag,
         traceStore: openTraceStore() ?? undefined,
         printDim,
+        printOutput,
         printError,
         commandError,
         commandHelp,

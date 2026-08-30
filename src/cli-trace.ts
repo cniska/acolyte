@@ -10,6 +10,7 @@ type TraceModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   traceStore?: TraceReader;
   printDim: (message: string) => void;
+  printOutput: (message: string) => void;
   printError: (message: string) => void;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
@@ -230,7 +231,7 @@ function parseTaskIdsArg(value: string | undefined): string[] {
 }
 
 export async function traceMode(args: string[], deps: TraceModeDeps): Promise<void> {
-  const { hasHelpFlag, traceStore, printDim, printError, commandHelp, commandError } = deps;
+  const { hasHelpFlag, traceStore, printDim, printOutput, printError, commandHelp, commandError } = deps;
 
   if (hasHelpFlag(args)) {
     commandHelp("trace");
@@ -305,5 +306,5 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
   }
 
   const rendered = out.render();
-  if (rendered) printDim(rendered);
+  if (rendered) (isJson ? printOutput : printDim)(rendered);
 }

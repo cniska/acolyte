@@ -14,6 +14,7 @@ function createDeps(overrides?: Partial<ConfigModeDeps>): {
   const deps: ConfigModeDeps = {
     hasHelpFlag: () => false,
     printDim: (message) => dimLines.push(message),
+    printOutput: (message) => dimLines.push(message),
     printError: (message) => errorLines.push(message),
     readConfig: async () => ({}),
     readConfigForScope: async () => ({}),

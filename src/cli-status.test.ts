@@ -25,6 +25,7 @@ function createStatusDeps(): {
     isServerConnectionFailure: () => false,
     localServerStatus: async () => ({ running: false, pid: null, port: 6767 }),
     printDim: (line) => lines.dim.push(line),
+    printOutput: (line) => lines.dim.push(line),
     printError: (line) => lines.err.push(line),
     serverApiKey: "key",
     serverPort: 6767,
@@ -46,6 +47,14 @@ describe("cli-status", () => {
     const { deps, lines } = createStatusDeps();
     await statusMode(["--help"], deps);
     expect(lines.help).toEqual(["status"]);
+  });
+
+  test("--json writes raw JSON without dim styling", async () => {
+    const { deps, lines } = createStatusDeps();
+    deps.printDim = (line) => lines.dim.push(`\x1b[2m${line}\x1b[22m`);
+    await statusMode(["--json"], deps);
+    expect(lines.dim[0].startsWith("{")).toBe(true);
+    expect(lines.dim[0]).not.toContain("\x1b[2m");
   });
 
   test("prints local-start hint when connection fails and local server is down", async () => {

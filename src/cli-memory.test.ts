@@ -58,6 +58,7 @@ function createDeps(overrides?: Partial<MemoryDeps>): { deps: MemoryDeps; output
     ops: createOps(),
     hasHelpFlag: () => false,
     printDim: (message) => lines.push(message),
+    printOutput: (message) => lines.push(message),
     commandError: () => {},
     commandHelp: () => {},
     ...overrides,

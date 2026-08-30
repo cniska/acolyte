@@ -13,6 +13,7 @@ type StatusModeDeps = {
   isServerConnectionFailure: (error: unknown) => boolean;
   localServerStatus: typeof localServerStatusType;
   printDim: (message: string) => void;
+  printOutput: (message: string) => void;
   printError: (message: string) => void;
   serverApiKey: typeof appConfigType.server.apiKey;
   serverPort: typeof appConfigType.server.port;
@@ -34,6 +35,7 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
     isServerConnectionFailure,
     localServerStatus,
     printDim,
+    printOutput,
     printError,
     serverApiKey,
     serverPort,
@@ -55,7 +57,7 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
   try {
     const status = await client.status();
     if (json) {
-      printDim(`${JSON.stringify(status)}\n`);
+      printOutput(JSON.stringify(status));
     } else {
       printDim(formatStatus(status));
     }

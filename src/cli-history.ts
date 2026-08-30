@@ -7,13 +7,14 @@ import type { SessionStore } from "./session-contract";
 type HistoryModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   printDim: (message: string) => void;
+  printOutput: (message: string) => void;
   getSessionStore: () => Promise<SessionStore>;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };
 
 export async function historyMode(args: string[], deps: HistoryModeDeps): Promise<void> {
-  const { hasHelpFlag, printDim, getSessionStore, commandError, commandHelp } = deps;
+  const { hasHelpFlag, printDim, printOutput, getSessionStore, commandError, commandHelp } = deps;
   if (hasHelpFlag(args)) {
     commandHelp("history");
     return;
@@ -39,5 +40,5 @@ export async function historyMode(args: string[], deps: HistoryModeDeps): Promis
   }));
   out.addTable(json ? tableRows : fitFlexColumn(tableRows, "title"));
   const rendered = out.render();
-  if (rendered) printDim(rendered);
+  if (rendered) (json ? printOutput : printDim)(rendered);
 }

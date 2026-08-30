@@ -19,6 +19,7 @@ function createDeps(overrides?: Partial<TraceDeps>): { deps: TraceDeps; output: 
     hasHelpFlag: () => false,
     traceStore: createTestStore(),
     printDim: (message) => lines.push(message),
+    printOutput: (message) => lines.push(message),
     printError: (message) => lines.push(`ERROR: ${message}`),
     commandError: () => {},
     commandHelp: () => {},
@@ -165,6 +166,26 @@ describe("traceMode", () => {
     for (const l of lines) {
       expect(() => JSON.parse(l)).not.toThrow();
     }
+  });
+
+  test("--json writes raw JSON without dim styling", async () => {
+    const store = createTestStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_1",
+      event: "lifecycle.start",
+      fields: { mode: "work", model: "m" },
+    });
+    const lines: string[] = [];
+    const { deps } = createDeps({
+      traceStore: store,
+      printDim: (message) => lines.push(`\x1b[2m${message}\x1b[22m`),
+      printOutput: (message) => lines.push(message),
+    });
+    await traceMode(["task", "task_1", "--json"], deps);
+    const output = lines.join("\n");
+    expect(output.startsWith("{")).toBe(true);
+    expect(output.includes("\x1b[2m")).toBe(false);
   });
 
   test("empty store prints no tasks for list", async () => {

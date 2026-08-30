@@ -16,6 +16,7 @@ function createDeps(overrides?: Partial<DaemonDeps>): {
     hasHelpFlag: () => false,
     port: 6767,
     printDim: (message) => lines.push(message),
+    printOutput: (message) => lines.push(message),
     failCommand: () => {
       failures += 1;
     },

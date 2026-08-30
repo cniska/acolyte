@@ -9,6 +9,7 @@ type LogsModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   logPath: string;
   printDim: (message: string) => void;
+  printOutput: (message: string) => void;
   printError: (message: string) => void;
   readFile: (path: string, encoding: "utf8") => Promise<string>;
   commandError: (name: string, message?: string) => void;
@@ -39,7 +40,7 @@ function formatLogLine(line: LogLine): Record<string, string | undefined> {
 }
 
 export async function logsMode(args: string[], deps: LogsModeDeps): Promise<void> {
-  const { hasHelpFlag, logPath, printDim, printError, readFile, commandHelp, commandError } = deps;
+  const { hasHelpFlag, logPath, printDim, printOutput, printError, readFile, commandHelp, commandError } = deps;
 
   if (hasHelpFlag(args)) {
     commandHelp("logs");
@@ -90,5 +91,5 @@ export async function logsMode(args: string[], deps: LogsModeDeps): Promise<void
   for (const line of tailed) out.addRow(formatLogLine(line));
 
   const rendered = out.render();
-  if (rendered) printDim(rendered);
+  if (rendered) (isJson ? printOutput : printDim)(rendered);
 }

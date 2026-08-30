@@ -17,6 +17,7 @@ type DaemonModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   port: number;
   printDim: (message: string) => void;
+  printOutput: (message: string) => void;
   failCommand: () => void;
   spawnCommand: string[];
   commandError: (name: string, message?: string) => void;
@@ -165,5 +166,5 @@ export async function psMode(args: string[], deps: DaemonModeDeps): Promise<void
     },
   );
   const rendered = out.render();
-  if (rendered) deps.printDim(rendered);
+  if (rendered) (json ? deps.printOutput : deps.printDim)(rendered);
 }
