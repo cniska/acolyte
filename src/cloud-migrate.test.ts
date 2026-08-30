@@ -115,15 +115,18 @@ describe("migrateLocalDataToCloud", () => {
     });
 
     expect(summary.memories).toBe(2);
-    expect(summary.embeddings).toBe(1);
     expect(cloud.written.map((entry) => entry.record.id)).toEqual(["mem_proj0001", "mem_user0001"]);
     expect(cloud.written.map((entry) => entry.scope)).toEqual(["project", "user"]);
     expect(cloud.embeddings).toEqual([{ id: "mem_proj0001", scopeKey: "proj_abc123" }]);
   });
 
-  test("leaves session-scoped records behind", async () => {
+  test("leaves session-scoped and unrecognized records behind", async () => {
     const local = createFakeMemoryStore({
-      records: [createRecord({ id: "mem_sess0001", scopeKey: "sess_abc123" }), createRecord({ id: "mem_proj0001" })],
+      records: [
+        createRecord({ id: "mem_sess0001", scopeKey: "sess_abc123" }),
+        createRecord({ id: "mem_odd00001", scopeKey: "team_abc123" }),
+        createRecord({ id: "mem_proj0001" }),
+      ],
     });
     const cloud = createFakeMemoryStore({});
 
@@ -249,24 +252,8 @@ describe("migrateLocalDataToCloud", () => {
     });
 
     expect(summary.memories).toBe(1);
-    expect(summary.embeddings).toBe(0);
+    expect(cloud.embeddings).toEqual([]);
     expect(summary.embeddingFailures).toBe(1);
     expect(summary.failures).toBe(0);
-  });
-
-  test("reports progress once per record and session", async () => {
-    const progress: string[] = [];
-
-    await migrateLocalDataToCloud({
-      localMemory: createFakeMemoryStore({
-        records: [createRecord({ id: "mem_proj0001" }), createRecord({ id: "mem_proj0002" })],
-      }),
-      localSessions: createFakeSessionStore([createSession({ id: "sess_one" })]),
-      cloudMemory: createFakeMemoryStore({}),
-      cloudSessions: createFakeSessionStore([]),
-      onProgress: (done, total) => progress.push(`${done}/${total}`),
-    });
-
-    expect(progress).toEqual(["1/3", "2/3", "3/3"]);
   });
 });

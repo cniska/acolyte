@@ -38,7 +38,7 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     },
     migrateToCloud: async () => {
       calls.push("migrateToCloud");
-      return { memories: 0, embeddings: 0, sessions: 0, failures: 0, embeddingFailures: 0 };
+      return { memories: 0, sessions: 0, failures: 0, embeddingFailures: 0 };
     },
     ...overrides,
   };
@@ -135,7 +135,7 @@ describe("loginMode", () => {
       parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
       migrateToCloud: async (url, token) => {
         targets.push(`${url} ${token}`);
-        return { memories: 3, embeddings: 3, sessions: 2, failures: 0, embeddingFailures: 0 };
+        return { memories: 3, sessions: 2, failures: 0, embeddingFailures: 0 };
       },
     });
 
@@ -149,7 +149,6 @@ describe("loginMode", () => {
       parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
       migrateToCloud: async () => ({
         memories: 3,
-        embeddings: 3,
         sessions: 2,
         failures: 0,
         embeddingFailures: 0,
@@ -166,7 +165,6 @@ describe("loginMode", () => {
       parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
       migrateToCloud: async () => ({
         memories: 1,
-        embeddings: 1,
         sessions: 0,
         failures: 4,
         embeddingFailures: 0,
@@ -183,7 +181,6 @@ describe("loginMode", () => {
       parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
       migrateToCloud: async () => ({
         memories: 5,
-        embeddings: 3,
         sessions: 0,
         failures: 0,
         embeddingFailures: 2,
