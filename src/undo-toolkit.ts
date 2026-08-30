@@ -33,7 +33,7 @@ function createUndoListTool(input: ToolkitInput) {
         if (!sessionId) {
           return {
             kind: "undo-list" as const,
-            sessionId: sessionId || "unknown",
+            sessionId: "unknown",
             entries: [],
             output: "No session, so no checkpoints were recorded.",
           };
