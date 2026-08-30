@@ -14,7 +14,7 @@ CLI → Cloud API (Vercel Edge) → Neon Postgres (pgvector)
 
 The CLI ships a `CloudClient` that implements `MemoryStore` and `SessionStore` over HTTP. When `cloudSync` is enabled, all memory and session operations route through the cloud API instead of local SQLite/JSON storage.
 
-The cloud API is a separate repo ([acolyte-cloud](https://github.com/cniska/acolyte-cloud)) deployed on Vercel Edge Functions, fronting Neon Postgres with pgvector for embedding storage and similarity search.
+The cloud API is a separate application, `app.acolyte.sh`, deployed on Vercel, fronting Neon Postgres with pgvector for embedding storage and similarity search. Its request and response schemas come from the shared [acolyte-cloud](https://github.com/cniska/acolyte-cloud) contract package.
 
 ## Configuration
 
@@ -24,6 +24,14 @@ acolyte login                               # store token and cloud URL
 ```
 
 Credentials are stored in the config directory as `credentials` (mode 0600). See [Paths](paths.md) for platform-specific locations. Environment variables `ACOLYTE_CLOUD_URL` and `ACOLYTE_CLOUD_TOKEN` take precedence over the credentials file.
+
+## Migration
+
+`acolyte login` copies the machine's existing data into the account: project- and user-scoped memories with their embeddings, the archive with its retirement lineage, and every stored session. Session-scoped memories stay local.
+
+Cloud writes upsert on the record id, so signing in again copies only what a previous run left behind. A failed copy keeps the credentials and reports the count it could not move.
+
+Migration runs one direction. Disabling `cloudSync` returns the CLI to the local database without the records written while cloud storage was active.
 
 ## Authentication
 
@@ -61,5 +69,6 @@ See [acolyte-cloud](https://github.com/cniska/acolyte-cloud) for setup and deplo
 ## Key files
 
 - `src/cloud-client.ts` — cloud client with `MemoryStore` and `SessionStore` implementations
+- `src/cloud-migrate.ts` — one-time copy of local memory and sessions into an account
 - `src/credentials.ts` — credentials file read/write
 - `src/app-config.ts` — `cloudUrl`, `cloudToken` (from env or credentials), and `cloudSync` feature flag

@@ -35,6 +35,10 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     openBrowser: () => {
       calls.push("openBrowser");
     },
+    migrateToCloud: async () => {
+      calls.push("migrateToCloud");
+      return { memories: 0, embeddings: 0, archived: 0, sessions: 0, failures: 0 };
+    },
     ...overrides,
   };
   return { deps, output: () => lines.join("\n"), calls };
@@ -122,6 +126,67 @@ describe("loginMode", () => {
     await loginMode([], deps);
     expect(process.exitCode).toBe(1);
     expect(output()).toContain("timed out");
+  });
+
+  test("copies local data with the credentials the login obtained", async () => {
+    const targets: string[] = [];
+    const { deps } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
+      migrateToCloud: async (url, token) => {
+        targets.push(`${url} ${token}`);
+        return { memories: 3, embeddings: 3, archived: 0, sessions: 2, failures: 0 };
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(targets).toEqual(["https://custom.example.com tok_flag"]);
+  });
+
+  test("reports what the copy moved", async () => {
+    const { deps, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
+      migrateToCloud: async () => ({ memories: 3, embeddings: 3, archived: 1, sessions: 2, failures: 0 }),
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("3");
+    expect(output()).toContain("2");
+  });
+
+  test("names the records a copy left behind", async () => {
+    const { deps, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
+      migrateToCloud: async () => ({ memories: 1, embeddings: 1, archived: 0, sessions: 0, failures: 4 }),
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("4");
+  });
+
+  test("keeps the login when the copy fails", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
+      migrateToCloud: async () => {
+        throw new Error("cloud unreachable");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(calls.filter((call) => call === "writeCredential")).toHaveLength(2);
+    expect(process.exitCode).toBe(0);
+    expect(output()).toContain("cloud unreachable");
+  });
+
+  test("copies after an oauth login too", async () => {
+    const { deps, calls } = createLoginDeps({ prompt: () => "" });
+
+    await loginMode([], deps);
+
+    expect(calls).toContain("migrateToCloud");
   });
 });
 

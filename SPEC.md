@@ -63,7 +63,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **FR-30** — `acolyte logs` tails and filters the daemon log by count, level, session, and time window.
 - **FR-31** — `acolyte trace [list] | trace task <id>` inspects task timelines (see §8 OBS).
 - **FR-32** — `acolyte tool <tool-id> ['<json-input>']` runs a single tool directly: input is an optional single JSON-object argument validated by the tool's input schema, and the run is still subject to the workspace boundary.
-- **FR-33** — `acolyte update` forces an update check; `acolyte login` / `acolyte logout` manage cloud credentials when cloud sync is enabled.
+- **FR-33** — `acolyte update` forces an update check; `acolyte login` / `acolyte logout` manage cloud credentials when cloud sync is enabled, and `login` copies the machine's durable memories, archive, and sessions into the account.
 - **FR-34** — All list-style commands accept `--json` for machine-readable output.
 - **FR-35** — `acolyte <command> help` (or `-h`/`--help`) prints detailed usage for that command.
 
