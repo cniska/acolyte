@@ -8,7 +8,7 @@ function createUndoListTool(input: ToolkitInput) {
     id: "undo-list",
     toolkit: "undo",
     category: "meta",
-    description: "List recent undo checkpoints for the current session (if enabled).",
+    description: "List recent undo checkpoints for the current session.",
     inputSchema: z.object({
       limit: z.number().int().min(1).max(50).optional(),
     }),
