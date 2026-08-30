@@ -25,7 +25,7 @@ The Acolyte CLI provides interactive chat, one-shot runs, session and memory man
 
 Run `acolyte <command> help` for detailed usage.
 
-All list commands support `--json` for machine-readable output.
+All list commands support `--json` for machine-readable output. A `--json` run prints only its data on stdout, with logs and human hints on stderr; `acolyte status --json` exits non-zero when the server is stopped.
 
 ## Local models
 
