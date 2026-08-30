@@ -387,9 +387,38 @@ export const FI_MESSAGES = {
   "cli.login.opening.browser": [{ kind: "text", value: "Avataan selain kirjautumista varten…" }],
   "cli.login.prompt.token": [{ kind: "text", value: "Pilvitunnus: " }],
   "cli.login.prompt.url": [{ kind: "text", value: "Pilven osoite (https://app.acolyte.sh):" }],
+  "cli.login.migrate.done": [
+    { kind: "text", value: "Kopioitiin " },
+    { kind: "arg", name: "memories" },
+    { kind: "text", value: " muistia ja " },
+    { kind: "arg", name: "sessions" },
+    { kind: "text", value: " istuntoa pilveen." },
+  ],
+  "cli.login.migrate.failed": [
+    { kind: "text", value: "Paikallisten tietojen kopiointi pilveen epäonnistui: " },
+    { kind: "arg", name: "reason" },
+  ],
+  "cli.login.migrate.failures": [
+    { kind: "arg", name: "failures" },
+    { kind: "text", value: " tietuetta jäi kopioimatta." },
+  ],
+  "cli.login.migrate.novectors": [
+    { kind: "arg", name: "embeddingFailures" },
+    { kind: "text", value: " muistia siirtyi ilman upotusta, ja ne haetaan avainsanoilla kunnes upotus on kopioitu." },
+  ],
+  "cli.login.migrate.rejected": [
+    {
+      kind: "text",
+      value: "Pilvi hylkäsi tunnuksen, joten kopiointi keskeytyi. Kirjaudu uudelleen kelvollisella tunnuksella.",
+    },
+  ],
+  "cli.login.migrate.start": [{ kind: "text", value: "Kopioidaan paikallinen muisti ja istunnot pilveen." }],
   "cli.login.saved": [{ kind: "text", value: "Kirjauduttu sisään." }],
   "cli.login.timeout": [{ kind: "text", value: "Tunnistautuminen aikakatkaistiin. Yritä uudelleen." }],
   "cli.login.token.empty": [{ kind: "text", value: "Tunnus ei voi olla tyhjä." }],
+  "cli.login.url.insecure": [
+    { kind: "text", value: "Pilven osoitteen on käytettävä HTTPS:ää, ellei se osoita localhostiin." },
+  ],
   "cli.login.waiting": [{ kind: "text", value: "Odotetaan tunnistautumista…" }],
   "cli.login.welcome": [
     { kind: "text", value: "Kirjauduttu sisään tunnuksella " },

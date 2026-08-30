@@ -15,17 +15,18 @@ export const reasoningLevelSchema = z.enum(["low", "medium", "high"]);
 export type ReasoningLevel = z.infer<typeof reasoningLevelSchema>;
 
 const nonEmptyStringSchema = z.string().trim().min(1);
-const embeddingBaseUrlSchema = nonEmptyStringSchema.refine(
-  (value) => {
-    try {
-      const url = new URL(value);
-      return url.protocol === "https:" || ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname);
-    } catch {
-      return false;
-    }
-  },
-  { error: () => t("cli.config.reason.https") },
-);
+
+/** Plaintext is allowed only where the request never leaves the machine. */
+export function isSecureUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+const embeddingBaseUrlSchema = nonEmptyStringSchema.refine(isSecureUrl, { error: () => t("cli.config.reason.https") });
 const parseIntegerSchema = (min: number, max: number): z.ZodType<number> =>
   z.preprocess(
     (value) => (typeof value === "string" && value.trim().length > 0 ? Number(value) : value),

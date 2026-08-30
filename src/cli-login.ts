@@ -1,5 +1,8 @@
 import { type CallbackResult, DEFAULT_CLOUD_URL } from "./cli-callback-server";
+import { type CloudMigrationSummary, isCredentialRejection } from "./cloud-migrate";
+import { isSecureUrl } from "./config-contract";
 import type { Credentials } from "./credentials";
+import { errorMessage } from "./error-contract";
 import { t } from "./i18n";
 
 type LoginModeDeps = {
@@ -15,7 +18,44 @@ type LoginModeDeps = {
   createId: () => string;
   startCallbackServer: (state: string) => Promise<{ port: number; result: Promise<CallbackResult> }>;
   openBrowser: (url: string) => void;
+  migrateToCloud: (url: string, token: string) => Promise<CloudMigrationSummary>;
 };
+
+/**
+ * Stores the credentials and copies what is already on this machine into the account. Signing in is
+ * the first moment both the feature flag and a token exist, and every cloud write upserts on the
+ * record id, so signing in again copies whatever a failed run left behind.
+ */
+async function completeLogin(deps: LoginModeDeps, url: string, token: string, confirmation: string): Promise<void> {
+  if (!isSecureUrl(url)) {
+    deps.printError(t("cli.login.url.insecure"));
+    process.exitCode = 1;
+    return;
+  }
+
+  await deps.writeCredential("cloudToken", token);
+  await deps.writeCredential("cloudUrl", url);
+  deps.printDim(confirmation);
+
+  deps.printDim(t("cli.login.migrate.start"));
+  try {
+    const summary = await deps.migrateToCloud(url, token);
+    deps.printDim(t("cli.login.migrate.done", { memories: summary.memories, sessions: summary.sessions }));
+    if (summary.failures > 0) {
+      deps.printDim(t("cli.login.migrate.failures", { failures: summary.failures }));
+    }
+    if (summary.embeddingFailures > 0) {
+      deps.printDim(t("cli.login.migrate.novectors", { embeddingFailures: summary.embeddingFailures }));
+    }
+  } catch (error) {
+    deps.printError(
+      isCredentialRejection(error)
+        ? t("cli.login.migrate.rejected")
+        : t("cli.login.migrate.failed", { reason: errorMessage(error) }),
+    );
+    process.exitCode = 1;
+  }
+}
 
 export async function loginMode(args: string[], deps: LoginModeDeps): Promise<void> {
   if (deps.hasHelpFlag(args)) {
@@ -28,9 +68,7 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
 
   // Full bypass with flags
   if (flagToken && flagUrl) {
-    await deps.writeCredential("cloudToken", flagToken);
-    await deps.writeCredential("cloudUrl", flagUrl);
-    deps.printDim(t("cli.login.saved"));
+    await completeLogin(deps, flagUrl, flagToken, t("cli.login.saved"));
     return;
   }
 
@@ -50,9 +88,7 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
 
     try {
       const { token, email } = await result;
-      await deps.writeCredential("cloudToken", token);
-      await deps.writeCredential("cloudUrl", url);
-      deps.printDim(t("cli.login.welcome", { email }));
+      await completeLogin(deps, url, token, t("cli.login.welcome", { email }));
     } catch {
       deps.printError(t("cli.login.timeout"));
       process.exitCode = 1;
@@ -66,9 +102,7 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
       return;
     }
 
-    await deps.writeCredential("cloudToken", token);
-    await deps.writeCredential("cloudUrl", url);
-    deps.printDim(t("cli.login.saved"));
+    await completeLogin(deps, url, token, t("cli.login.saved"));
   }
 }
 

@@ -91,6 +91,13 @@ function rowToArchiveRecord(row: ArchiveRow): MemoryArchiveRecord {
   };
 }
 
+// bun:sqlite hands back a plain Uint8Array for a BLOB, whose `toString("base64")` ignores the
+// encoding and yields comma-separated decimal bytes. Callers that serialize an embedding depend on
+// the Buffer the store's contract promises, so the view is wrapped without copying its bytes.
+function toBuffer(bytes: Uint8Array): Buffer {
+  return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+}
+
 function rowToRecord(row: MemoryRow): MemoryRecord {
   return {
     id: row.id,
@@ -252,7 +259,7 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
     },
     async getEmbedding(id) {
       const row = getEmbStmt.get(id);
-      return row ? row.embedding : null;
+      return row ? toBuffer(row.embedding) : null;
     },
     async getEmbeddings(ids) {
       if (ids.length === 0) return new Map();
@@ -262,7 +269,7 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
           `SELECT id, embedding FROM memory_embeddings WHERE id IN (${placeholders})`,
         )
         .all(...ids);
-      return new Map(rows.map((row) => [row.id, row.embedding]));
+      return new Map(rows.map((row) => [row.id, toBuffer(row.embedding)]));
     },
     close() {
       db.run("PRAGMA wal_checkpoint(TRUNCATE)");

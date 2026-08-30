@@ -380,9 +380,36 @@ export const EN_MESSAGES = {
   "cli.login.opening.browser": [{ kind: "text", value: "Opening browser to sign in…" }],
   "cli.login.prompt.token": [{ kind: "text", value: "Cloud token: " }],
   "cli.login.prompt.url": [{ kind: "text", value: "Cloud URL (https://app.acolyte.sh):" }],
+  "cli.login.migrate.done": [
+    { kind: "text", value: "Copied " },
+    { kind: "arg", name: "memories" },
+    { kind: "text", value: " memories and " },
+    { kind: "arg", name: "sessions" },
+    { kind: "text", value: " sessions to the cloud." },
+  ],
+  "cli.login.migrate.failed": [
+    { kind: "text", value: "Copying local data to the cloud failed: " },
+    { kind: "arg", name: "reason" },
+  ],
+  "cli.login.migrate.failures": [
+    { kind: "arg", name: "failures" },
+    { kind: "text", value: " records did not copy." },
+  ],
+  "cli.login.migrate.novectors": [
+    { kind: "arg", name: "embeddingFailures" },
+    {
+      kind: "text",
+      value: " memories arrived without their embedding and are recalled by keyword until it is copied.",
+    },
+  ],
+  "cli.login.migrate.rejected": [
+    { kind: "text", value: "The cloud rejected the token, so the copy stopped. Sign in again with a valid token." },
+  ],
+  "cli.login.migrate.start": [{ kind: "text", value: "Copying local memory and sessions to the cloud." }],
   "cli.login.saved": [{ kind: "text", value: "Logged in." }],
   "cli.login.timeout": [{ kind: "text", value: "Authentication timed out. Please try again." }],
   "cli.login.token.empty": [{ kind: "text", value: "Token cannot be empty." }],
+  "cli.login.url.insecure": [{ kind: "text", value: "The cloud URL must use HTTPS unless it targets localhost." }],
   "cli.login.waiting": [{ kind: "text", value: "Waiting for authentication…" }],
   "cli.login.welcome": [
     { kind: "text", value: "Logged in as " },

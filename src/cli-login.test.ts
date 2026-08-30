@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { loginMode, logoutMode } from "./cli-login";
+import { CloudApiError } from "./cloud-client";
 
 afterEach(() => {
   process.exitCode = 0;
@@ -34,6 +35,10 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     }),
     openBrowser: () => {
       calls.push("openBrowser");
+    },
+    migrateToCloud: async () => {
+      calls.push("migrateToCloud");
+      return { memories: 0, sessions: 0, failures: 0, embeddingFailures: 0 };
     },
     ...overrides,
   };
@@ -122,6 +127,131 @@ describe("loginMode", () => {
     await loginMode([], deps);
     expect(process.exitCode).toBe(1);
     expect(output()).toContain("timed out");
+  });
+
+  test("refuses a plaintext cloud url before storing anything", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "http://cloud.example.com"),
+    });
+
+    await loginMode([], deps);
+
+    expect(calls).not.toContain("writeCredential");
+    expect(calls).not.toContain("migrateToCloud");
+    expect(process.exitCode).toBe(1);
+    expect(output()).toContain("must use HTTPS");
+  });
+
+  test("allows a plaintext cloud url on localhost", async () => {
+    const { deps, calls } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "http://localhost:3000"),
+    });
+
+    await loginMode([], deps);
+
+    expect(calls.filter((call) => call === "writeCredential")).toHaveLength(2);
+    expect(process.exitCode).toBe(0);
+  });
+
+  test("copies local data with the credentials the login obtained", async () => {
+    const targets: string[] = [];
+    const { deps } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
+      migrateToCloud: async (url, token) => {
+        targets.push(`${url} ${token}`);
+        return { memories: 3, sessions: 2, failures: 0, embeddingFailures: 0 };
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(targets).toEqual(["https://custom.example.com tok_flag"]);
+  });
+
+  test("reports what the copy moved", async () => {
+    const { deps, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
+      migrateToCloud: async () => ({
+        memories: 3,
+        sessions: 2,
+        failures: 0,
+        embeddingFailures: 0,
+      }),
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("Copied 3 memories and 2 sessions");
+  });
+
+  test("names the records a copy left behind", async () => {
+    const { deps, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
+      migrateToCloud: async () => ({
+        memories: 1,
+        sessions: 0,
+        failures: 4,
+        embeddingFailures: 0,
+      }),
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("4 records did not copy");
+  });
+
+  test("names the memories that arrived without an embedding", async () => {
+    const { deps, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
+      migrateToCloud: async () => ({
+        memories: 5,
+        sessions: 0,
+        failures: 0,
+        embeddingFailures: 2,
+      }),
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("2 memories arrived without their embedding");
+  });
+
+  test("keeps the credentials and fails when the copy fails", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
+      migrateToCloud: async () => {
+        throw new Error("cloud unreachable");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(calls.filter((call) => call === "writeCredential")).toHaveLength(2);
+    expect(process.exitCode).toBe(1);
+    expect(output()).toContain("cloud unreachable");
+  });
+
+  test("names a rejected token instead of reporting a clean login", async () => {
+    const { deps, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? "tok_stale" : "https://custom.example.com"),
+      migrateToCloud: async () => {
+        throw new CloudApiError(401, "unauthorized");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(process.exitCode).toBe(1);
+    expect(output()).toContain("rejected the token");
+    expect(output()).not.toContain("unauthorized");
+  });
+
+  test("copies after an oauth login too", async () => {
+    const { deps, calls } = createLoginDeps({ prompt: () => "" });
+
+    await loginMode([], deps);
+
+    expect(calls).toContain("migrateToCloud");
   });
 });
 

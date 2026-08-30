@@ -917,6 +917,53 @@
   "@cli.login.prompt.url": {
     "description": "Interactive prompt asking for the cloud URL (cli-login.ts:38). Ends with a colon and no trailing space: `prompt()` writes the separating space itself. The parenthesized URL is an example default and must not be translated."
   },
+  "cli.login.migrate.done": "Copied {memories} memories and {sessions} sessions to the cloud.",
+  "@cli.login.migrate.done": {
+    "description": "Result of the one-time upload that runs after a successful login. {memories} and {sessions} are counts of records copied.",
+    "placeholders": {
+      "memories": {
+        "type": "int"
+      },
+      "sessions": {
+        "type": "int"
+      }
+    }
+  },
+  "cli.login.migrate.failed": "Copying local data to the cloud failed: {reason}",
+  "@cli.login.migrate.failed": {
+    "description": "Shown when the whole copy ended in an error rather than in per-record failures. {reason} is the underlying error message.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.login.migrate.failures": "{failures} records did not copy.",
+  "@cli.login.migrate.failures": {
+    "description": "Shown after the upload when some records were rejected. Every cloud write upserts on the record id, so signing in again copies only what is still missing. {failures} is a count.",
+    "placeholders": {
+      "failures": {
+        "type": "int"
+      }
+    }
+  },
+  "cli.login.migrate.novectors": "{embeddingFailures} memories arrived without their embedding and are recalled by keyword until it is copied.",
+  "@cli.login.migrate.novectors": {
+    "description": "Shown when records copied but their vectors were rejected. {embeddingFailures} is a count.",
+    "placeholders": {
+      "embeddingFailures": {
+        "type": "int"
+      }
+    }
+  },
+  "cli.login.migrate.rejected": "The cloud rejected the token, so the copy stopped. Sign in again with a valid token.",
+  "@cli.login.migrate.rejected": {
+    "description": "Shown when the cloud refused the credentials during the copy that follows sign-in. Two sentences: the outcome, then the suggestion."
+  },
+  "cli.login.migrate.start": "Copying local memory and sessions to the cloud.",
+  "@cli.login.migrate.start": {
+    "description": "Printed before the one-time upload begins, so a slow copy is not silent."
+  },
   "cli.login.saved": "Logged in.",
   "@cli.login.saved": {
     "description": "Confirmation that credentials were stored and the user is signed in."
@@ -928,6 +975,10 @@
   "cli.login.token.empty": "Token cannot be empty.",
   "@cli.login.token.empty": {
     "description": "Shown when the token prompt was submitted with no value."
+  },
+  "cli.login.url.insecure": "The cloud URL must use HTTPS unless it targets localhost.",
+  "@cli.login.url.insecure": {
+    "description": "Shown when a custom cloud URL would send the token and the copied memories in plaintext. Keep HTTPS and localhost untranslated."
   },
   "cli.login.waiting": "Waiting for authentication…",
   "@cli.login.waiting": {
