@@ -1,3 +1,5 @@
+import { existsSync, realpathSync } from "node:fs";
+import { basename, dirname, join, relative } from "node:path";
 import { ERROR_KINDS, TOOL_ERROR_CODES } from "./error-contract";
 import { createToolError } from "./tool-error";
 import { runCommand } from "./tool-utils";
@@ -19,6 +21,18 @@ export function hermeticGitEnv(overrides?: Record<string, string>): Record<strin
 }
 
 let gitVersion: string | null = null;
+
+function canonicalPathForGit(pathInput: string): string {
+  const missingSegments: string[] = [];
+  let current = pathInput;
+  while (!existsSync(current)) {
+    missingSegments.unshift(basename(current));
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return join(realpathSync(current), ...missingSegments);
+}
 
 function gitUnavailable(message: string) {
   return createToolError(TOOL_ERROR_CODES.gitUnavailable, message, ERROR_KINDS.gitUnavailable);
@@ -86,10 +100,13 @@ export async function gitShow(
 ): Promise<string> {
   const contextLines = Math.max(0, Math.min(20, options?.contextLines ?? 3));
   const ref = options?.ref?.trim() ? options.ref.trim() : "HEAD";
-  const args = ["git", "show", "--no-color", `--unified=${contextLines}`, ref];
+  let args = ["git", "show", "--no-color", `--unified=${contextLines}`, ref];
   if (options?.path) {
-    ensurePathWithinSandbox(options.path, workspace);
-    args.push("--", options.path);
+    const absolutePath = ensurePathWithinSandbox(options.path, workspace);
+    const topLevel = await runCommand(["git", "rev-parse", "--show-toplevel"], workspace, envOverride);
+    if (topLevel.code !== 0) throw new Error(topLevel.stderr.trim() || "git rev-parse failed");
+    const repoPath = relative(canonicalPathForGit(topLevel.stdout.trim()), canonicalPathForGit(absolutePath));
+    args = ["git", "show", "--no-color", `${ref}:${repoPath}`];
   }
   const { code, stdout, stderr } = await runCommand(args, workspace, envOverride);
   if (code !== 0) throw new Error(stderr.trim() || "git show failed");

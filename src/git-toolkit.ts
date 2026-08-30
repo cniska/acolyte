@@ -195,7 +195,8 @@ function createGitShowTool(git: GitOps, input: ToolkitInput) {
     id: "git-show",
     toolkit: "git",
     category: "search",
-    description: "Show commit details and patch for a ref (default HEAD), optionally scoped to a path.",
+    description:
+      "Show commit details and patch for a ref (default HEAD). With a path, read that file's contents as of the ref, whether or not the commit touched it. `git-diff` covers a diff restricted to a path.",
     outputSchema: z.object({
       kind: z.literal("git-show"),
       ref: z.string().optional(),
