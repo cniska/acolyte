@@ -29,8 +29,29 @@ function runCli(
     stderr: "pipe",
   });
   return {
-    stdout: result.stdout.toString().trim(),
-    stderr: result.stderr.toString().trim(),
+    stdout: result.stdout.toString(),
+    stderr: result.stderr.toString(),
+    exitCode: result.exitCode ?? 1,
+  };
+}
+
+function runCliThroughCommandSubstitution(
+  args: string[],
+  env: Record<string, string>,
+  cwd: string,
+): { stdout: string; stderr: string; exitCode: number } {
+  const quotedArgs = args.map((arg) => `'${arg.replaceAll("'", "'\\''")}'`).join(" ");
+  const cliPath = join(import.meta.dir, "cli.ts").replaceAll("'", "'\\''");
+  const script = `out=$(bun run '${cliPath}' ${quotedArgs}); printf '%s' "$out"`;
+  const result = Bun.spawnSync(["bash", "--noprofile", "--norc", "-c", script], {
+    cwd,
+    env,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  return {
+    stdout: result.stdout.toString(),
+    stderr: result.stderr.toString(),
     exitCode: result.exitCode ?? 1,
   };
 }
@@ -39,7 +60,7 @@ function expectJsonStdout(output: string): void {
   expect(output.startsWith("{")).toBe(true);
   expect(output).not.toContain("Acolyte v");
   expect(output).not.toContain("\x1b[");
-  for (const line of output.split("\n")) JSON.parse(line);
+  for (const line of output.trimEnd().split("\n")) JSON.parse(line);
 }
 
 describe("cli json output", () => {
@@ -60,6 +81,19 @@ describe("cli json output", () => {
     expectJsonStdout(result.stdout);
   });
 
+  test("config list --json stays parseable through command substitution", () => {
+    const home = createDir("acolyte-cli-json-home-");
+    const workspace = createDir("acolyte-cli-json-workspace-");
+    const configHome = join(home, ".config", "acolyte");
+    mkdirSync(configHome, { recursive: true });
+    writeFileSync(join(configHome, "config.json"), JSON.stringify({ locale: "en" }), "utf8");
+
+    const result = runCliThroughCommandSubstitution(["config", "list", "--json"], createIsolatedEnv(home), workspace);
+
+    expect(result.exitCode).toBe(0);
+    expectJsonStdout(result.stdout);
+  });
+
   test("memory list --json writes only JSON to stdout", () => {
     const home = createDir("acolyte-cli-json-home-");
     const workspace = createDir("acolyte-cli-json-workspace-");
@@ -68,6 +102,19 @@ describe("cli json output", () => {
     expect(addResult.exitCode).toBe(0);
 
     const result = runCli(["memory", "list", "--json"], env, workspace);
+
+    expect(result.exitCode).toBe(0);
+    expectJsonStdout(result.stdout);
+  });
+
+  test("memory list --json stays parseable through command substitution", () => {
+    const home = createDir("acolyte-cli-json-home-");
+    const workspace = createDir("acolyte-cli-json-workspace-");
+    const env = createIsolatedEnv(home);
+    const addResult = runCli(["memory", "add", "remember", "json", "output", "--no-update"], env, workspace);
+    expect(addResult.exitCode).toBe(0);
+
+    const result = runCliThroughCommandSubstitution(["memory", "list", "--json"], env, workspace);
 
     expect(result.exitCode).toBe(0);
     expectJsonStdout(result.stdout);

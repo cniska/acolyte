@@ -53,9 +53,6 @@ async function main(): Promise<void> {
   const jsonOutput = isJsonOutputCommand(args);
   if (update === "force" && command !== "update" && !jsonOutput) {
     await updateMode();
-  } else if (update === "auto" && !jsonOutput) {
-    const updated = await checkAndUpdateOnStartup();
-    if (updated) return;
   }
 
   const handler = commands[command];
