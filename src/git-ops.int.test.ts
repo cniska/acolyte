@@ -78,4 +78,17 @@ describe("gitShow", () => {
 
     expect(output).toBe("nested version");
   });
+
+  test("reads file contents at a ref after the file was deleted from the working tree", async () => {
+    const dirPath = await createTempRepo("acolyte-gitshow-deleted-");
+    await writeFile(join(dirPath, "gone.txt"), "old wording\n", "utf8");
+    await runGit(dirPath, ["add", "gone.txt"]);
+    await runGit(dirPath, ["commit", "-m", "add gone"]);
+    await runGit(dirPath, ["rm", "gone.txt"]);
+    await runGit(dirPath, ["commit", "-m", "remove gone"]);
+
+    const output = await gitShow(dirPath, { ref: "HEAD~1", path: "gone.txt" }, ISOLATED_GIT_CONFIG);
+
+    expect(output).toBe("old wording");
+  });
 });
