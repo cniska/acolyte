@@ -504,6 +504,24 @@ export function memoryStoreContractTests(
       expect(await s.getEmbedding("mem_missing")).toBeNull();
     });
 
+    test("getEmbedding returns bytes that base64-encode as themselves", async () => {
+      const s = await getStore();
+      const embedding = Buffer.from(new Float32Array([0.1, -0.2, 0.3]).buffer);
+      await s.writeEmbedding("mem_emb64a", "sess_abc123", embedding);
+      const result = await s.getEmbedding("mem_emb64a");
+      if (!result) throw new Error("expected embedding");
+      expect(result.toString("base64")).toBe(embedding.toString("base64"));
+    });
+
+    test("getEmbeddings returns bytes that base64-encode as themselves", async () => {
+      const s = await getStore();
+      const embedding = Buffer.from(new Float32Array([0.4, -0.5, 0.6]).buffer);
+      await s.writeEmbedding("mem_emb64b", "sess_abc123", embedding);
+      const result = (await s.getEmbeddings(["mem_emb64b"])).get("mem_emb64b");
+      if (!result) throw new Error("expected embedding");
+      expect(result.toString("base64")).toBe(embedding.toString("base64"));
+    });
+
     test("removeEmbedding deletes embedding", async () => {
       const s = await getStore();
       const embedding = Buffer.from(new Float32Array([1, 2, 3]).buffer);
