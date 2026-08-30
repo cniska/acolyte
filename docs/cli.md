@@ -62,13 +62,14 @@ acolyte memory restore <id>...
 
 ## Config commands
 
-Read and write runtime configuration at user or project level.
+Read and write runtime configuration at user or project level. Nested config uses dotted keys, such as `features.mcp`.
 
 ```bash
 acolyte config list [--project]
 acolyte config list --json
 acolyte config set <key> <value>
 acolyte config set --project <key> <value>
+acolyte config set --project features.mcp true
 acolyte config unset <key>
 ```
 

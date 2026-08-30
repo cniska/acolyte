@@ -269,6 +269,25 @@ describe("cli visual regression", () => {
     });
   });
 
+  test("config set accepts dotted MCP feature flag keys", async () => {
+    await withCliTestEnv(async ({ run }) => {
+      const saved = await run(["config", "set", "--project", "features.mcp", "true"]);
+      expect(saved).toBe(
+        dedent(`
+        Saved config features.mcp (project).
+      `),
+      );
+
+      const listedProject = await run(["config", "list", "--project"]);
+      expect(listedProject).toBe(
+        dedent(`
+        scope:         project
+        features.mcp:  true
+      `),
+      );
+    });
+  });
+
   test("status shows formatted fields on success", async () => {
     await withDualTransportChatServer(async (baseUrl) => {
       await withCliTestEnv(async ({ run }) => {
