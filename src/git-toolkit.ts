@@ -277,7 +277,7 @@ function createGitCommitTool(git: GitOps, input: ToolkitInput) {
     toolkit: "git",
     category: "write",
     description:
-      "Create a git commit with a required subject line and optional body lines. Commit only when the user asks.",
+      "Create a git commit with a required subject line and optional body lines. Follow the project's rule on when to commit; with no such rule, commit when the user asks.",
     outputSchema: z.object({
       kind: z.literal("git-commit"),
       message: z.string().min(1),

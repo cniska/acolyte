@@ -130,10 +130,10 @@ describe("model-facing tool text", () => {
     expectIntent(described("file-read", "offset"), [["too large to read whole"]]);
   });
 
-  // Whether to commit at all is the user's call, and no other surface carries it: soul.md is
-  // silent, and a workspace without an equivalent project rule would lose it entirely.
-  test("git-commit states that committing waits for the user", () => {
-    expectIntent(defaultToolsById()["git-commit"]?.description ?? "", [["only when the user asks"]]);
+  // A workspace with no project rule on committing would otherwise lose the default entirely:
+  // soul.md is silent, so the fallback ships on the tool itself.
+  test("git-commit defers to the project rule and falls back to asking", () => {
+    expectIntent(defaultToolsById()["git-commit"]?.description ?? "", [["project's rule"], ["when the user asks"]]);
   });
 
   // Vocabulary a tool no longer supports must be gone from the schema surface, not merely
