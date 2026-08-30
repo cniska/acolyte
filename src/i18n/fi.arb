@@ -155,6 +155,7 @@
   "cli.login.prompt.url": "Pilven osoite (https://app.acolyte.sh):",
   "cli.login.migrate.done": "Kopioitiin {memories} muistia ja {sessions} istuntoa pilveen.",
   "cli.login.migrate.failures": "{failures} tietuetta jäi kopioimatta.",
+  "cli.login.migrate.novectors": "{embeddingFailures} muistia siirtyi ilman upotusta, ja ne haetaan avainsanoilla kunnes upotus on kopioitu.",
   "cli.login.migrate.start": "Kopioidaan paikallinen muisti ja istunnot pilveen.",
   "cli.login.saved": "Kirjauduttu sisään.",
   "cli.login.timeout": "Tunnistautuminen aikakatkaistiin. Yritä uudelleen.",

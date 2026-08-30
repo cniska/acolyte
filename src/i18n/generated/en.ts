@@ -391,6 +391,13 @@ export const EN_MESSAGES = {
     { kind: "arg", name: "failures" },
     { kind: "text", value: " records did not copy." },
   ],
+  "cli.login.migrate.novectors": [
+    { kind: "arg", name: "embeddingFailures" },
+    {
+      kind: "text",
+      value: " memories arrived without their embedding and are recalled by keyword until it is copied.",
+    },
+  ],
   "cli.login.migrate.start": [{ kind: "text", value: "Copying local memory and sessions to the cloud." }],
   "cli.login.saved": [{ kind: "text", value: "Logged in." }],
   "cli.login.timeout": [{ kind: "text", value: "Authentication timed out. Please try again." }],

@@ -398,6 +398,10 @@ export const FI_MESSAGES = {
     { kind: "arg", name: "failures" },
     { kind: "text", value: " tietuetta jäi kopioimatta." },
   ],
+  "cli.login.migrate.novectors": [
+    { kind: "arg", name: "embeddingFailures" },
+    { kind: "text", value: " muistia siirtyi ilman upotusta, ja ne haetaan avainsanoilla kunnes upotus on kopioitu." },
+  ],
   "cli.login.migrate.start": [{ kind: "text", value: "Kopioidaan paikallinen muisti ja istunnot pilveen." }],
   "cli.login.saved": [{ kind: "text", value: "Kirjauduttu sisään." }],
   "cli.login.timeout": [{ kind: "text", value: "Tunnistautuminen aikakatkaistiin. Yritä uudelleen." }],

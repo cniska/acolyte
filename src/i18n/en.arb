@@ -938,6 +938,15 @@
       }
     }
   },
+  "cli.login.migrate.novectors": "{embeddingFailures} memories arrived without their embedding and are recalled by keyword until it is copied.",
+  "@cli.login.migrate.novectors": {
+    "description": "Shown when records copied but their vectors were rejected. {embeddingFailures} is a count.",
+    "placeholders": {
+      "embeddingFailures": {
+        "type": "int"
+      }
+    }
+  },
   "cli.login.migrate.start": "Copying local memory and sessions to the cloud.",
   "@cli.login.migrate.start": {
     "description": "Printed before the one-time upload begins, so a slow copy is not silent."

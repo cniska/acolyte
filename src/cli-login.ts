@@ -37,6 +37,9 @@ async function completeLogin(deps: LoginModeDeps, url: string, token: string, co
     if (summary.failures > 0) {
       deps.printDim(t("cli.login.migrate.failures", { failures: summary.failures }));
     }
+    if (summary.embeddingFailures > 0) {
+      deps.printDim(t("cli.login.migrate.novectors", { embeddingFailures: summary.embeddingFailures }));
+    }
   } catch (error) {
     // The credentials are already stored, so the sign-in held: only the copy needs another run.
     deps.printError(errorMessage(error));

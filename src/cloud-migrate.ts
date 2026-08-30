@@ -8,6 +8,7 @@ export type CloudMigrationSummary = {
   archived: number;
   sessions: number;
   failures: number;
+  embeddingFailures: number;
 };
 
 export type CloudMigrationDeps = {
@@ -33,7 +34,14 @@ export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise
   const archived = (await deps.localMemory.listArchive()).filter((record) => isDurable(record.scopeKey));
   const sessions = await deps.localSessions.listSessions();
 
-  const summary: CloudMigrationSummary = { memories: 0, embeddings: 0, archived: 0, sessions: 0, failures: 0 };
+  const summary: CloudMigrationSummary = {
+    memories: 0,
+    embeddings: 0,
+    archived: 0,
+    sessions: 0,
+    failures: 0,
+    embeddingFailures: 0,
+  };
   const total = records.length + archived.length + sessions.length;
   let done = 0;
   const advance = (): void => {
@@ -45,13 +53,21 @@ export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise
     try {
       await deps.cloudMemory.write(record, scopeFromKey(record.scopeKey));
       summary.memories += 1;
+    } catch {
+      summary.failures += 1;
+      advance();
+      continue;
+    }
+    // A record that landed without its vector is still recallable by keyword overlap, so the
+    // embedding is counted apart from the record rather than discarding a successful copy.
+    try {
       const embedding = await deps.localMemory.getEmbedding(record.id);
       if (embedding) {
         await deps.cloudMemory.writeEmbedding(record.id, record.scopeKey, embedding);
         summary.embeddings += 1;
       }
     } catch {
-      summary.failures += 1;
+      summary.embeddingFailures += 1;
     }
     advance();
   }

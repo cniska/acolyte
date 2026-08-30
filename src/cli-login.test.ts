@@ -37,7 +37,7 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     },
     migrateToCloud: async () => {
       calls.push("migrateToCloud");
-      return { memories: 0, embeddings: 0, archived: 0, sessions: 0, failures: 0 };
+      return { memories: 0, embeddings: 0, archived: 0, sessions: 0, failures: 0, embeddingFailures: 0 };
     },
     ...overrides,
   };
@@ -134,7 +134,7 @@ describe("loginMode", () => {
       parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
       migrateToCloud: async (url, token) => {
         targets.push(`${url} ${token}`);
-        return { memories: 3, embeddings: 3, archived: 0, sessions: 2, failures: 0 };
+        return { memories: 3, embeddings: 3, archived: 0, sessions: 2, failures: 0, embeddingFailures: 0 };
       },
     });
 
@@ -146,7 +146,14 @@ describe("loginMode", () => {
   test("reports what the copy moved", async () => {
     const { deps, output } = createLoginDeps({
       parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
-      migrateToCloud: async () => ({ memories: 3, embeddings: 3, archived: 1, sessions: 2, failures: 0 }),
+      migrateToCloud: async () => ({
+        memories: 3,
+        embeddings: 3,
+        archived: 1,
+        sessions: 2,
+        failures: 0,
+        embeddingFailures: 0,
+      }),
     });
 
     await loginMode([], deps);
@@ -158,7 +165,14 @@ describe("loginMode", () => {
   test("names the records a copy left behind", async () => {
     const { deps, output } = createLoginDeps({
       parseFlag: (_args, flag) => (flag === "--token" ? "tok_flag" : "https://custom.example.com"),
-      migrateToCloud: async () => ({ memories: 1, embeddings: 1, archived: 0, sessions: 0, failures: 4 }),
+      migrateToCloud: async () => ({
+        memories: 1,
+        embeddings: 1,
+        archived: 0,
+        sessions: 0,
+        failures: 4,
+        embeddingFailures: 0,
+      }),
     });
 
     await loginMode([], deps);

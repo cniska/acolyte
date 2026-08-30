@@ -155,6 +155,7 @@
   "cli.login.prompt.url": "Molnadress (https://app.acolyte.sh):",
   "cli.login.migrate.done": "Kopierade {memories} minnen och {sessions} sessioner till molnet.",
   "cli.login.migrate.failures": "{failures} poster kopierades inte.",
+  "cli.login.migrate.novectors": "{embeddingFailures} minnen kom utan sin inbäddning och hämtas med nyckelord tills den kopierats.",
   "cli.login.migrate.start": "Kopierar lokalt minne och sessioner till molnet.",
   "cli.login.saved": "Inloggad.",
   "cli.login.timeout": "Autentiseringen tog för lång tid. Försök igen.",

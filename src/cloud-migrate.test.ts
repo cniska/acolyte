@@ -27,6 +27,7 @@ function createFakeMemoryStore(options: {
   archive?: MemoryArchiveRecord[];
   embeddingsFor?: string[];
   failWriteFor?: string[];
+  failEmbeddingFor?: string[];
 }): FakeMemoryStore {
   const written: { record: MemoryRecord; scope?: string }[] = [];
   const embeddings: { id: string; scopeKey: string }[] = [];
@@ -43,6 +44,7 @@ function createFakeMemoryStore(options: {
       written.push({ record, scope });
     },
     writeEmbedding: async (id: string, scopeKey: string) => {
+      if (options.failEmbeddingFor?.includes(id)) throw new Error("embedding refused");
       embeddings.push({ id, scopeKey });
     },
     getEmbedding: async (id: string) =>
@@ -176,6 +178,26 @@ describe("migrateLocalDataToCloud", () => {
     expect(summary.memories).toBe(1);
     expect(summary.sessions).toBe(0);
     expect(cloud.written.map((entry) => entry.record.id)).toEqual(["mem_good0001"]);
+  });
+
+  test("counts a rejected embedding apart from its record", async () => {
+    const local = createFakeMemoryStore({
+      records: [createRecord({ id: "mem_proj0001" })],
+      embeddingsFor: ["mem_proj0001"],
+    });
+    const cloud = createFakeMemoryStore({ failEmbeddingFor: ["mem_proj0001"] });
+
+    const summary = await migrateLocalDataToCloud({
+      localMemory: local,
+      localSessions: createFakeSessionStore([]),
+      cloudMemory: cloud,
+      cloudSessions: createFakeSessionStore([]),
+    });
+
+    expect(summary.memories).toBe(1);
+    expect(summary.embeddings).toBe(0);
+    expect(summary.embeddingFailures).toBe(1);
+    expect(summary.failures).toBe(0);
   });
 
   test("reports progress once per record, archive row, and session", async () => {

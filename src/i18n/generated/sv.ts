@@ -402,6 +402,10 @@ export const SV_MESSAGES = {
     { kind: "arg", name: "failures" },
     { kind: "text", value: " poster kopierades inte." },
   ],
+  "cli.login.migrate.novectors": [
+    { kind: "arg", name: "embeddingFailures" },
+    { kind: "text", value: " minnen kom utan sin inbäddning och hämtas med nyckelord tills den kopierats." },
+  ],
   "cli.login.migrate.start": [{ kind: "text", value: "Kopierar lokalt minne och sessioner till molnet." }],
   "cli.login.saved": [{ kind: "text", value: "Inloggad." }],
   "cli.login.timeout": [{ kind: "text", value: "Autentiseringen tog för lång tid. Försök igen." }],

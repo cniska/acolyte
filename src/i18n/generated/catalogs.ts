@@ -167,6 +167,7 @@ export type MessageArgs = {
   "cli.login.prompt.url": never;
   "cli.login.migrate.done": { memories: string | number; sessions: string | number };
   "cli.login.migrate.failures": { failures: string | number };
+  "cli.login.migrate.novectors": { embeddingFailures: string | number };
   "cli.login.migrate.start": never;
   "cli.login.saved": never;
   "cli.login.timeout": never;
