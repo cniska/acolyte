@@ -6,6 +6,7 @@ import { commands, usage } from "./cli-command-registry";
 import { checkAndUpdateOnStartup, updateMode } from "./cli-update";
 import { formatVersionWithCommit, resolveCliCommitShort, resolveCliVersion } from "./cli-version";
 import { setLocale } from "./i18n";
+import { setLogSink } from "./log";
 import { printOutput } from "./ui";
 
 setLocale(appConfig.locale);
@@ -42,6 +43,8 @@ async function main(): Promise<void> {
     printOutput(CLI_VERSION_OUTPUT);
     return;
   }
+
+  setLogSink((line) => process.stderr.write(line));
 
   if (update === "force" && command !== "update") {
     await updateMode();

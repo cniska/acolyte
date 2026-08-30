@@ -72,7 +72,7 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
     const resolvedScope = scope === "all" ? undefined : (scope as MemoryScope);
     const rows = archived ? await ops.listArchived(resolvedScope) : await ops.list(resolvedScope);
     if (rows.length === 0) {
-      printDim(t(archived ? "cli.memory.archive.none" : "cli.memory.none"));
+      if (!json) printDim(t(archived ? "cli.memory.archive.none" : "cli.memory.none"));
       return;
     }
     const out: CliOutput = json ? createJsonOutput() : createTextOutput();

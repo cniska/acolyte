@@ -44,6 +44,19 @@ describe("cli config", () => {
     expect(dimLines).toContain("replyTimeoutMs:  30000");
   });
 
+  test("list --json writes raw JSON without dim styling", async () => {
+    const lines: string[] = [];
+    const { deps } = createDeps({
+      printDim: (message) => lines.push(`\x1b[2m${message}\x1b[22m`),
+      printOutput: (message) => lines.push(message),
+      readConfig: async () => ({ locale: "en" }),
+    });
+    await configMode(["list", "--json"], deps);
+    const output = lines.join("\n");
+    expect(output.startsWith("{")).toBe(true);
+    expect(output.includes("\x1b[2m")).toBe(false);
+  });
+
   test("unset forwards key", async () => {
     const calls: Array<{ key: string; scope: "user" | "project" }> = [];
     const { deps } = createDeps({

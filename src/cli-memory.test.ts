@@ -120,6 +120,26 @@ describe("cli-memory", () => {
     expect(called).toBe(true);
   });
 
+  test("list --json writes raw JSON without dim styling", async () => {
+    const lines: string[] = [];
+    const { deps } = createDeps({
+      printDim: (message) => lines.push(`\x1b[2m${message}\x1b[22m`),
+      printOutput: (message) => lines.push(message),
+    });
+    await memoryMode(["list", "--json"], deps);
+    const output = lines.join("\n");
+    expect(output.startsWith("{")).toBe(true);
+    expect(output.includes("\x1b[2m")).toBe(false);
+  });
+
+  test("list --json stays silent when there are no rows", async () => {
+    const { deps, output } = createDeps({
+      ops: createOps({ list: async () => [] }),
+    });
+    await memoryMode(["list", "--json"], deps);
+    expect(output()).toBe("");
+  });
+
   test("add --project saves memory with correct scope", async () => {
     let savedContent: string | undefined;
     let savedScope: string | undefined;
