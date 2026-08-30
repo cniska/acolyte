@@ -8,7 +8,7 @@ Local-first by default, cloud when opted in. A single feature flag switches stor
 
 ## Architecture
 
-```
+```text
 CLI → Cloud API (Vercel Edge) → Neon Postgres (pgvector)
 ```
 
@@ -47,6 +47,9 @@ The cloud API is versioned at `/api/v1/`. All endpoints require `Authorization: 
 | | POST | `/api/v1/memories` | Write memory |
 | | DELETE | `/api/v1/memories/:id` | Delete memory |
 | | POST | `/api/v1/memories/touch-recalled` | Update recall timestamps |
+| | POST | `/api/v1/memories/retire` | Retire memories into the archive |
+| | GET | `/api/v1/memories/archive` | List archived memories |
+| | POST | `/api/v1/memories/restore` | Restore archived memories |
 | Embeddings | POST | `/api/v1/memories/embeddings` | Write embedding |
 | | POST | `/api/v1/memories/embeddings/get` | Batch get embeddings |
 | | DELETE | `/api/v1/memories/embeddings/:id` | Delete embedding |
@@ -54,6 +57,8 @@ The cloud API is versioned at `/api/v1/`. All endpoints require `Authorization: 
 | Sessions | GET | `/api/v1/sessions` | List sessions |
 | | POST | `/api/v1/sessions` | Save session |
 | | GET | `/api/v1/sessions/:id` | Get session |
+| | PATCH | `/api/v1/sessions/:id/append` | Append new messages to a session |
+| | POST | `/api/v1/sessions/:id/search` | Search a session's messages |
 | | DELETE | `/api/v1/sessions/:id` | Delete session |
 | | GET | `/api/v1/sessions/active` | Get active session |
 | | PUT | `/api/v1/sessions/active` | Set active session |
@@ -70,5 +75,13 @@ See [acolyte-cloud](https://github.com/cniska/acolyte-cloud) for setup and deplo
 
 - `src/cloud-client.ts` — cloud client with `MemoryStore` and `SessionStore` implementations
 - `src/cloud-migrate.ts` — one-time copy of local memory and sessions into an account
+- `src/cloud-migrate-runner.ts` — opens the local stores the copy reads from
 - `src/credentials.ts` — credentials file read/write
 - `src/app-config.ts` — `cloudUrl`, `cloudToken` (from env or credentials), and `cloudSync` feature flag
+
+## Further reading
+
+- [Memory](./memory.md) — what the records the cloud stores hold
+- [Sessions](./sessions.md) — session storage and the active-session pointer
+- [Configuration](./configuration.md) — feature flags and credentials
+- [Paths](./paths.md) — where the credentials file lives
