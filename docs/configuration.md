@@ -135,6 +135,12 @@ Connect Acolyte to external services (Figma, Jira, Notion, Chrome DevTools, etc.
 
 MCP is disabled by default. Enable it explicitly with:
 
+```bash
+acolyte config set --project features.mcp true
+```
+
+The equivalent TOML is:
+
 ```toml
 [features]
 mcp = true
@@ -152,7 +158,7 @@ Installed plugins contribute servers too, namespaced by plugin name and requirin
 
 ## Feature flags
 
-Feature flags are opt-in toggles for experimental behavior, configured under `[features]` in `config.toml`.
+Feature flags are opt-in toggles for experimental behavior, configured under `[features]` in `config.toml` and set from the CLI with dotted keys.
 
 Enable via TOML:
 

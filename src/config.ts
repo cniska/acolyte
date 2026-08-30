@@ -146,11 +146,10 @@ function serializeToml(config: Config): string {
   if (config.features && Object.keys(config.features).length > 0) {
     lines.push("");
     lines.push("[features]");
-    if (typeof config.features.syncAgents === "boolean") lines.push(`syncAgents = ${config.features.syncAgents}`);
-    if (typeof config.features.undoCheckpoints === "boolean")
-      lines.push(`undoCheckpoints = ${config.features.undoCheckpoints}`);
-    if (typeof config.features.workspaces === "boolean") lines.push(`workspaces = ${config.features.workspaces}`);
-    if (typeof config.features.cloudSync === "boolean") lines.push(`cloudSync = ${config.features.cloudSync}`);
+    for (const key of Object.keys(featureFlagsSchema.shape)) {
+      const value = config.features[key as keyof typeof config.features];
+      if (typeof value === "boolean") lines.push(`${key} = ${value}`);
+    }
   }
   return `${lines.join("\n")}${lines.length > 0 ? "\n" : ""}`;
 }
@@ -231,7 +230,7 @@ export async function writeConfig(config: Config, options?: ConfigOptions): Prom
 }
 
 const RECORD_VALID_KEYS: Partial<Record<keyof Config, Set<string>>> = {
-  features: new Set(["syncAgents", "undoCheckpoints", "workspaces", "cloudSync"]),
+  features: new Set(Object.keys(featureFlagsSchema.shape)),
 };
 
 function parseDottedKey(key: string): { section: keyof Config; subKey: string } | null {
