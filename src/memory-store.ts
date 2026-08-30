@@ -95,7 +95,7 @@ function rowToArchiveRecord(row: ArchiveRow): MemoryArchiveRecord {
 // encoding and yields comma-separated decimal bytes. Callers that serialize an embedding depend on
 // the Buffer the store's contract promises, so the view is wrapped without copying its bytes.
 function toBuffer(bytes: Uint8Array): Buffer {
-  return Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 }
 
 function rowToRecord(row: MemoryRow): MemoryRecord {
