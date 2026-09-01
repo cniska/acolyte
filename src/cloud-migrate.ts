@@ -23,12 +23,17 @@ export type CloudMigrationDeps = {
   localSessions: SessionStore;
   cloudMemory: MemoryStore;
   cloudSessions: SessionStore;
+  accountKey: string;
 };
 
-// Session-scoped records resolve to the running session's id, so a migrated one is unreachable
-// from every future session: only project and user scopes survive the move.
-function isDurable(scopeKey: string): boolean {
-  return safeScopeKey(scopeKey) !== null && scopeFromKey(scopeKey) !== "session";
+// Session-scoped records resolve to the running session's id, so a migrated one is unreachable from
+// every future session. A user-scoped record travels only when it is this account's own: the local
+// scope is the merge's to move, and another account's key names a scope this one can never resolve.
+function isDurable(scopeKey: string, accountKey: string): boolean {
+  if (safeScopeKey(scopeKey) === null) return false;
+  const scope = scopeFromKey(scopeKey);
+  if (scope === "session") return false;
+  return scope === "project" || scopeKey === accountKey;
 }
 
 // A refused credential rejects every remaining write too, so it ends the run instead of counting
@@ -64,7 +69,7 @@ async function copyAll<T>(items: readonly T[], copy: (item: T) => Promise<void>)
  * write-then-retire pair is neither atomic nor repeatable.
  */
 export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise<CloudMigrationSummary> {
-  const records = (await deps.localMemory.list()).filter((record) => isDurable(record.scopeKey));
+  const records = (await deps.localMemory.list()).filter((record) => isDurable(record.scopeKey, deps.accountKey));
   const sessions = await deps.localSessions.listSessions();
 
   const summary: CloudMigrationSummary = {

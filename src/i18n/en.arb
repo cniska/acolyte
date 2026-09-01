@@ -917,6 +917,42 @@
   "@cli.login.prompt.url": {
     "description": "Interactive prompt asking for the cloud URL (cli-login.ts:38). Ends with a colon and no trailing space: `prompt()` writes the separating space itself. The parenthesized URL is an example default and must not be translated."
   },
+  "cli.login.merge.done": "Merged {merged} local memories into your account.",
+  "@cli.login.merge.done": {
+    "description": "Result of moving what this installation remembered while signed out into the account that just signed in. Always printed, so the step is visible even at zero. {merged} is a count.",
+    "placeholders": {
+      "merged": {
+        "type": "int"
+      }
+    }
+  },
+  "cli.login.merge.duplicates": "{duplicates} were already in your account.",
+  "@cli.login.merge.duplicates": {
+    "description": "Shown after the merge when local memories repeated a fact the account already held, so they were dropped rather than moved. {duplicates} is a count.",
+    "placeholders": {
+      "duplicates": {
+        "type": "int"
+      }
+    }
+  },
+  "cli.login.merge.failures": "{failures} local memories did not merge and stay on this machine.",
+  "@cli.login.merge.failures": {
+    "description": "Shown when the account rejected some of the moved records. The local rows are kept, so signing in again retries them. {failures} is a count.",
+    "placeholders": {
+      "failures": {
+        "type": "int"
+      }
+    }
+  },
+  "cli.login.merge.novectors": "{embeddingFailures} merged without their embedding and are recalled by keyword until it is copied.",
+  "@cli.login.merge.novectors": {
+    "description": "Shown when merged records landed but their vectors were rejected. {embeddingFailures} is a count.",
+    "placeholders": {
+      "embeddingFailures": {
+        "type": "int"
+      }
+    }
+  },
   "cli.login.migrate.done": "Copied {memories} memories and {sessions} sessions to the cloud.",
   "@cli.login.migrate.done": {
     "description": "Result of the one-time upload that runs after a successful login. {memories} and {sessions} are counts of records copied.",
@@ -971,6 +1007,10 @@
   "cli.login.timeout": "Authentication timed out. Please try again.",
   "@cli.login.timeout": {
     "description": "Shown when browser sign-in did not complete in time. Two sentences: the outcome, then the suggestion."
+  },
+  "cli.login.token.anonymous": "That token does not name an account, so nothing was stored. Sign in again.",
+  "@cli.login.token.anonymous": {
+    "description": "Shown when a token carries no subject claim, so no user scope can be derived from it. Two sentences: the outcome, then the suggestion."
   },
   "cli.login.token.empty": "Token cannot be empty.",
   "@cli.login.token.empty": {

@@ -201,7 +201,7 @@ describe("cli visual regression", () => {
   });
 
   test("memory list renders stored entry rows", async () => {
-    await withCliTestEnv(async ({ run, homeDir, dataDir }) => {
+    await withCliTestEnv(async ({ run, dataDir }) => {
       const dbPath = join(dataDir, "memory.db");
       const store = createSqliteMemoryStore(dbPath);
       const scopeKey = "user_local";

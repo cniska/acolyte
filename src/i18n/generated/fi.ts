@@ -387,6 +387,23 @@ export const FI_MESSAGES = {
   "cli.login.opening.browser": [{ kind: "text", value: "Avataan selain kirjautumista varten…" }],
   "cli.login.prompt.token": [{ kind: "text", value: "Pilvitunnus: " }],
   "cli.login.prompt.url": [{ kind: "text", value: "Pilven osoite (https://app.acolyte.sh):" }],
+  "cli.login.merge.done": [
+    { kind: "text", value: "Yhdistettiin " },
+    { kind: "arg", name: "merged" },
+    { kind: "text", value: " paikallista muistia tiliisi." },
+  ],
+  "cli.login.merge.duplicates": [
+    { kind: "arg", name: "duplicates" },
+    { kind: "text", value: " oli jo tililläsi." },
+  ],
+  "cli.login.merge.failures": [
+    { kind: "arg", name: "failures" },
+    { kind: "text", value: " paikallista muistia jäi yhdistämättä ja säilyy tällä koneella." },
+  ],
+  "cli.login.merge.novectors": [
+    { kind: "arg", name: "embeddingFailures" },
+    { kind: "text", value: " yhdistyi ilman upotusta, ja ne haetaan avainsanoilla kunnes upotus on kopioitu." },
+  ],
   "cli.login.migrate.done": [
     { kind: "text", value: "Kopioitiin " },
     { kind: "arg", name: "memories" },
@@ -415,6 +432,9 @@ export const FI_MESSAGES = {
   "cli.login.migrate.start": [{ kind: "text", value: "Kopioidaan paikallinen muisti ja istunnot pilveen." }],
   "cli.login.saved": [{ kind: "text", value: "Kirjauduttu sisään." }],
   "cli.login.timeout": [{ kind: "text", value: "Tunnistautuminen aikakatkaistiin. Yritä uudelleen." }],
+  "cli.login.token.anonymous": [
+    { kind: "text", value: "Tunnus ei nimeä tiliä, joten mitään ei tallennettu. Kirjaudu uudelleen." },
+  ],
   "cli.login.token.empty": [{ kind: "text", value: "Tunnus ei voi olla tyhjä." }],
   "cli.login.url.insecure": [
     { kind: "text", value: "Pilven osoitteen on käytettävä HTTPS:ää, ellei se osoita localhostiin." },

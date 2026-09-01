@@ -165,6 +165,10 @@ export type MessageArgs = {
   "cli.login.opening.browser": never;
   "cli.login.prompt.token": never;
   "cli.login.prompt.url": never;
+  "cli.login.merge.done": { merged: string | number };
+  "cli.login.merge.duplicates": { duplicates: string | number };
+  "cli.login.merge.failures": { failures: string | number };
+  "cli.login.merge.novectors": { embeddingFailures: string | number };
   "cli.login.migrate.done": { memories: string | number; sessions: string | number };
   "cli.login.migrate.failed": { reason: string | number };
   "cli.login.migrate.failures": { failures: string | number };
@@ -173,6 +177,7 @@ export type MessageArgs = {
   "cli.login.migrate.start": never;
   "cli.login.saved": never;
   "cli.login.timeout": never;
+  "cli.login.token.anonymous": never;
   "cli.login.token.empty": never;
   "cli.login.url.insecure": never;
   "cli.login.waiting": never;

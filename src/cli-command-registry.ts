@@ -22,7 +22,7 @@ import { toolMode } from "./cli-tool";
 import { traceMode } from "./cli-trace";
 import { updateMode } from "./cli-update";
 import { createClient } from "./client-factory";
-import { runCloudMigration } from "./cloud-migrate-runner";
+import { runCloudMigration, runUserScopeMerge } from "./cloud-migrate-runner";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 import {
   providerCredentialsPath,
@@ -178,6 +178,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
               startCallbackServer,
               openBrowser,
               migrateToCloud: runCloudMigration,
+              mergeUserScope: runUserScopeMerge,
             }),
         },
         logout: {

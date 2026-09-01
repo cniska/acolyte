@@ -1,9 +1,11 @@
 import { type CallbackResult, DEFAULT_CLOUD_URL } from "./cli-callback-server";
 import { type CloudMigrationSummary, isCredentialRejection } from "./cloud-migrate";
 import { isSecureUrl } from "./config-contract";
-import type { Credentials } from "./credentials";
+import { type Credentials, decodeTokenSubject } from "./credentials";
 import { errorMessage } from "./error-contract";
 import { t } from "./i18n";
+import { type UserResourceId, userResourceIdForSubject } from "./resource-id";
+import type { UserScopeMergeSummary } from "./user-scope-merge";
 
 type LoginModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
@@ -18,7 +20,8 @@ type LoginModeDeps = {
   createId: () => string;
   startCallbackServer: (state: string) => Promise<{ port: number; result: Promise<CallbackResult> }>;
   openBrowser: (url: string) => void;
-  migrateToCloud: (url: string, token: string) => Promise<CloudMigrationSummary>;
+  migrateToCloud: (url: string, token: string, accountKey: UserResourceId) => Promise<CloudMigrationSummary>;
+  mergeUserScope: (url: string, token: string, accountKey: UserResourceId) => Promise<UserScopeMergeSummary>;
 };
 
 /**
@@ -33,19 +36,40 @@ async function completeLogin(deps: LoginModeDeps, url: string, token: string, co
     return;
   }
 
+  // The user scope is the account the token names, so a token naming none cannot be signed in with.
+  const subject = decodeTokenSubject(token);
+  if (!subject) {
+    deps.printError(t("cli.login.token.anonymous"));
+    process.exitCode = 1;
+    return;
+  }
+  const accountKey = userResourceIdForSubject(subject);
+
   await deps.writeCredential("cloudToken", token);
   await deps.writeCredential("cloudUrl", url);
   deps.printDim(confirmation);
 
   deps.printDim(t("cli.login.migrate.start"));
   try {
-    const summary = await deps.migrateToCloud(url, token);
+    const summary = await deps.migrateToCloud(url, token, accountKey);
     deps.printDim(t("cli.login.migrate.done", { memories: summary.memories, sessions: summary.sessions }));
     if (summary.failures > 0) {
       deps.printDim(t("cli.login.migrate.failures", { failures: summary.failures }));
     }
     if (summary.embeddingFailures > 0) {
       deps.printDim(t("cli.login.migrate.novectors", { embeddingFailures: summary.embeddingFailures }));
+    }
+
+    const merge = await deps.mergeUserScope(url, token, accountKey);
+    deps.printDim(t("cli.login.merge.done", { merged: merge.merged }));
+    if (merge.duplicates > 0) {
+      deps.printDim(t("cli.login.merge.duplicates", { duplicates: merge.duplicates }));
+    }
+    if (merge.failures > 0) {
+      deps.printDim(t("cli.login.merge.failures", { failures: merge.failures }));
+    }
+    if (merge.embeddingFailures > 0) {
+      deps.printDim(t("cli.login.merge.novectors", { embeddingFailures: merge.embeddingFailures }));
     }
   } catch (error) {
     deps.printError(
