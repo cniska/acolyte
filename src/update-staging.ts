@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { chmod, copyFile, mkdir, readdir, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { APP_NAME } from "./app-contract";
@@ -45,10 +46,17 @@ export async function pruneStagedVersions(keepFrom: string, env: Env = process.e
 /** Publishes the binary under its version by rename, so a half-written copy is never launchable. */
 export async function stageBinary(sourcePath: string, version: string, env: Env = process.env): Promise<string> {
   const target = stagedBinaryPath(version, env);
-  const partial = `${target}.partial`;
+  // Two clients can stage the same release at once; a shared scratch name would let one rename a
+  // copy the other is still truncating. Renaming distinct files onto one target is safe.
+  const partial = `${target}.${randomUUID()}.partial`;
   await mkdir(join(stagingDir(env), version), { recursive: true });
-  await copyFile(sourcePath, partial);
-  await chmod(partial, 0o755);
-  await rename(partial, target);
+  try {
+    await copyFile(sourcePath, partial);
+    await chmod(partial, 0o755);
+    await rename(partial, target);
+  } catch (error) {
+    await rm(partial, { force: true });
+    throw error;
+  }
   return target;
 }

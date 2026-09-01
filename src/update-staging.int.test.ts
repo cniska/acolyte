@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tempDir } from "./test-utils";
 import {
@@ -80,6 +80,26 @@ describe("stageBinary", () => {
     expect(staged).toBe(stagedBinaryPath("0.13.0", env));
     expect(await Bun.file(staged).text()).toBe("#!/bin/sh\necho staged\n");
     expect((await stat(staged)).mode & 0o111).not.toBe(0);
-    expect(await Bun.file(`${staged}.partial`).exists()).toBe(false);
+    expect(await readdir(join(stagingDir(env), "0.13.0"))).toEqual(["acolyte"]);
+  });
+
+  // Two clients staging the same release at once shared one scratch file, so a rename could publish
+  // a copy the other was still writing.
+  test("publishes one whole binary when stagers race on the same version", async () => {
+    const env = homeEnv();
+    const dir = dirs.createDir("acolyte-source-");
+    const bodies = Array.from({ length: 8 }, (_, index) => `#!/bin/sh\necho staged-${index}\n`.padEnd(64_000, "#"));
+    const sources = await Promise.all(
+      bodies.map(async (body, index) => {
+        const path = join(dir, `acolyte-${index}`);
+        await writeFile(path, body);
+        return path;
+      }),
+    );
+
+    await Promise.all(sources.map((source) => stageBinary(source, "0.13.0", env)));
+
+    expect(bodies).toContain(await Bun.file(stagedBinaryPath("0.13.0", env)).text());
+    expect(await readdir(join(stagingDir(env), "0.13.0"))).toEqual(["acolyte"]);
   });
 });
