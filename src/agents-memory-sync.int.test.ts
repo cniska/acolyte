@@ -3,7 +3,7 @@ import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { syncAgentsMdToProjectMemory } from "./agents-memory-sync";
 import { createSqliteMemoryStore } from "./memory-store";
-import { clearProjectResourceIdCache, projectResourceIdForLabel } from "./resource-id";
+import { projectResourceIdForLabel } from "./resource-id";
 import { tempDb, tempDir, writeGitOrigin } from "./test-utils";
 
 const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-agents-sync-", createSqliteMemoryStore);
@@ -11,7 +11,6 @@ const { createDir, cleanupDirs } = tempDir();
 afterEach(() => {
   cleanupStores();
   cleanupDirs();
-  clearProjectResourceIdCache();
 });
 
 const ORIGIN = "git@github.com:owner/repo.git";
@@ -20,7 +19,6 @@ const PROJECT_KEY = projectResourceIdForLabel("owner/repo");
 function createRepoWorkspace(): string {
   const workspace = createDir("acolyte-agents-workspace-");
   writeGitOrigin(workspace, ORIGIN);
-  clearProjectResourceIdCache();
   return workspace;
 }
 

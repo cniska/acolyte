@@ -1,12 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  clearProjectResourceIdCache,
-  projectLabelFromWorkspace,
-  projectResourceIdForLabel,
-  projectResourceIdFromWorkspace,
-} from "./resource-id";
+import { projectLabelFromWorkspace, projectResourceIdForLabel, projectResourceIdFromWorkspace } from "./resource-id";
 import { gitEnv, tempDir } from "./test-utils";
 import { clearWorkspaceSandboxCache } from "./workspace-sandbox";
 
@@ -37,13 +32,11 @@ async function createRepo(prefix: string, origin?: string): Promise<string> {
   await git(repo, ["commit", "-m", "init"]);
   if (origin) await git(repo, ["remote", "add", "origin", origin]);
   clearWorkspaceSandboxCache();
-  clearProjectResourceIdCache();
   return repo;
 }
 
 afterEach(() => {
   clearWorkspaceSandboxCache();
-  clearProjectResourceIdCache();
 });
 
 describe("project resource id", () => {
@@ -52,6 +45,24 @@ describe("project resource id", () => {
 
     expect(projectLabelFromWorkspace(repo)).toBe("acolyte-sh/acolyte");
     expect(projectResourceIdFromWorkspace(repo)).toBe(projectResourceIdForLabel("acolyte-sh/acolyte"));
+  });
+
+  test("sees a remote added after the first lookup", async () => {
+    const repo = await createRepo("acolyte-proj-id-late-remote-");
+    expect(projectResourceIdFromWorkspace(repo)).toBeNull();
+
+    await git(repo, ["remote", "add", "origin", "git@github.com:acolyte-sh/acolyte.git"]);
+
+    expect(projectResourceIdFromWorkspace(repo)).toBe(projectResourceIdForLabel("acolyte-sh/acolyte"));
+  });
+
+  test("follows a remote that is repointed at another repository", async () => {
+    const repo = await createRepo("acolyte-proj-id-repointed-", "git@github.com:acolyte-sh/acolyte.git");
+    expect(projectResourceIdFromWorkspace(repo)).toBe(projectResourceIdForLabel("acolyte-sh/acolyte"));
+
+    await git(repo, ["remote", "set-url", "origin", "git@github.com:acolyte-sh/other.git"]);
+
+    expect(projectResourceIdFromWorkspace(repo)).toBe(projectResourceIdForLabel("acolyte-sh/other"));
   });
 
   test("gives two checkouts of one repository the same id", async () => {
@@ -66,7 +77,6 @@ describe("project resource id", () => {
     const worktree = join(dirs.createDir("acolyte-proj-id-worktree-linked-"), "wt");
     await git(repo, ["worktree", "add", "-b", "topic", worktree]);
     clearWorkspaceSandboxCache();
-    clearProjectResourceIdCache();
 
     expect(projectResourceIdFromWorkspace(worktree)).toBe(projectResourceIdForLabel("acolyte-sh/acolyte"));
   });

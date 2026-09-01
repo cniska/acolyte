@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { addMemory, addObservation, listMemories, removeMemory } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
-import { clearProjectResourceIdCache, defaultUserResourceId } from "./resource-id";
+import { defaultUserResourceId } from "./resource-id";
 import { tempDb, tempDir, writeGitOrigin } from "./test-utils";
 
 const { create: createDb, cleanup } = tempDb("acolyte-memory-", createSqliteMemoryStore);
@@ -9,13 +9,11 @@ const { createDir, cleanupDirs } = tempDir();
 afterEach(() => {
   cleanup();
   cleanupDirs();
-  clearProjectResourceIdCache();
 });
 
 function createRepoWorkspace(): string {
   const workspace = createDir("acolyte-memory-workspace-");
   writeGitOrigin(workspace, "git@github.com:owner/repo.git");
-  clearProjectResourceIdCache();
   return workspace;
 }
 

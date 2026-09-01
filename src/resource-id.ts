@@ -26,17 +26,11 @@ function hashValue(value: string): string {
   return hasher.digest("hex").slice(0, 12);
 }
 
-const projectLabelCache = new Map<string, string | null>();
-
+// Read every time rather than cached: the daemon outlives `git remote add`, and a scope key that
+// keeps answering from before the remote existed is worse than the config read it saves.
 /** The `owner/repo` naming a workspace's project, or null when its `origin` names none. */
 export function projectLabelFromWorkspace(workspace: string): string | null {
-  const projectRoot = resolveProjectRoot(workspace);
-  const cached = projectLabelCache.get(projectRoot);
-  if (cached !== undefined) return cached;
-
-  const label = originRepositoryLabel(projectRoot);
-  projectLabelCache.set(projectRoot, label);
-  return label;
+  return originRepositoryLabel(resolveProjectRoot(workspace));
 }
 
 /** The repository's own name, without its owner, for surfaces that show the project rather than key it. */
@@ -52,10 +46,6 @@ export function projectResourceIdFromWorkspace(workspace: string): ProjectResour
 
 export function projectResourceIdForLabel(label: string): ProjectResourceId {
   return projectResourceIdSchema.parse(`proj_${hashValue(label)}`);
-}
-
-export function clearProjectResourceIdCache(): void {
-  projectLabelCache.clear();
 }
 
 export function defaultUserResourceId(env?: Env): UserResourceId {
