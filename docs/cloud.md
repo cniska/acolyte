@@ -27,7 +27,9 @@ A custom cloud URL must use HTTPS unless it targets localhost; `acolyte login` r
 
 ## Migration
 
-`acolyte login` copies the machine's existing data into the account: project- and user-scoped memories with their embeddings, and every stored session. Session-scoped memories, the retired-memory archive, and the active-session pointer stay local.
+`acolyte login` copies the machine's existing data into the account: project-scoped memories with their embeddings, memories already keyed to this account, and every stored session. Session-scoped memories, the retired-memory archive, and the active-session pointer stay local.
+
+Signing in then moves the local user scope (`user_local`) into the account, reporting how many memories moved and how many were dropped as facts the account already held. A record is written to the account before its local row goes, so an interrupted merge leaves the record in both places and the next sign-in finishes it. Memories keyed to another account are never copied.
 
 Cloud writes upsert on the record id, so signing in again copies only what a previous run left behind. A rejected token ends the copy and exits non-zero; any other failure keeps the credentials and reports the count it could not move.
 
