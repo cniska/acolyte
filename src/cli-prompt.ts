@@ -8,11 +8,12 @@ import { formatPromptError } from "./error-messages";
 import { t } from "./i18n";
 import type { ResourceId } from "./resource-id";
 import type { Session } from "./session-contract";
+import { sessionTitleFromPrompt } from "./session-title";
 import { printOutput } from "./ui";
 
 function setSessionTitle(session: Session, inputText: string): void {
-  if (session.title !== t("chat.session.default_title")) return;
-  const title = inputText.trim().replace(/\s+/g, " ").slice(0, 60);
+  if (session.title) return;
+  const title = sessionTitleFromPrompt(inputText);
   if (title.length > 0) session.title = title;
 }
 

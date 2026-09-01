@@ -12,6 +12,7 @@ import { t } from "./i18n";
 import { formatCompactNumber } from "./number-format";
 import { palette } from "./palette";
 import type { Session, SessionTokenUsageEntry, TokenUsage } from "./session-contract";
+import { sessionTitleFromPrompt } from "./session-title";
 import { createId } from "./short-id";
 import type { ActiveSkill } from "./skill-contract";
 import { ensurePathWithinSandbox } from "./workspace-sandbox";
@@ -91,9 +92,9 @@ type ApplyUserTurnParams = {
 };
 
 export function applyUserTurn(params: ApplyUserTurnParams): { row: ChatRow } {
-  if (params.session.title === t("chat.session.default_title"))
-    params.session.title =
-      params.displayText.trim().replace(/\s+/g, " ").slice(0, 60) || t("chat.session.default_title");
+  // Emptiness marks an unnamed session, not equality with a translated string: that comparison
+  // stops matching the moment the locale changes, and the session is never named from its prompt.
+  if (!params.session.title) params.session.title = sessionTitleFromPrompt(params.displayText);
   return { row: { id: `row_${createId()}`, kind: "user", content: params.displayText } };
 }
 

@@ -31,10 +31,10 @@ describe("chat turn helpers", () => {
     expect(history).toEqual(["hello", "review @src/agent.ts"]);
   });
 
-  test("applyUserTurn creates display row and initializes title", () => {
+  test("applyUserTurn creates display row and names an unnamed session", () => {
     const session: Session = {
       id: "sess_1",
-      title: "New Session",
+      title: "",
       model: "gpt-5-mini",
       createdAt: "2026-02-20T00:00:00.000Z",
       updatedAt: "2026-02-20T00:00:00.000Z",
@@ -49,6 +49,21 @@ describe("chat turn helpers", () => {
     expect(session.title).toBe("hello there");
     expect(result.row.kind).toBe("user");
     expect(result.row.content).toBe("hello there");
+  });
+
+  test("applyUserTurn leaves a session that already has a title", () => {
+    const session: Session = {
+      id: "sess_1",
+      title: "reviewing the auth flow",
+      model: "gpt-5-mini",
+      createdAt: "2026-02-20T00:00:00.000Z",
+      updatedAt: "2026-02-20T00:00:00.000Z",
+      messages: [],
+      tokenUsage: [],
+    };
+    applyUserTurn({ session, displayText: "and now the billing flow" });
+
+    expect(session.title).toBe("reviewing the auth flow");
   });
 
   describe("createAtReferenceSuggestion", () => {

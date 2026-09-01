@@ -3,7 +3,6 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { legacyChatRowFromTranscript, transcriptRowSchema } from "./chat-transcript-contract";
-import { t } from "./i18n";
 import { log } from "./log";
 import { dataDir } from "./paths";
 import type { SessionStore } from "./session-contract";
@@ -66,7 +65,9 @@ export function createSession(model: string): Session {
     id,
     createdAt: now,
     updatedAt: now,
-    title: t("chat.session.default_title"),
+    // Empty rather than the translated default: a title is stored and synced, so a localized one
+    // would put the writer's language into the record. Display supplies the wording.
+    title: "",
     model,
     messages: [],
     tokenUsage: [],
