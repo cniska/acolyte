@@ -100,3 +100,7 @@ acolyte trace task <id>          # inspect a task's lifecycle trace
 acolyte trace task <id> --json   # output as JSON lines
 acolyte trace --lines 100        # show last 100 tasks
 ```
+
+## Output and color
+
+Human output is colored only when stdout is a terminal, so redirecting or piping any command yields plain text. `NO_COLOR` in the environment turns color off for a terminal too.

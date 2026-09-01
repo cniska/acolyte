@@ -21,16 +21,26 @@ function hexToAnsi(hex: string): string {
   return `\x1b[38;2;${(n >> 16) & 255};${(n >> 8) & 255};${n & 255}m`;
 }
 
-export const dimText = (value: string): string => `\x1b[2m${value}\x1b[22m`;
+/** Escapes are for a terminal that renders them, not for a pipe, a file, or a NO_COLOR session. */
+function colorEnabled(): boolean {
+  if (process.env.NO_COLOR) return false;
+  return stdout.isTTY === true;
+}
+
+function paint(wrap: (value: string) => string): (value: string) => string {
+  return (value: string) => (colorEnabled() ? wrap(value) : value);
+}
+
+export const dimText = paint((value) => `\x1b[2m${value}\x1b[22m`);
 
 const color = {
   dim: dimText,
-  brand: (value: string): string => `${hexToAnsi(palette.brand)}${value}\x1b[39m`,
-  white: (value: string): string => `\x1b[37m${value}\x1b[39m`,
-  green: (value: string): string => `\x1b[32m${value}\x1b[39m`,
-  yellow: (value: string): string => `\x1b[33m${value}\x1b[39m`,
-  red: (value: string): string => `\x1b[31m${value}\x1b[39m`,
-  bold: (value: string): string => `\x1b[1m${value}\x1b[22m`,
+  brand: paint((value) => `${hexToAnsi(palette.brand)}${value}\x1b[39m`),
+  white: paint((value) => `\x1b[37m${value}\x1b[39m`),
+  green: paint((value) => `\x1b[32m${value}\x1b[39m`),
+  yellow: paint((value) => `\x1b[33m${value}\x1b[39m`),
+  red: paint((value) => `\x1b[31m${value}\x1b[39m`),
+  bold: paint((value) => `\x1b[1m${value}\x1b[22m`),
 };
 
 export function formatCliTitle(version: string): string {
@@ -55,7 +65,7 @@ export function printDim(content: string): void {
 
 /** A dimmed line led by a marker glyph, tinted `glyphColor` (hex) when set — else dim. */
 export function formatMarkerLine(glyph: string, glyphColor: string | undefined, rest: string): string {
-  const head = glyphColor ? `${hexToAnsi(glyphColor)}${glyph}\x1b[39m` : color.dim(glyph);
+  const head = glyphColor ? paint((value) => `${hexToAnsi(glyphColor)}${value}\x1b[39m`)(glyph) : color.dim(glyph);
   return `${head} ${color.dim(rest)}`;
 }
 
