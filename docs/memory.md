@@ -36,7 +36,7 @@ With cloud sync on, Acolyte tells the account what the current workspace's proje
 
 The user scope is the account, not the machine: signed in it is keyed by the subject of the cloud token, so every machine signed into one account reaches one user scope; signed out every machine uses `user_local`. Signing in moves `user_local` into the account and reports what moved — see [Cloud](cloud.md). While signed out, what the account holds is out of reach.
 
-A workspace whose repository has no remote naming an `owner/repo` has no project scope, and a remote addressing a filesystem path names none. Session and user memory work there as usual. An explicit project-scoped write reports that the workspace has no remote; distillation and the `AGENTS.md` sync have nowhere to commit, so they record the skip in the trace and the rules travel in the prompt instead.
+A workspace whose repository has no remote naming an `owner/repo` has no project scope, and a remote addressing a filesystem path names none. Session and user memory work there as usual. An explicit project-scoped write reports that the workspace has no remote; distillation has nowhere to commit, so it records the skip in the trace.
 
 ## Writing memory
 

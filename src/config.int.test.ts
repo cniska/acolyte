@@ -196,13 +196,13 @@ describe("config store", () => {
     const home = createDir("acolyte-config-home-");
     const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
-    writeFileSync(join(dataDir, "config.toml"), ["[features]", "syncAgents = true"].join("\n"), "utf8");
+    writeFileSync(join(dataDir, "config.toml"), ["[features]", "undoCheckpoints = true"].join("\n"), "utf8");
 
     const loaded = readConfigSync({ env: { HOME: home }, cwd: home });
-    expect(loaded.features).toEqual({ syncAgents: true });
+    expect(loaded.features).toEqual({ undoCheckpoints: true });
 
     const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
-    expect(resolved.features.syncAgents).toBe(true);
+    expect(resolved.features.undoCheckpoints).toBe(true);
   });
 
   test("readResolvedConfigSync applies defaults and model fallbacks", () => {
@@ -261,27 +261,27 @@ describe("config store", () => {
     mkdirSync(dataDir, { recursive: true });
     writeFileSync(join(dataDir, "config.toml"), "", "utf8");
 
-    await setConfigValue("features.syncAgents", "true", { env: { HOME: home }, cwd: home });
+    await setConfigValue("features.undoCheckpoints", "true", { env: { HOME: home }, cwd: home });
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).toContain("[features]");
-    expect(rawToml).toContain("syncAgents = true");
+    expect(rawToml).toContain("undoCheckpoints = true");
 
     const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
-    expect(resolved.features.syncAgents).toBe(true);
+    expect(resolved.features.undoCheckpoints).toBe(true);
   });
 
   test("unsetConfigValue supports dotted feature flags keys", async () => {
     const home = createDir("acolyte-config-home-");
     const dataDir = configDir({ HOME: home });
     mkdirSync(dataDir, { recursive: true });
-    writeFileSync(join(dataDir, "config.toml"), ["[features]", "syncAgents = true"].join("\n"), "utf8");
+    writeFileSync(join(dataDir, "config.toml"), ["[features]", "undoCheckpoints = true"].join("\n"), "utf8");
 
-    await unsetConfigValue("features.syncAgents", { env: { HOME: home }, cwd: home });
+    await unsetConfigValue("features.undoCheckpoints", { env: { HOME: home }, cwd: home });
     const rawToml = readFileSync(join(dataDir, "config.toml"), "utf8");
     expect(rawToml).not.toContain("[features]");
 
     const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
-    expect(resolved.features.syncAgents).toBe(false);
+    expect(resolved.features.undoCheckpoints).toBe(false);
   });
 
   test("project features merge with user features instead of replacing", async () => {
@@ -292,11 +292,11 @@ describe("config store", () => {
     mkdirSync(userDataDir, { recursive: true });
     mkdirSync(projectDataDir, { recursive: true });
 
-    writeFileSync(join(userDataDir, "config.toml"), ["[features]", "syncAgents = true"].join("\n"), "utf8");
+    writeFileSync(join(userDataDir, "config.toml"), ["[features]", "undoCheckpoints = true"].join("\n"), "utf8");
     writeFileSync(join(projectDataDir, "config.toml"), ["[features]", "cloudSync = true"].join("\n"), "utf8");
 
     const loaded = await readConfig({ env: { HOME: home }, cwd: project });
-    expect(loaded.features?.syncAgents).toBe(true);
+    expect(loaded.features?.undoCheckpoints).toBe(true);
     expect(loaded.features?.cloudSync).toBe(true);
   });
 

@@ -72,7 +72,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 ### 2.5 Options / configuration
 
 - **FR-36** — Configuration merges a user-scoped source and a project-scoped source, with project overriding user; the resolved surface includes model, reasoning level, provider base URLs, locale, log format, embedding model and optional embedding base URL, distill model, reply timeout, daemon port, and feature flags. The full settable-key set is fixed by the configuration reference, and an unknown key is rejected.
-- **FR-37** — Feature flags are opt-in and default off: syncing AGENTS.md into project memory, undo checkpoints, workspaces, cloud sync, MCP, and plugins. A disabled flag's surface (commands, tools, behavior) is absent, not merely inert.
+- **FR-37** — Feature flags are opt-in and default off: undo checkpoints, workspaces, cloud sync, MCP, and plugins. A disabled flag's surface (commands, tools, behavior) is absent, not merely inert.
 - **FR-38** — Reasoning level (`low`/`medium`/`high`) is accepted and mapped to the selected provider's native reasoning control.
 - **FR-39** — Locale selects the UI language; an unset locale defaults to English, and an unavailable locale falls back rather than failing.
 - **FR-40** — Global update flags `--update` (force) and `--no-update` (skip) override the default startup update behavior; `--no-update` wins when both are present.
@@ -100,7 +100,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **MEM-6** — Recall ranks records by relevance combining semantic similarity and keyword overlap; when the query cannot be embedded, recall fails with a classified error naming the cause rather than returning results ranked on the remaining partial signal.
 - **MEM-7** — Memory commit at finalize is best-effort background work; a commit failure is recorded observably and never fails or delays the user-facing response.
 - **MEM-8** — Exact-duplicate observations are not stored twice.
-- **MEM-9** — With the AGENTS.md-sync flag enabled, the project's AGENTS.md is committed as a deterministic project memory record and recalled on demand instead of being injected into the prompt.
+- **MEM-9** — *Retired (superseded by MEM-20).*
 - **MEM-10** — Retiring a record moves it to an archive rather than deleting it, and records why it left: superseded by named successor records, retired under capacity pressure, or judged not a fact. Retirement never destroys a record; explicit user removal is the only operation that does.
 - **MEM-11** — Retirement carries lineage: a superseded record names every successor that replaced it, so merging many records into one and splitting one into many are both recoverable. Commits that can converge on a project or user scope are serialized for that scope.
 - **MEM-12** — Archived records are excluded from recall and from the active listing, and can be inspected and restored on demand; a restored record is recallable again.
@@ -111,7 +111,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **MEM-17** — A fork belongs to the project it contributes to: identity comes from the `upstream` remote where one exists and from `origin` otherwise, so a contributor's clone reaches the memory of the repository it forked, and a fork with no `upstream` is its own project.
 - **MEM-18** — A remote addressing a filesystem path names no repository other checkouts can share, so it yields no project identity.
 - **MEM-19** — A workspace whose repository has no remote naming an `owner/repo`, and a workspace that is not in a repository, has no project scope: session and user memory still work there, an explicit project-scoped write fails saying the workspace has no remote, and a background project-scoped commit is skipped and recorded in the trace.
-- **MEM-20** — No user-initiated path writes a memory record: no tool the model can call, no command, and no typed phrase stores one, so a "remember this" message is answered the way any other message is.
+- **MEM-20** — Distillation is the only writer of memory: no tool the model can call, no command, no typed phrase, and no host projection of a file stores a record, so a "remember this" message is answered the way any other message is.
 
 ## 4. Lifecycle & completion requirements (LC)
 

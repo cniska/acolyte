@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import { AGENTS_MD_MEMORY_ID } from "./agents-memory-sync";
 import type { MemoryDisposition, MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
 import { createMemoryPolicy } from "./memory-contract";
 import type { DistillObservation } from "./memory-distiller";
@@ -699,40 +698,6 @@ describe("supersession", () => {
       by: store.written.map((r) => r.id),
     });
     expect(metrics?.supersededFacts).toBe(1);
-  });
-
-  test("never supersedes the host-managed AGENTS.md record", async () => {
-    const store = createMockStore([
-      {
-        id: AGENTS_MD_MEMORY_ID,
-        scopeKey: "proj_abc123",
-        kind: "stored",
-        content: "Project rules (AGENTS.md):\nverify before every commit",
-        createdAt: "2026-03-04T10:00:00.000Z",
-        tokenEstimate: 12,
-      },
-    ]);
-    let seen = "";
-    const distiller = createMemoryDistiller({
-      store,
-      runner: async (_prompt, userContent) => {
-        seen = userContent;
-        return [
-          {
-            scope: "project",
-            content: "verify runs before every commit",
-            topic: null,
-            supersedes: [AGENTS_MD_MEMORY_ID],
-          },
-        ];
-      },
-      policy: testPolicy,
-    });
-    const metrics = await distiller.commit(commitCtx);
-
-    expect(seen).not.toContain(AGENTS_MD_MEMORY_ID);
-    expect(store.retired).toHaveLength(0);
-    expect(metrics?.supersededFacts).toBe(0);
   });
 
   test("supersedes a user-authored stored record", async () => {

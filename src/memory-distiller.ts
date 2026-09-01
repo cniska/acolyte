@@ -1,6 +1,5 @@
 import type { LanguageModelV4ToolCall } from "@ai-sdk/provider";
 import { z } from "zod";
-import { AGENTS_MD_MEMORY_ID } from "./agents-memory-sync";
 import { appConfig } from "./app-config";
 import { clampToTokenEstimate, type DistillScope, normalizeMemoryText } from "./distill-ops";
 import { log } from "./log";
@@ -85,13 +84,6 @@ export type DistillObservation = {
   supersedes: readonly string[];
 };
 
-// The AGENTS.md record is a projection of a file, not a fact anyone wrote: the file is its truth,
-// and its sync short-circuits on an unchanged snapshot, so a supersession would drop the project's
-// rules from recall until AGENTS.md next changes.
-function isHostManaged(record: MemoryRecord): boolean {
-  return record.id === AGENTS_MD_MEMORY_ID;
-}
-
 export function renderKnownFacts(candidates: readonly MemoryRecord[]): string {
   if (candidates.length === 0) return "";
   const lines = candidates.map((r) => `${r.id} (${scopeFromKey(r.scopeKey)}): ${normalizeMemoryText(r.content)}`);
@@ -122,14 +114,13 @@ export async function selectSupersessionCandidates(
     resourceId: ctx.resourceId,
   };
   try {
-    const found = await searchMemories(query, scopeCtx, {
+    return await searchMemories(query, scopeCtx, {
       limit: options.policy.recallCandidateLimit,
       store: options.store,
       policy: options.policy,
       touch: false,
       embed: options.embed,
     });
-    return found.filter((record) => !isHostManaged(record));
   } catch (error) {
     // Distillation without candidates still writes correct new facts; it just cannot supersede.
     log.warn("memory.distill.candidates_failed", { error: String(error) });
