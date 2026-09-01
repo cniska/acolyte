@@ -52,15 +52,15 @@ function readOriginUrl(configPath: string): string | null {
  * host is excluded, so a repository keeps its identity when it moves between forges.
  */
 export function repositoryLabel(url: string): string | null {
-  const addressed = url
-    .trim()
-    .replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
-    .replace(/^[^/@]*@/, "");
+  const trimmed = url.trim();
+  const scheme = /^[a-z][a-z0-9+.-]*:\/\//i.exec(trimmed)?.[0];
+  const addressed = trimmed.slice(scheme?.length ?? 0).replace(/^[^/@]*@/, "");
   // A path names a directory on one machine, not a repository other checkouts can share.
   if (addressed.startsWith("/")) return null;
 
-  // `host:path` addresses the same repository as `ssh://host/path`, and a port does not identify it.
-  const rooted = addressed.replace(/^([^/:]+):(\d+\/)?/, "$1/");
+  // `host:path` addresses the same repository as `ssh://host/path`. Only the URL form can carry a
+  // port, so in the shorthand a leading number is the first path segment and has to survive.
+  const rooted = scheme ? addressed.replace(/^([^/:]+)(:\d+)?/, "$1") : addressed.replace(/^([^/:]+):/, "$1/");
   const [host, ...ownerAndName] = rooted
     .replace(/\.git$/, "")
     .split("/")

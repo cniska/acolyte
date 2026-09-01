@@ -18,6 +18,12 @@ describe("repositoryLabel", () => {
     expect(repositoryLabel("https://GitHub.com/Acolyte-SH/Acolyte.git")).toBe("acolyte-sh/acolyte");
   });
 
+  // A port exists only in the URL form: `host:1000/owner/repo` is a path, `ssh://host:1000/...` is a port.
+  test("keeps a numeric path segment in the shorthand form and drops a port in the url form", () => {
+    expect(repositoryLabel("git@host:1000/owner/repo.git")).toBe("1000/owner/repo");
+    expect(repositoryLabel("ssh://git@host:1000/owner/repo.git")).toBe("owner/repo");
+  });
+
   test("has no identity to share for a local or empty remote", () => {
     expect(repositoryLabel("/srv/git/repo.git")).toBeNull();
     expect(repositoryLabel("file:///srv/git/repo.git")).toBeNull();
