@@ -23,7 +23,7 @@ Acolyte is for developers who want reliable, observable agent behavior, not a bl
 | Architecture | Headless daemon with typed RPC — CLI, editors, and custom clients share the same protocol |
 | Lifecycle | 4-phase pipeline (resolve → prepare → generate → finalize) in separate, testable modules |
 | Post-write effects | Automatic format and lint after writes; lint errors surface for the model to decide on |
-| Memory | Context distillation extracts facts from conversations into 3-tier persistent storage |
+| Memory | Context distillation extracts durable facts from completed work, scoped to session, project, or user |
 | Context budgeting | Proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation |
 | Developer experience | Custom React TUI with fuzzy search, autocomplete, model picker, structured output, and AST-based editing |
 
@@ -37,7 +37,7 @@ Every request flows through four explicit phases, each in its own module with it
 
 ### Memory
 
-Instead of compressing context under pressure, Acolyte proactively extracts structured facts (observations, reflections, and corrections) and commits them to persistent storage across three tiers: session, project, and user. The pipeline is explicit and each stage is strategy-injectable.
+Instead of compressing context under pressure, Acolyte proactively extracts durable observations from completed work and commits them at session, project, or user scope. A later observation can supersede the records it replaces, which move to a restorable archive with lineage. The pipeline is explicit and each stage is strategy-injectable.
 
 ### Context budgeting
 
