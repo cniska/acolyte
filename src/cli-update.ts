@@ -6,7 +6,7 @@ import { stateDir } from "./paths";
 import { ansi } from "./tui/styles";
 import { dimText, printDim, printError, printWarning } from "./ui";
 import { stageUpdate } from "./update-ops";
-import { pruneStagedVersions, stagedBinaryPath } from "./update-staging";
+import { isVersionStaged, pruneStagedVersions } from "./update-staging";
 
 const GITHUB_API = "https://api.github.com/repos/cniska/acolyte/releases/latest";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -137,10 +137,6 @@ function renderError(message: string): void {
   stdout.write(ansi.cursorShow);
 }
 
-async function isAlreadyStaged(version: string): Promise<boolean> {
-  return await Bun.file(stagedBinaryPath(version)).exists();
-}
-
 export async function updateMode(): Promise<void> {
   const currentVersion = resolveCliVersion();
   const update = await checkForUpdate(currentVersion, { force: true });
@@ -180,7 +176,7 @@ export async function stageUpdateOnStartup(options?: { skip?: boolean }): Promis
     await pruneStagedVersions(currentVersion);
     const update = await checkForUpdate(currentVersion);
     if (!update?.available) return;
-    if (await isAlreadyStaged(update.latest)) return;
+    if (await isVersionStaged(update.latest)) return;
 
     // A failure needs no bookkeeping: the day-cache still names this release, so the next start
     // reads it and tries again without asking GitHub a second time.

@@ -39,6 +39,10 @@ export async function newestStagedVersion(env: Env = process.env): Promise<strin
   return (await listStagedVersions(env))[0] ?? null;
 }
 
+export async function isVersionStaged(version: string, env: Env = process.env): Promise<boolean> {
+  return await Bun.file(stagedBinaryPath(version, env)).exists();
+}
+
 /** Drops staged builds older than `keepFrom`. The launcher would never pick them, and keeping
  *  `keepFrom` itself means a caller can prune from the version it is about to hand over to. */
 export async function pruneStagedVersions(keepFrom: string, env: Env = process.env): Promise<void> {
