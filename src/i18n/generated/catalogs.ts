@@ -215,6 +215,9 @@ export type MessageArgs = {
   "cli.trace.col.task_id": never;
   "cli.trace.col.time": never;
   "cli.trace.no_lines_for_task": { taskId: string | number };
+  "cli.trace.no_matching_events": { taskId: string | number };
+  "cli.trace.unknown_event": { event: string | number };
+  "cli.trace.filter_needs_task": never;
   "cli.trace.no_store": never;
   "cli.trace.no_tasks": never;
   "cli.trace.unknown_subcommand": { subcommand: string | number };

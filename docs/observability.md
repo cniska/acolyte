@@ -24,6 +24,8 @@ Memory commit events carry the shape of what was distilled: the message count an
 
 `acolyte trace` lists recent tasks. `acolyte trace task <id>` renders the task's tool timeline and compact summary. Pass `--verbose` to include tool output events, or `--json` for one JSON line per event. `--verbose` shapes human output only, projecting each event through the catalog's display fields; `--json` carries every recorded event with every field stored on it.
 
+`--event <name>` keeps the named events, taking a comma-separated set; `--tool <name>` keeps every event carrying that tool, so a tool's calls and results stay together. Both narrow `--json` as well as human output, and a filtered view lists one row per event instead of the paired timeline.
+
 ```bash
 acolyte trace
 acolyte trace task <id>

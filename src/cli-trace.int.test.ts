@@ -605,4 +605,92 @@ describe("traceMode", () => {
     expect(text).toContain("files");
     expect(text).toContain("2");
   });
+
+  function createFilterStore(): TraceStore {
+    const store = createTestStore();
+    const write = (event: string, fields: Record<string, string>) =>
+      store.write({ timestamp: "2026-01-01T00:00:00.000Z", taskId: "task_f", event, fields });
+    write("lifecycle.start", { model: "gpt-5" });
+    write("lifecycle.tool.call", { tool: "file-read", path: "src/app.ts" });
+    write("lifecycle.tool.result", { tool: "file-read", duration_ms: "12" });
+    write("lifecycle.tool.call", { tool: "shell-exec", command: "bun test" });
+    write("lifecycle.tool.result", { tool: "shell-exec", duration_ms: "900" });
+    write("lifecycle.model_usage", { input_tokens: "1200" });
+    return store;
+  }
+
+  test("--event keeps only the named event", async () => {
+    const { deps, output } = createDeps({ traceStore: createFilterStore() });
+    await traceMode(["task", "task_f", "--event", "lifecycle.model_usage"], deps);
+    const text = output();
+    expect(text).toContain("lifecycle.model_usage");
+    expect(text).not.toContain("lifecycle.tool.call");
+    expect(text).not.toContain("lifecycle.start");
+  });
+
+  test("--event accepts a comma-separated set", async () => {
+    const { deps, output } = createDeps({ traceStore: createFilterStore() });
+    await traceMode(["task", "task_f", "--event", "lifecycle.start,lifecycle.model_usage"], deps);
+    const text = output();
+    expect(text).toContain("lifecycle.start");
+    expect(text).toContain("lifecycle.model_usage");
+    expect(text).not.toContain("lifecycle.tool.result");
+  });
+
+  test("--tool keeps a tool's calls and results together", async () => {
+    const { deps, output } = createDeps({ traceStore: createFilterStore() });
+    await traceMode(["task", "task_f", "--tool", "shell-exec"], deps);
+    const text = output();
+    expect(text).toContain("shell-exec");
+    expect(text).toContain("lifecycle.tool.call");
+    expect(text).toContain("lifecycle.tool.result");
+    expect(text).not.toContain("file-read");
+  });
+
+  test("--event and --tool compose", async () => {
+    const { deps, output } = createDeps({ traceStore: createFilterStore() });
+    await traceMode(["task", "task_f", "--event", "lifecycle.tool.result", "--tool", "file-read"], deps);
+    const text = output();
+    expect(text).toContain("file-read");
+    expect(text).not.toContain("shell-exec");
+    expect(text).not.toContain("lifecycle.tool.call");
+  });
+
+  test("a filter shapes json output too", async () => {
+    const { deps, output } = createDeps({ traceStore: createFilterStore() });
+    await traceMode(["task", "task_f", "--event", "lifecycle.model_usage", "--json"], deps);
+    const lines = output().trim().split("\n").filter(Boolean);
+    expect(lines.length).toBe(1);
+    expect(JSON.parse(lines[0]).event).toBe("lifecycle.model_usage");
+  });
+
+  test("an unknown event name is refused by name", async () => {
+    let errorMsg = "";
+    const { deps } = createDeps({
+      traceStore: createFilterStore(),
+      commandError: (_name, msg) => {
+        errorMsg = msg ?? "";
+      },
+    });
+    await traceMode(["task", "task_f", "--event", "lifecycle.bogus"], deps);
+    expect(errorMsg).toContain("lifecycle.bogus");
+  });
+
+  test("a filter matching nothing says so rather than printing an empty trace", async () => {
+    const { deps, output } = createDeps({ traceStore: createFilterStore() });
+    await traceMode(["task", "task_f", "--tool", "web-fetch"], deps);
+    expect(output()).toContain("No events match the filter");
+  });
+
+  test("a filter on the task list is refused", async () => {
+    let errorMsg = "";
+    const { deps } = createDeps({
+      traceStore: createFilterStore(),
+      commandError: (_name, msg) => {
+        errorMsg = msg ?? "";
+      },
+    });
+    await traceMode(["list", "--tool", "shell-exec"], deps);
+    expect(errorMsg).toContain("acolyte trace task");
+  });
 });

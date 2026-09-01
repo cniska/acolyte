@@ -1258,6 +1258,28 @@
       }
     }
   },
+  "cli.trace.no_matching_events": "No events match the filter for task_id={taskId}",
+  "@cli.trace.no_matching_events": {
+    "description": "Shown when a task's trace exists but no event survives --event/--tool. 'task_id=' is a literal machine field name printed verbatim and must not be translated; {taskId} is its value.",
+    "placeholders": {
+      "taskId": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.trace.unknown_event": "Unknown trace event: {event}",
+  "@cli.trace.unknown_event": {
+    "description": "Shown when --event names an event outside the trace catalog. {event} is the name as typed.",
+    "placeholders": {
+      "event": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.trace.filter_needs_task": "Filters apply to a task: acolyte trace task <id> --event <name>",
+  "@cli.trace.filter_needs_task": {
+    "description": "Shown when --event or --tool is passed to the task list instead of a single task. The command example is literal and must not be translated."
+  },
   "cli.trace.no_store": "No trace data available. Run a task first.",
   "@cli.trace.no_store": {
     "description": "Shown by 'trace' when no lifecycle traces have been recorded yet. Two short sentences: the state, then what to do."

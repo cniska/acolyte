@@ -549,6 +549,17 @@ export const EN_MESSAGES = {
     { kind: "text", value: "No lines found for task_id=" },
     { kind: "arg", name: "taskId" },
   ],
+  "cli.trace.no_matching_events": [
+    { kind: "text", value: "No events match the filter for task_id=" },
+    { kind: "arg", name: "taskId" },
+  ],
+  "cli.trace.unknown_event": [
+    { kind: "text", value: "Unknown trace event: " },
+    { kind: "arg", name: "event" },
+  ],
+  "cli.trace.filter_needs_task": [
+    { kind: "text", value: "Filters apply to a task: acolyte trace task <id> --event <name>" },
+  ],
   "cli.trace.no_store": [{ kind: "text", value: "No trace data available. Run a task first." }],
   "cli.trace.no_tasks": [{ kind: "text", value: "No tasks found." }],
   "cli.trace.unknown_subcommand": [
