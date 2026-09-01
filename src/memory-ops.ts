@@ -89,8 +89,11 @@ export async function addMemory(content: string, options: AddMemoryOptions = {})
   const store = options.store ?? (await getMemoryStore());
   const scopeKey = resolveScopeKey(scope, { sessionId, workspace, resourceId });
   if (!scopeKey) {
-    if (scope === "project") throw new Error("This workspace has no git remote, so it has no project memory");
-    throw new Error(`Cannot resolve scope key for scope "${scope}"`);
+    throw new Error(
+      scope === "project"
+        ? "This workspace has no git remote, so it has no project memory"
+        : `Cannot resolve scope key for scope "${scope}"`,
+    );
   }
 
   const record = {

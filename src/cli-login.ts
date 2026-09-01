@@ -24,10 +24,28 @@ type LoginModeDeps = {
   mergeUserScope: (url: string, token: string, accountKey: UserResourceId) => Promise<UserScopeMergeSummary>;
 };
 
+function reportCopy(deps: LoginModeDeps, summary: CloudMigrationSummary): void {
+  deps.printDim(t("cli.login.migrate.done", { memories: summary.memories, sessions: summary.sessions }));
+  if (summary.failures > 0) deps.printDim(t("cli.login.migrate.failures", { failures: summary.failures }));
+  if (summary.embeddingFailures > 0) {
+    deps.printDim(t("cli.login.migrate.novectors", { embeddingFailures: summary.embeddingFailures }));
+  }
+}
+
+function reportMerge(deps: LoginModeDeps, merge: UserScopeMergeSummary): void {
+  deps.printDim(t("cli.login.merge.done", { merged: merge.merged }));
+  if (merge.duplicates > 0) deps.printDim(t("cli.login.merge.duplicates", { duplicates: merge.duplicates }));
+  if (merge.failures > 0) deps.printDim(t("cli.login.merge.failures", { failures: merge.failures }));
+  if (merge.embeddingFailures > 0) {
+    deps.printDim(t("cli.login.merge.novectors", { embeddingFailures: merge.embeddingFailures }));
+  }
+}
+
 /**
- * Stores the credentials and copies what is already on this machine into the account. Signing in is
- * the first moment both the feature flag and a token exist, and every cloud write upserts on the
- * record id, so signing in again copies whatever a failed run left behind.
+ * Stores the credentials, copies what is already on this machine into the account, and moves what the
+ * machine remembered while signed out into it. Signing in is the first moment both the feature flag
+ * and a token exist, and every cloud write upserts on the record id, so signing in again finishes
+ * whatever a failed run left behind.
  */
 async function completeLogin(deps: LoginModeDeps, url: string, token: string, confirmation: string): Promise<void> {
   if (!isSecureUrl(url)) {
@@ -51,26 +69,8 @@ async function completeLogin(deps: LoginModeDeps, url: string, token: string, co
 
   deps.printDim(t("cli.login.migrate.start"));
   try {
-    const summary = await deps.migrateToCloud(url, token, accountKey);
-    deps.printDim(t("cli.login.migrate.done", { memories: summary.memories, sessions: summary.sessions }));
-    if (summary.failures > 0) {
-      deps.printDim(t("cli.login.migrate.failures", { failures: summary.failures }));
-    }
-    if (summary.embeddingFailures > 0) {
-      deps.printDim(t("cli.login.migrate.novectors", { embeddingFailures: summary.embeddingFailures }));
-    }
-
-    const merge = await deps.mergeUserScope(url, token, accountKey);
-    deps.printDim(t("cli.login.merge.done", { merged: merge.merged }));
-    if (merge.duplicates > 0) {
-      deps.printDim(t("cli.login.merge.duplicates", { duplicates: merge.duplicates }));
-    }
-    if (merge.failures > 0) {
-      deps.printDim(t("cli.login.merge.failures", { failures: merge.failures }));
-    }
-    if (merge.embeddingFailures > 0) {
-      deps.printDim(t("cli.login.merge.novectors", { embeddingFailures: merge.embeddingFailures }));
-    }
+    reportCopy(deps, await deps.migrateToCloud(url, token, accountKey));
+    reportMerge(deps, await deps.mergeUserScope(url, token, accountKey));
   } catch (error) {
     deps.printError(
       isCredentialRejection(error)
