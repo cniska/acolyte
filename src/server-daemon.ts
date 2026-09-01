@@ -63,7 +63,8 @@ type ServerIdentity = { protocolVersion: unknown; build: unknown };
 let localBuildIdentity: string | undefined;
 
 /** The protocol version is per release line, so it cannot tell a freshly launched update from the
- *  daemon the build before it left running. The build identity can. */
+ *  daemon the build before it left running. The build identity can. Clients compare this string
+ *  for equality, so changing how it reads splits every client from every daemon for one restart. */
 function localBuild(): string {
   localBuildIdentity ??= formatVersionWithCommit(resolveCliVersion(), resolveCliCommitShort());
   return localBuildIdentity;
@@ -275,14 +276,12 @@ export async function ensureLocalServer(
     return { port, pid: reusedLock?.pid ?? 0, started: false };
   }
 
-  // Whatever answers here belongs to another build or another protocol, and the port is the one
-  // thing it cannot share. Asking it to stop leaves a live turn alone, and a daemon that keeps one
-  // running keeps the port too, so this client serves through it until that turn is done.
+  // Whatever answers here runs another build or another protocol, and the port is the one thing it
+  // cannot share. Refused means a turn is live, unresponsive means it outlived the signal; either
+  // way it still holds the port, and serving through it beats failing the client. A daemon that did
+  // stop took its own lock with it, so nothing here removes one it may no longer own.
   if (await isServerListening(apiUrl)) {
     const stopped = await stopLocalServer({ port, apiKey, env });
-    // Refused means a turn is live; unresponsive means it outlived the signal. Either way it still
-    // holds the port, and serving through it beats failing the client outright. A daemon that did
-    // stop took its own lock with it, so nothing here removes one it may no longer own.
     if (stopped.kind === "refused" || stopped.kind === "unresponsive") {
       const heldLock = await readServerLock(lockPath);
       return { port, pid: heldLock?.pid ?? 0, started: false };
