@@ -49,7 +49,7 @@ Any unfinished task — `accepted`, `queued`, or `running` — blocks shutdown.
 - `POST /v1/admin/shutdown` answers `{ ok: false, live: [{ taskId, sessionId }] }` with 409 while work is unfinished
 - `{ "force": true }` in the body stops the daemon regardless, abandoning that work
 - `acolyte stop` asks first and escalates to SIGTERM when the daemon does not answer, rejects the request as unauthorized, or stays up after accepting it
-- a refusal exits non-zero; a refused `restart` starts no replacement, and a self-update never forces
+- a refusal exits non-zero; a refused `restart` starts no replacement
 - a turn on `/v1/chat/stream` registers no task, so it does not block a stop
 
 ## Queue model

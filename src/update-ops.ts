@@ -1,17 +1,14 @@
-import { access, chmod, copyFile, lstat, mkdir, readdir, rename, rm, unlink } from "node:fs/promises";
+import { access, lstat, mkdir, readdir, rm, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import { APP_NAME } from "./app-contract";
 import { errorMessage } from "./error-contract";
+import { pruneStagedVersions, stageBinary } from "./update-staging";
 
 const FETCH_TIMEOUT_MS = 5_000;
 
-export function isSelfUpdatableBinary(execPath: string = process.execPath): boolean {
-  return basename(execPath) === APP_NAME;
-}
-
 export type ProgressCallback = (received: number, total: number) => void;
-export type InstallResult = { success: boolean; error?: string };
+export type StageResult = { success: boolean; error?: string };
 
 export async function downloadToFile(url: string, dest: string, onProgress?: ProgressCallback): Promise<void> {
   const res = await fetch(url, {
@@ -98,19 +95,18 @@ export async function verifyChecksum(filePath: string, checksumUrl: string): Pro
   }
 }
 
-export async function installUpdate(
+/** Puts a verified build in the staging directory for the launcher to pick up next start. */
+export async function stageUpdate(
   downloadUrl: string,
   checksumUrl: string | null,
+  version: string,
   onProgress?: ProgressCallback,
-): Promise<InstallResult> {
+): Promise<StageResult> {
   if (!checksumUrl) return { success: false, error: "Update checksum is unavailable" };
-  const binaryPath = process.execPath;
-  if (!isSelfUpdatableBinary(binaryPath))
-    return { success: false, error: `refusing to overwrite ${binaryPath}: not the installed acolyte binary` };
   const tmp = tmpdir();
-  const tarPath = join(tmp, `acolyte-update-${Date.now()}.tar.gz`);
-  const extractDir = join(tmp, `acolyte-extract-${Date.now()}`);
-  const newBinaryPath = `${binaryPath}.new`;
+  const stamp = `${process.pid}-${Date.now()}`;
+  const tarPath = join(tmp, `acolyte-update-${stamp}.tar.gz`);
+  const extractDir = join(tmp, `acolyte-extract-${stamp}`);
 
   try {
     await downloadToFile(downloadUrl, tarPath, onProgress);
@@ -119,19 +115,12 @@ export async function installUpdate(
     await mkdir(extractDir, { recursive: true });
     const extractedPath = await extractBinary(tarPath, extractDir);
 
-    await copyFile(extractedPath, newBinaryPath);
-    await chmod(newBinaryPath, 0o755);
-    await rename(newBinaryPath, binaryPath);
+    await stageBinary(extractedPath, version);
+    await pruneStagedVersions(version);
 
     return { success: true };
   } catch (error) {
-    const message = errorMessage(error);
-    try {
-      await unlink(newBinaryPath);
-    } catch {
-      // ignore
-    }
-    return { success: false, error: message };
+    return { success: false, error: errorMessage(error) };
   } finally {
     try {
       await unlink(tarPath);

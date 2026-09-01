@@ -1,4 +1,5 @@
 import { appConfig } from "./app-config";
+import { compareVersions, resolveCliVersion } from "./cli-version";
 import { decodeTokenSubject } from "./credentials";
 import { createStreamError, type ErrorId, errorIdSchema } from "./error-handling";
 import { mapQuotaErrorMessage } from "./error-messages";
@@ -20,6 +21,7 @@ import type { StatusPayload } from "./status-contract";
 import type { TaskId, TaskState, TaskTransitionReason } from "./task-contract";
 import { TaskRegistry } from "./task-registry";
 import { closeDefaultTraceStore } from "./trace-store";
+import { newestStagedVersion } from "./update-staging";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : appConfig.server.port;
 const HOST = "127.0.0.1";
@@ -107,6 +109,8 @@ async function createStatusPayload(): Promise<StatusPayload> {
   const resourceDiagnostics = collectResourceDiagnostics();
   const memory = await memoryStatusSummary();
   const cloudUser = appConfig.cloudToken ? decodeTokenSubject(appConfig.cloudToken) : undefined;
+  const staged = await newestStagedVersion();
+  const stagedUpdate = staged && compareVersions(staged, resolveCliVersion()) > 0 ? staged : undefined;
   return {
     ok: true,
     providers,
@@ -114,6 +118,7 @@ async function createStatusPayload(): Promise<StatusPayload> {
     model,
     ...(memory ? { memory } : {}),
     protocol_version: PROTOCOL_VERSION,
+    ...(stagedUpdate ? { update_staged: stagedUpdate } : {}),
     capabilities: formatServerCapabilities(),
     service: `http://localhost:${PORT}`,
     tasks_total: taskSummary.total,

@@ -1359,14 +1359,6 @@
       }
     }
   },
-  "cli.update.daemon_busy": "Server left running on the old version: a turn is in progress. Run acolyte restart once it finishes.",
-  "@cli.update.daemon_busy": {
-    "description": "Shown after an update when the old server could not be replaced because a turn was in flight. 'acolyte restart' is a literal command and must not be translated."
-  },
-  "cli.update.daemon_left_running": "Server left running on the old version: it did not stop. Run acolyte ps to find it, then stop that process and run acolyte start",
-  "@cli.update.daemon_left_running": {
-    "description": "Shown after an update when the old server refused to stop. 'acolyte ps' and 'acolyte start' are literal commands and must not be translated. No trailing period, matching the source line."
-  },
   "error.connection.generic": "Cannot reach server at {url}. Check apiUrl and server availability.",
   "@error.connection.generic": {
     "description": "Shown when the client cannot reach the server and no more specific cause applies (error-messages.ts:102). {url} is the address that was tried; 'apiUrl' is a literal config key name.",
@@ -1624,6 +1616,10 @@
   "status.label.tasks_total": "Tasks total",
   "@status.label.tasks_total": {
     "description": "Row label in the status report for tasks handled since the server started."
+  },
+  "status.label.update_staged": "Update staged",
+  "@status.label.update_staged": {
+    "description": "Row label in the status report for a downloaded version that starts on the next launch."
   },
   "status.memory.summary": "{storage} ({count, plural, one {# entry} other {# entries}})",
   "@status.memory.summary": {

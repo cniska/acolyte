@@ -4,9 +4,13 @@ Acolyte manages automatic binary updates, protocol compatibility, database migra
 
 ## Auto-update
 
-The CLI checks for updates on startup (at most once per 24 hours). When a newer version exists, it downloads the binary, verifies the checksum, replaces itself, stops the running server, and re-execs. The user sees a progress bar and then the new version starts normally.
+The `acolyte` command on your PATH is a launcher. It runs whichever is newer: the binary the install owns, or a staged build under `<data>/bin/<version>/acolyte` (see [Paths](./paths.md)).
 
-Skip the check with `--no-update` or `ACOLYTE_SKIP_UPDATE=1`. Force a check with `acolyte update`.
+The CLI checks for updates on startup (at most once per 24 hours). When a newer version exists, it downloads the binary, verifies the checksum, and stages it. Nothing is printed and the running session is untouched; the staged build starts the next time you run `acolyte`. Builds older than the one running are removed at startup, so the staging directory holds one build.
+
+Staging writes only inside the data directory, so an update never overwrites a file an installer or package manager owns.
+
+Skip the check with `--no-update` or `ACOLYTE_SKIP_UPDATE=1`. Force a check with `acolyte update`, which reports progress and the version it staged. `acolyte status` names a staged version while one is waiting.
 
 ## Version compatibility
 

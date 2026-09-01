@@ -1,13 +1,12 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { stdout } from "node:process";
-import { resolveCliVersion } from "./cli-version";
-import { t } from "./i18n";
+import { compareVersions, resolveCliVersion, UNVERSIONED_CLI_VERSION } from "./cli-version";
 import { stateDir } from "./paths";
-import { stopAllLocalServers } from "./server-daemon";
 import { ansi } from "./tui/styles";
 import { dimText, printDim, printError, printWarning } from "./ui";
-import { installUpdate, isSelfUpdatableBinary } from "./update-ops";
+import { stageUpdate } from "./update-ops";
+import { pruneStagedVersions, stagedBinaryPath } from "./update-staging";
 
 const GITHUB_API = "https://api.github.com/repos/cniska/acolyte/releases/latest";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -21,19 +20,6 @@ export function resolveAssetName(): string {
   const platform = process.platform === "darwin" ? "darwin" : "linux";
   const arch = process.arch === "arm64" ? "arm64" : "x64";
   return `acolyte-${platform}-${arch}.tar.gz`;
-}
-
-export function compareSemver(current: string, latest: string): boolean {
-  const parse = (v: string): number[] =>
-    v
-      .replace(/^v/, "")
-      .split(".")
-      .map((n) => Number.parseInt(n, 10) || 0);
-  const [cMajor = 0, cMinor = 0, cPatch = 0] = parse(current);
-  const [lMajor = 0, lMinor = 0, lPatch = 0] = parse(latest);
-  if (lMajor !== cMajor) return lMajor > cMajor;
-  if (lMinor !== cMinor) return lMinor > cMinor;
-  return lPatch > cPatch;
 }
 
 function cachePath(baseDir: string): string {
@@ -79,7 +65,7 @@ async function checkForUpdate(
     if (cached) {
       const age = Date.now() - new Date(cached.checkedAt).getTime();
       if (age < CHECK_INTERVAL_MS) {
-        const available = compareSemver(currentVersion, cached.latest);
+        const available = compareVersions(cached.latest, currentVersion) > 0;
         return {
           available,
           latest: cached.latest,
@@ -107,7 +93,7 @@ async function checkForUpdate(
   });
 
   return {
-    available: compareSemver(currentVersion, version),
+    available: compareVersions(version, currentVersion) > 0,
     latest: version,
     downloadUrl: asset.browser_download_url,
     checksumUrl: checksumAsset?.browser_download_url ?? null,
@@ -141,7 +127,7 @@ function renderProgress(received: number, total: number): void {
 
 function renderDone(latest: string): void {
   stdout.write(`${ansi.cursorUp(1)}${ansi.eraseLine}`);
-  printDim(`Updated to v${latest}`);
+  printDim(`Staged v${latest}. It runs the next time you start Acolyte.`);
   stdout.write(`\n${ansi.cursorShow}`);
 }
 
@@ -151,52 +137,16 @@ function renderError(message: string): void {
   stdout.write(ansi.cursorShow);
 }
 
-function reexec(): never {
-  const result = Bun.spawnSync([process.execPath, ...process.argv.slice(1)], {
-    stdin: "inherit",
-    stdout: "inherit",
-    stderr: "inherit",
-  });
-  process.exit(result.exitCode ?? 1);
+async function isAlreadyStaged(version: string): Promise<boolean> {
+  return await Bun.file(stagedBinaryPath(version)).exists();
 }
 
-/**
- * An update must never abandon a turn another client is mid-way through, so it asks without force
- * and reports what it left running. Injectable because the surrounding update path re-execs.
- */
-export async function stopServersForUpdate(
-  deps: { stop?: typeof stopAllLocalServers; notify?: (message: string) => void } = {},
-): Promise<void> {
-  const { stop = stopAllLocalServers, notify = printDim } = deps;
-  const results = await stop();
-  if (results.some(({ result }) => result.kind === "refused")) notify(t("cli.update.daemon_busy"));
-  if (results.some(({ result }) => result.kind === "unresponsive")) notify(t("cli.update.daemon_left_running"));
+/** A failed staging attempt must not be silenced for a day by the check it already made. */
+async function clearCache(baseDir: string): Promise<void> {
+  await rm(cachePath(baseDir), { force: true });
 }
 
-async function performUpdate(currentVersion: string, update: UpdateInfo): Promise<void> {
-  renderHeader(currentVersion, update.latest);
-
-  const result = await installUpdate(update.downloadUrl, update.checksumUrl, (received, total) => {
-    renderProgress(received, total);
-  });
-
-  if (!result.success) {
-    renderError(result.error ?? "unknown error");
-    return;
-  }
-
-  renderDone(update.latest);
-  await stopServersForUpdate();
-  reexec();
-}
-
-export async function updateMode(execPath: string = process.execPath): Promise<void> {
-  if (!isSelfUpdatableBinary(execPath)) {
-    printDim(
-      "Self-update applies only to the installed acolyte binary. Running from source; update via your package manager or a fresh install.",
-    );
-    return;
-  }
+export async function updateMode(): Promise<void> {
   const currentVersion = resolveCliVersion();
   const update = await checkForUpdate(currentVersion, { force: true });
 
@@ -210,19 +160,37 @@ export async function updateMode(execPath: string = process.execPath): Promise<v
     return;
   }
 
-  await performUpdate(currentVersion, update);
+  renderHeader(currentVersion, update.latest);
+  const result = await stageUpdate(update.downloadUrl, update.checksumUrl, update.latest, renderProgress);
+  if (!result.success) {
+    await clearCache(stateDir());
+    renderError(result.error ?? "unknown error");
+    return;
+  }
+  renderDone(update.latest);
 }
 
-export async function checkAndUpdateOnStartup(options?: { skip?: boolean }): Promise<boolean> {
-  if (options?.skip) return false;
-  if (process.env.ACOLYTE_SKIP_UPDATE === "1") return false;
-  if (process.argv.includes("--no-update")) return false;
-  if (!isSelfUpdatableBinary()) return false;
+/**
+ * Stages a newer release without announcing it: the launcher picks it up on the next start, so an
+ * update never interrupts the session that fetched it. Never throws — a start must not fail here.
+ */
+export async function stageUpdateOnStartup(options?: { skip?: boolean }): Promise<void> {
+  if (options?.skip) return;
+  if (process.env.ACOLYTE_SKIP_UPDATE === "1") return;
+  if (process.argv.includes("--no-update")) return;
 
   const currentVersion = resolveCliVersion();
-  const update = await checkForUpdate(currentVersion);
-  if (!update?.available) return false;
+  if (currentVersion === UNVERSIONED_CLI_VERSION) return;
 
-  await performUpdate(currentVersion, update);
-  return true;
+  try {
+    await pruneStagedVersions(currentVersion);
+    const update = await checkForUpdate(currentVersion);
+    if (!update?.available) return;
+    if (await isAlreadyStaged(update.latest)) return;
+
+    const result = await stageUpdate(update.downloadUrl, update.checksumUrl, update.latest);
+    if (!result.success) await clearCache(stateDir());
+  } catch {
+    await clearCache(stateDir()).catch(() => {});
+  }
 }

@@ -597,19 +597,6 @@ export const EN_MESSAGES = {
     { kind: "text", value: "Unknown subcommand: " },
     { kind: "arg", name: "subcommand" },
   ],
-  "cli.update.daemon_busy": [
-    {
-      kind: "text",
-      value: "Server left running on the old version: a turn is in progress. Run acolyte restart once it finishes.",
-    },
-  ],
-  "cli.update.daemon_left_running": [
-    {
-      kind: "text",
-      value:
-        "Server left running on the old version: it did not stop. Run acolyte ps to find it, then stop that process and run acolyte start",
-    },
-  ],
   "error.connection.generic": [
     { kind: "text", value: "Cannot reach server at " },
     { kind: "arg", name: "url" },
@@ -736,6 +723,7 @@ export const EN_MESSAGES = {
   "status.label.service": [{ kind: "text", value: "Service" }],
   "status.label.tasks_running": [{ kind: "text", value: "Tasks running" }],
   "status.label.tasks_total": [{ kind: "text", value: "Tasks total" }],
+  "status.label.update_staged": [{ kind: "text", value: "Update staged" }],
   "status.memory.summary": [
     { kind: "arg", name: "storage" },
     { kind: "text", value: " (" },

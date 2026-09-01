@@ -63,7 +63,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **FR-30** — `acolyte logs` tails and filters the daemon log by count, level, session, and time window.
 - **FR-31** — `acolyte trace [list] | trace task <id>` inspects task timelines (see §8 OBS).
 - **FR-32** — `acolyte tool <tool-id> ['<json-input>']` runs a single tool directly: input is an optional single JSON-object argument validated by the tool's input schema, and the run is still subject to the workspace boundary.
-- **FR-33** — `acolyte update` forces an update check; `acolyte login` / `acolyte logout` manage cloud credentials when cloud sync is enabled, and `login` copies the machine's durable memories and sessions into the account.
+- **FR-33** — `acolyte update` forces an update check and stages what it finds, reporting progress and the staged version; `acolyte login` / `acolyte logout` manage cloud credentials when cloud sync is enabled, and `login` copies the machine's durable memories and sessions into the account.
 - **FR-34** — All list-style commands accept `--json` for machine-readable output, and a `--json` invocation writes only parseable JSON records to stdout without startup notices, styling, or other human output before them. An empty result writes an empty stream.
 - **FR-34a** — Errors and warnings are written to stderr, so a command's stdout carries only what the command was asked to produce.
 - **FR-35** — `acolyte <command> help` (or `-h`/`--help`) prints detailed usage for that command.
@@ -160,7 +160,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **PR-7** — An abort request cancels the targeted request; a connection close cancels all of that connection's active and queued tasks.
 - **PR-8** — Task records live in memory only (not persisted across daemon restart), bounded in count with oldest terminal tasks evicted first.
 - **PR-9** — The daemon binds to the loopback interface only. When an API key is configured, every HTTP endpoint and WebSocket RPC connection (except the health check) requires bearer authentication; with no key configured, the loopback RPC is open. The transport is otherwise an implementation detail behind the contract.
-- **PR-10** — Stopping the daemon asks it to shut down before signalling it, and it refuses while any task is unfinished, naming each live task and its session, and reports that refusal as a failure. An explicit force flag stops it regardless. A restart that is refused starts no replacement, and a self-update never forces.
+- **PR-10** — Stopping the daemon asks it to shut down before signalling it, and it refuses while any task is unfinished, naming each live task and its session, and reports that refusal as a failure. An explicit force flag stops it regardless. A restart that is refused starts no replacement.
 - **PR-11** — A turn whose transport dies mid-flight fails with a coded error stating that the server stopped, that the session survived, and that the message can be sent again. The turn is never reconstructed from partial output.
 
 ## 7. Terminal UI requirements (TUI)
@@ -201,8 +201,8 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 ## 9. Non-functional requirements (NF)
 
-- **NF-1** — The daemon starts automatically on client use and manages its own lifecycle; the CLI checks for a newer released binary at most once per startup-day, and on update downloads, verifies checksum, self-replaces, stops the running server, and re-execs.
-- **NF-2** — Installation is a single released binary for macOS and Linux via a one-line install script; no runtime toolchain install is required for end users.
+- **NF-1** — The daemon starts automatically on client use and manages its own lifecycle; the CLI checks for a newer released binary at most once per startup-day and, when one exists, downloads it, verifies its checksum, and stages it in the data directory without announcing it. An update writes only inside the data directory, so it never touches a file an installer or package manager owns, and never interrupts the session that fetched it.
+- **NF-2** — Installation is a single released binary for macOS and Linux via a one-line install script; no runtime toolchain install is required for end users. The installed command is a launcher that runs whichever is newer, the binary the install owns or a staged update.
 - **NF-3** — SQLite-backed stores (memory and trace) apply versioned forward migrations automatically and cumulatively on startup, within transactions.
 - **NF-4** — Releases follow semantic versioning; patch and minor releases are always safe to apply.
 - **NF-5** — Errors are classified by a structured code/kind, never by matching message strings; error messages are descriptive enough for the model to act on.
@@ -250,7 +250,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 ## 12. Deliverables
 
 - **D-1** — The `acolyte` CLI/daemon binary and its documented commands (§2.4).
-- **D-2** — The one-line install script producing a self-updating macOS/Linux binary. (NF-2)
+- **D-2** — The one-line install script producing a macOS/Linux install whose launcher picks up staged updates. (NF-2)
 - **D-3** — The layered test suite (unit, integration, visual) and the perf/memory-benchmark harnesses. (NF-9)
 - **D-4** — Canonical documentation under `docs/` (architecture, lifecycle, tooling, memory, workspace, sessions, tasks, protocol, configuration, CLI, errors, observability, TUI) and `AGENTS.md` invariants/seams.
 - **D-5** — The bundled engineering-skill set (plan, build, review, and the others) available to the agent from first run.

@@ -229,8 +229,6 @@ export type MessageArgs = {
   "cli.trace.no_store": never;
   "cli.trace.no_tasks": never;
   "cli.trace.unknown_subcommand": { subcommand: string | number };
-  "cli.update.daemon_busy": never;
-  "cli.update.daemon_left_running": never;
   "error.connection.generic": { url: string | number };
   "error.connection.loopback_default": { url: string | number };
   "error.connection.loopback_https": { url: string | number };
@@ -283,6 +281,7 @@ export type MessageArgs = {
   "status.label.service": never;
   "status.label.tasks_running": never;
   "status.label.tasks_total": never;
+  "status.label.update_staged": never;
   "status.memory.summary": { count: number; storage: string | number };
   "status.provider_auth.api_key": never;
   "status.provider_auth.subscription": never;
