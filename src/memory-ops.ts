@@ -16,9 +16,10 @@ import {
 } from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
 import { getMemoryStore } from "./memory-store";
-import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
+import { parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
 import { createId } from "./short-id";
 import { estimateTokens } from "./token-estimate";
+import { activeUserResourceId } from "./user-identity";
 
 export interface MemoryOptions {
   scope?: MemoryScope;
@@ -28,7 +29,7 @@ export interface MemoryOptions {
 
 function scopeKeysForScope(scope: MemoryScope | undefined, workspace?: string): string[] {
   const keys: string[] = [];
-  if (!scope || scope === "user") keys.push(defaultUserResourceId());
+  if (!scope || scope === "user") keys.push(activeUserResourceId());
   if (!scope || scope === "project") {
     const projectKey = projectResourceIdFromWorkspace(workspace ?? process.cwd());
     if (projectKey) keys.push(projectKey);
@@ -168,7 +169,7 @@ export function resolveScopeKey(scope: MemoryScope, ctx: ScopeContext): string |
   }
   const fromResource = parseResourceId(ctx.resourceId);
   if (fromResource?.startsWith("user_")) return fromResource;
-  return defaultUserResourceId();
+  return activeUserResourceId();
 }
 
 export function visibleScopeKeys(ctx: ScopeContext): Set<string> {

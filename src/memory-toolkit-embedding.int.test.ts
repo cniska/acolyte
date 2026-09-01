@@ -3,7 +3,6 @@ import { type FakeProviderServer, startFakeProviderServer } from "../scripts/fak
 import type { MemoryRecord, MemoryStore } from "./memory-contract";
 import type { ScopeContext } from "./memory-ops";
 import { searchMemories } from "./memory-recall";
-import { defaultUserResourceId } from "./resource-id";
 import { pinEmbeddingProviders } from "./test-utils";
 
 let fake: FakeProviderServer;
@@ -23,7 +22,7 @@ afterAll(() => {
 
 const projOne = "proj_one000000";
 const projTwo = "proj_two000000";
-const userKey = defaultUserResourceId();
+const userKey = "user_local";
 const ctx: ScopeContext = { sessionId: "sess_alpha", resourceId: projOne };
 
 let seq = 0;

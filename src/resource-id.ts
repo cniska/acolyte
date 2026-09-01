@@ -1,8 +1,6 @@
-import { resolve as resolvePath } from "node:path";
 import { z } from "zod";
 import { originRepositoryLabel } from "./git-remote";
 import { domainIdSchema } from "./id-contract";
-import { type Env, resolveHomeDir } from "./paths";
 import { resolveProjectRoot } from "./workspace-sandbox";
 
 export const userResourceIdSchema = domainIdSchema("user");
@@ -48,8 +46,12 @@ export function projectResourceIdForLabel(label: string): ProjectResourceId {
   return projectResourceIdSchema.parse(`proj_${hashValue(label)}`);
 }
 
-export function defaultUserResourceId(env?: Env): UserResourceId {
-  return userResourceIdSchema.parse(`user_${hashValue(resolvePath(resolveHomeDir(env)))}`);
+/** The installation's own user scope, used until an account claims it. A constant cannot fragment. */
+export const LOCAL_USER_RESOURCE_ID = userResourceIdSchema.parse("user_local");
+
+/** The scope of the account a cloud token names, so one person has one user scope across machines. */
+export function userResourceIdForSubject(subject: string): UserResourceId {
+  return userResourceIdSchema.parse(`user_${hashValue(subject)}`);
 }
 
 export function userResourceIdFor(context: string, sessionId: string): UserResourceId {

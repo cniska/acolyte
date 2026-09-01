@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { addMemory, addObservation, listMemories, removeMemory } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
-import { defaultUserResourceId } from "./resource-id";
 import { tempDb, tempDir, writeGitOrigin } from "./test-utils";
 
 const { create: createDb, cleanup } = tempDb("acolyte-memory-", createSqliteMemoryStore);
@@ -63,10 +62,10 @@ describe("sqlite memory store", () => {
 
   test("removeMemory removes a distilled observation and its embedding", async () => {
     const db = createDb();
-    const record = await addObservation(defaultUserResourceId(), "Prefers tabs over spaces", { store: db });
+    const record = await addObservation("user_local", "Prefers tabs over spaces", { store: db });
     expect(record).not.toBeNull();
     const id = record?.id ?? "";
-    await db.writeEmbedding(id, defaultUserResourceId(), Buffer.from([1, 2, 3, 4]));
+    await db.writeEmbedding(id, "user_local", Buffer.from([1, 2, 3, 4]));
 
     const result = await removeMemory(id, { store: db });
     expect(result.kind).toBe("removed");

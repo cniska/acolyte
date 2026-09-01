@@ -10,7 +10,6 @@ import {
   visibleScopeKeys,
 } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
-import { defaultUserResourceId } from "./resource-id";
 
 const PROJECT_KEY = "proj_abc123";
 
@@ -22,7 +21,7 @@ describe("resolveScopeKey", () => {
   });
 
   test("user always resolves, honoring a user_ resourceId override", () => {
-    expect(resolveScopeKey("user", {})).toBe(defaultUserResourceId());
+    expect(resolveScopeKey("user", {})).toBe("user_local");
     expect(resolveScopeKey("user", { resourceId: "user_override1" })).toBe("user_override1");
   });
 
@@ -43,11 +42,11 @@ describe("resolveScopeKey", () => {
 describe("visibleScopeKeys", () => {
   test("full context exposes session, project, and user keys", () => {
     const keys = visibleScopeKeys({ sessionId: "sess_alpha", resourceId: PROJECT_KEY });
-    expect(keys).toEqual(new Set(["sess_alpha", PROJECT_KEY, defaultUserResourceId()]));
+    expect(keys).toEqual(new Set(["sess_alpha", PROJECT_KEY, "user_local"]));
   });
 
   test("user scope is always visible", () => {
-    expect(visibleScopeKeys({}).has(defaultUserResourceId())).toBe(true);
+    expect(visibleScopeKeys({}).has("user_local")).toBe(true);
   });
 
   test("sessionless context hides the session key", () => {
@@ -58,7 +57,7 @@ describe("visibleScopeKeys", () => {
 
   test("a workspace with no project scope hides the project key, never falling back to cwd", () => {
     const keys = visibleScopeKeys({ sessionId: "sess_alpha", workspace: "/ws/one" });
-    expect(keys).toEqual(new Set(["sess_alpha", defaultUserResourceId()]));
+    expect(keys).toEqual(new Set(["sess_alpha", "user_local"]));
   });
 });
 
@@ -66,7 +65,7 @@ describe("addObservation", () => {
   test("skips a repeat within a scope but keeps the same fact in a different scope", async () => {
     const store = createSqliteMemoryStore(":memory:");
     const fact = "the build runs on bun";
-    const userScope = defaultUserResourceId();
+    const userScope = "user_local";
     const projectScope = PROJECT_KEY;
 
     expect(await addObservation(userScope, fact, { store })).not.toBeNull();
@@ -83,7 +82,7 @@ describe("listMemories", () => {
   // Regression: the list used to filter kind:"stored", hiding distilled observations.
   test("returns both stored memories and observations", async () => {
     const store = createSqliteMemoryStore(":memory:");
-    const scopeKey = defaultUserResourceId();
+    const scopeKey = "user_local";
     const base = { scopeKey, createdAt: "2026-03-05T10:00:00.000Z", tokenEstimate: 1 };
     const records: MemoryRecord[] = [
       { ...base, id: "mem_stored01", kind: "stored", content: "a stored fact" },
@@ -100,7 +99,7 @@ describe("listMemories", () => {
 });
 
 describe("retirement ops", () => {
-  const scopeKey = defaultUserResourceId();
+  const scopeKey = "user_local";
   const base = { scopeKey, createdAt: "2026-03-05T10:00:00.000Z", tokenEstimate: 1 };
 
   async function seededStore(): Promise<MemoryStore> {

@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import {
-  defaultUserResourceId,
+  LOCAL_USER_RESOURCE_ID,
   parseResourceId,
   projectResourceIdForLabel,
   projectResourceIdFromWorkspace,
   resourceIdSchema,
+  userResourceIdForSubject,
 } from "./resource-id";
 
 // The dashboard names a scope by storing the label beside the key, so the key must stay the hash of it.
@@ -34,10 +35,13 @@ describe("resource id", () => {
     expect(projectResourceIdFromWorkspace("/tmp/acolyte-project")).toBeNull();
   });
 
-  test("defaultUserResourceId is deterministic for homeDir", () => {
-    const a = defaultUserResourceId({ HOME: "/home/test-user" });
-    const b = defaultUserResourceId({ HOME: "/home/test-user" });
-    expect(a).toBe(b);
-    expect(a.startsWith("user_")).toBe(true);
+  test("a user id is the hash of the account it names", () => {
+    const subject = "012627e3-1df9-476a-919d-f208a6bb9830";
+    expect(userResourceIdForSubject(subject)).toBe(`user_${sha1Prefix(subject)}`);
+    expect(userResourceIdForSubject("one")).not.toBe(userResourceIdForSubject("two"));
+  });
+
+  test("the installation's own user scope is a constant", () => {
+    expect(LOCAL_USER_RESOURCE_ID).toBe("user_local");
   });
 });
