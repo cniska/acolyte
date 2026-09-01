@@ -38,6 +38,11 @@ function scopeLabel(scope: MemoryContextScope): string {
   return t("chat.scope.all");
 }
 
+/** The workspace the session is on, or the one the client was started in when it has none yet. */
+function sessionWorkspace(ctx: CommandContext): string {
+  return ctx.currentSession.workspace ?? process.cwd();
+}
+
 export function resolveMemoryApi(ctx: CommandContext): {
   listMemories: typeof listMemories;
   addMemory: typeof addMemory;
@@ -65,7 +70,7 @@ async function handleMemoryRemove(
     return { stop: true, userText: text };
   }
   try {
-    const removed = await memoryApi.removeMemory(prefix);
+    const removed = await memoryApi.removeMemory(prefix, { workspace: sessionWorkspace(ctx) });
     if (removed.kind === "not_found") {
       ctx.setRows((current) => [...current, createRow("system", t("chat.memory.rm.not_found", { id: removed.id }))]);
       return { stop: true, userText: text };
@@ -125,7 +130,7 @@ async function renderMemoryList(
   resolvedScope: MemoryScope | undefined,
 ): Promise<CommandResult> {
   const { text } = ctx;
-  const memories = await memoryApi.listMemories({ scope: resolvedScope });
+  const memories = await memoryApi.listMemories({ scope: resolvedScope, workspace: sessionWorkspace(ctx) });
   if (memories.length === 0) {
     ctx.setRows((current) => [...current, createRow("system", t(NONE_KEYS[scope]))]);
     return { stop: true, userText: text };
@@ -148,7 +153,7 @@ async function renderArchivedList(
   resolvedScope: MemoryScope | undefined,
 ): Promise<CommandResult> {
   const { text } = ctx;
-  const archived = await memoryApi.listArchivedMemories({ scope: resolvedScope });
+  const archived = await memoryApi.listArchivedMemories({ scope: resolvedScope, workspace: sessionWorkspace(ctx) });
   if (archived.length === 0) {
     ctx.setRows((current) => [...current, createRow("system", t("chat.memory.archive.none"))]);
     return { stop: true, userText: text };
@@ -189,10 +194,7 @@ async function handleMemoryAdd(
     return { stop: true, userText: text };
   }
   try {
-    const entry = await memoryApi.addMemory(content, {
-      scope,
-      workspace: ctx.currentSession.workspace ?? process.cwd(),
-    });
+    const entry = await memoryApi.addMemory(content, { scope, workspace: sessionWorkspace(ctx) });
     ctx.setRows((current) => [...current, createRow("system", t(SAVED_KEYS[entry.scope], { content }))]);
   } catch (error) {
     ctx.setRows((current) => [
