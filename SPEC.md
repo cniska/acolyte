@@ -152,7 +152,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 ## 6. Protocol & task requirements (PR)
 
 - **PR-1** — The client/server transport contract is versioned and negotiated on connect; a version mismatch is rejected cleanly.
-- **PR-1a** — The daemon reports the version and commit it was started from, and a client serves requests only through a daemon of its own build. Meeting one from another build, the client asks it to shut down and starts its own; a daemon that refuses because a task is unfinished keeps serving until that task ends.
+- **PR-1a** — The daemon reports the build it was started from, and a client serves requests only through a daemon of its own build. A client meeting a daemon of another build asks that daemon to shut down and starts its own; a daemon that refuses because a task is unfinished keeps serving until that task ends.
 - **PR-2** — A request is one task payload (message, history, session ID, runtime options); a response is an ordered, append-only event stream followed by exactly one terminal reply.
 - **PR-3** — Every request terminates with either a done reply or an error reply; a tool-output/result event always references a prior tool-call event's id; clients ignore unknown event fields for forward compatibility.
 - **PR-4** — Each chat request becomes a tracked task with a server-assigned stable id moving through accepted → queued → running → completed | failed | cancelled; only the defined transitions are allowed and terminal states permit no further transition.
@@ -202,7 +202,8 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 ## 9. Non-functional requirements (NF)
 
-- **NF-1** — The daemon starts automatically on client use and manages its own lifecycle; the CLI checks for a newer released binary at most once per startup-day and, when one exists, downloads it, verifies its checksum, and stages it in the data directory without announcing it. An update writes only inside the data directory, so it never touches a file an installer or package manager owns, and never interrupts the session that fetched it.
+- **NF-1** — The daemon starts automatically on client use and manages its own lifecycle.
+- **NF-1a** — Starting the chat checks for a newer released binary at most once per startup-day and, when one exists, downloads it, verifies its checksum, and stages it under its version in the data directory without announcing it; the staged build runs at the next start. Only a version the launcher can order is staged. An update writes nowhere outside the data directory and never interrupts the session that staged it.
 - **NF-2** — Installation is a single released binary for macOS and Linux via a one-line install script; no runtime toolchain install is required for end users. The installed command is a launcher that runs whichever is newer, the binary the install owns or a staged update.
 - **NF-3** — SQLite-backed stores (memory and trace) apply versioned forward migrations automatically and cumulatively on startup, within transactions.
 - **NF-4** — Releases follow semantic versioning; patch and minor releases are always safe to apply.
@@ -246,6 +247,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **AC-17** — With plugins enabled, an installed plugin's skills appear in the roster and its MCP servers' tools appear to the agent under plugin-qualified names; with plugins disabled both are absent, and with MCP disabled the plugin's servers are absent while its skills remain. A plugin carrying one invalid server or skill still contributes its valid ones. (FR-49, FR-50, FR-37, SEC-11)
 - **AC-18** — `acolyte login` to an account copies durable memories with their embeddings and every stored session into it, leaves session-scoped memories and the archive on the machine, and exits non-zero when the cloud rejects the token; a plaintext non-localhost URL, a token naming no account, and a token the cloud refuses are each rejected before any credential is stored. (FR-33, MEM-15, SEC-13)
 - **AC-19** — Two checkouts of one repository reach one project scope however their remotes are addressed and whichever forge hosts them; a fork with an `upstream` remote reaches the upstream project and one without reaches its own; and a checkout whose only remote addresses a filesystem path, like one with no remote at all, has no project scope, so an explicit project write there fails saying so and a background commit is traced as skipped. (MEM-1, MEM-17, MEM-18, MEM-19)
+- **AC-20** — A newer release is staged in the data directory with nothing printed and the running session untouched, the installed command then runs it in preference to the binary the install owns, and a version the launcher cannot order is refused rather than staged. A client whose build differs from the running daemon's replaces that daemon, unless it is holding an unfinished task. (NF-1a, NF-2, PR-1a, D-2)
 - **AC-16** — The project's full verification — lint, typecheck, all test suites, dependency audit — passes on a clean checkout, and the edge-case tests of NF-10 are present and passing. (NF-9, NF-10, NF-11)
 
 ## 12. Deliverables
