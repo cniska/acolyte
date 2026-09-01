@@ -48,10 +48,9 @@ describe("cloud sync client", () => {
   test("memory.list passes query params", async () => {
     const fn = jsonFetch(200, []);
     const client = new CloudClient("https://api.example.com", "t");
-    await client.memory.list({ scopeKey: "user_abc", kind: "stored" });
+    await client.memory.list({ scopeKey: "user_abc" });
     const [url] = callArgs(fn);
     expect(url).toContain("scopeKey=user_abc");
-    expect(url).toContain("kind=stored");
   });
 
   test("memory.write sends POST with record", async () => {
@@ -60,7 +59,6 @@ describe("cloud sync client", () => {
     const record = {
       id: "mem_1",
       scopeKey: "user_x",
-      kind: "stored" as const,
       content: "test",
       createdAt: "2026-01-01T00:00:00.000Z",
       tokenEstimate: 5,
@@ -167,7 +165,6 @@ describe("cloud sync client", () => {
     const record = {
       id: "mem_1",
       scopeKey: "user_x",
-      kind: "stored" as const,
       content: largeContent,
       createdAt: "2026-01-01T00:00:00.000Z",
       tokenEstimate: 5,

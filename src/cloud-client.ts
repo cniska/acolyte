@@ -126,10 +126,10 @@ export class CloudClient {
     };
   }
 
-  private async getMemories(options?: { scopeKey?: string; kind?: string }): Promise<readonly MemoryRecord[]> {
+  private async getMemories(options?: { scopeKey?: string }): Promise<readonly MemoryRecord[]> {
     return this.get(ROUTES.memories.list, {
       schema: memoryListSchema,
-      params: { scopeKey: options?.scopeKey, kind: options?.kind },
+      params: { scopeKey: options?.scopeKey },
     });
   }
 
@@ -152,12 +152,11 @@ export class CloudClient {
 
   private async getArchive(options?: {
     scopeKey?: string;
-    kind?: string;
     disposition?: MemoryDispositionKind;
   }): Promise<readonly MemoryArchiveRecord[]> {
     return this.get(ROUTES.memories.archive, {
       schema: memoryArchiveListSchema,
-      params: { scopeKey: options?.scopeKey, kind: options?.kind, disposition: options?.disposition },
+      params: { scopeKey: options?.scopeKey, disposition: options?.disposition },
     });
   }
 
@@ -205,14 +204,13 @@ export class CloudClient {
 
   private async searchByEmbedding(
     queryEmbedding: Float32Array,
-    options: { scopeKey?: string; kind?: string; limit: number },
+    options: { scopeKey?: string; limit: number },
   ): Promise<MemoryRecord[]> {
     return this.post(ROUTES.embeddings.search, {
       schema: memoryListSchema,
       body: {
         queryEmbedding: Buffer.from(embeddingToBuffer(queryEmbedding)).toString("base64"),
         scopeKey: options.scopeKey,
-        kind: options.kind,
         limit: options.limit,
       },
     });

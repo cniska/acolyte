@@ -28,16 +28,14 @@ export async function mergeLocalUserScope(deps: UserScopeMergeDeps): Promise<Use
   const local = await deps.localMemory.list({ scopeKey: LOCAL_USER_RESOURCE_ID });
   if (local.length === 0) return summary;
 
-  // `addObservation` keeps one observation per normalized content in a scope, and a bare store write
+  // `addObservation` keeps one record per normalized content in a scope, and a bare store write
   // does not, so the move applies that rule itself rather than duplicating a fact into the account.
   const held = new Set(
-    (await deps.cloudMemory.list({ scopeKey: deps.accountKey }))
-      .filter((record) => record.kind === "observation")
-      .map((record) => normalizeMemoryText(record.content)),
+    (await deps.cloudMemory.list({ scopeKey: deps.accountKey })).map((record) => normalizeMemoryText(record.content)),
   );
 
   for (const record of local) {
-    if (record.kind === "observation" && held.has(normalizeMemoryText(record.content))) {
+    if (held.has(normalizeMemoryText(record.content))) {
       await deps.localMemory.remove(record.id);
       summary.duplicates += 1;
       continue;
@@ -65,7 +63,7 @@ export async function mergeLocalUserScope(deps: UserScopeMergeDeps): Promise<Use
 
     await deps.localMemory.remove(record.id);
     summary.merged += 1;
-    if (record.kind === "observation") held.add(normalizeMemoryText(record.content));
+    held.add(normalizeMemoryText(record.content));
   }
 
   return summary;

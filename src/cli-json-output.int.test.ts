@@ -30,7 +30,6 @@ async function seedMemory(home: string): Promise<void> {
     {
       id: "mem_jsonseed",
       scopeKey: LOCAL_USER_RESOURCE_ID,
-      kind: "observation",
       content: "json output stays parseable",
       createdAt: "2026-09-01T00:00:00.000Z",
       tokenEstimate: 5,

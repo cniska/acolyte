@@ -15,12 +15,7 @@ Turn and task activity
 
 ## Records and scopes
 
-Memory has two record kinds:
-
-- **Stored** — A fact written straight to the store rather than distilled from work.
-- **Observation** — A fact extracted from completed work by the distiller.
-
-Each record belongs to one scope:
+A memory record is one observation the distiller extracted from completed work, and belongs to one scope:
 
 | Scope | Holds | Visible to |
 |---|---|---|

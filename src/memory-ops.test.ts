@@ -89,26 +89,6 @@ describe("addObservation", () => {
   });
 });
 
-describe("listMemories", () => {
-  // Regression: the list used to filter kind:"stored", hiding distilled observations.
-  test("returns both stored memories and observations", async () => {
-    const store = createSqliteMemoryStore(":memory:");
-    const scopeKey = "user_local";
-    const base = { scopeKey, createdAt: "2026-03-05T10:00:00.000Z", tokenEstimate: 1 };
-    const records: MemoryRecord[] = [
-      { ...base, id: "mem_stored01", kind: "stored", content: "a stored fact" },
-      { ...base, id: "mem_obs01", kind: "observation", content: "a distilled observation" },
-    ];
-    for (const record of records) await store.write(record);
-
-    const entries = await listMemories({ scope: "user", store });
-    const byContent = new Map(entries.map((entry) => [entry.content, entry.kind]));
-    expect(byContent.get("a stored fact")).toBe("stored");
-    expect(byContent.get("a distilled observation")).toBe("observation");
-    store.close();
-  });
-});
-
 describe("retirement ops", () => {
   const scopeKey = "user_local";
   const base = { scopeKey, createdAt: "2026-03-05T10:00:00.000Z", tokenEstimate: 1 };
@@ -116,8 +96,8 @@ describe("retirement ops", () => {
   async function seededStore(): Promise<MemoryStore> {
     const store = createSqliteMemoryStore(":memory:");
     const records: MemoryRecord[] = [
-      { ...base, id: "mem_keep00001", kind: "observation", content: "the fact that survives" },
-      { ...base, id: "mem_drop00001", kind: "observation", content: "a duplicate of the fact" },
+      { ...base, id: "mem_keep00001", content: "the fact that survives" },
+      { ...base, id: "mem_drop00001", content: "a duplicate of the fact" },
     ];
     for (const record of records) await store.write(record);
     return store;

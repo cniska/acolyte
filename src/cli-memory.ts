@@ -16,7 +16,7 @@ function isArchiveEntry(row: MemoryEntry | MemoryArchiveEntry): row is MemoryArc
 }
 
 function toTableRow(row: MemoryEntry | MemoryArchiveEntry): Record<string, string> {
-  const base = { id: row.id, kind: row.kind, content: row.content };
+  const base = { id: row.id, content: row.content };
   if (isArchiveEntry(row)) {
     return { ...base, retired: formatRelativeTime(row.retiredAt), why: formatDisposition(row.disposition) };
   }

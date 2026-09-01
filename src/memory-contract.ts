@@ -14,7 +14,6 @@ export type MemoryId = z.infer<typeof memoryIdSchema>;
 
 export interface MemoryEntry {
   readonly id: MemoryId;
-  readonly kind: MemoryKind;
   readonly content: string;
   readonly createdAt: IsoDateTimeString;
   readonly lastRecalledAt: IsoDateTimeString | null;
@@ -80,14 +79,11 @@ export interface MemoryDistiller {
   commit(ctx: MemoryCommitContext): Promise<MemoryCommitMetrics | undefined>;
 }
 
-export const memoryKindSchema = z.enum(["observation", "stored"]);
-export type MemoryKind = z.infer<typeof memoryKindSchema>;
 export const memoryTopicSchema = z.string().trim().min(1).regex(/^\S+$/);
 
 export const memoryRecordSchema = z.object({
   id: memoryIdSchema,
   scopeKey: z.string().min(1),
-  kind: memoryKindSchema,
   content: z.string().min(1),
   createdAt: isoDateTimeSchema,
   tokenEstimate: z.number().int().min(0),
@@ -112,13 +108,12 @@ export type MemoryArchiveRecord = z.infer<typeof memoryArchiveRecordSchema>;
 
 export interface MemoryStore {
   readonly storage: MemoryStorage;
-  list(options?: { scopeKey?: string; kind?: MemoryKind }): Promise<readonly MemoryRecord[]>;
+  list(options?: { scopeKey?: string }): Promise<readonly MemoryRecord[]>;
   write(record: MemoryRecord, scope?: MemoryScope): Promise<void>;
   remove(id: string): Promise<void>;
   retire(ids: string[], disposition: MemoryDisposition): Promise<readonly string[]>;
   listArchive(options?: {
     scopeKey?: string;
-    kind?: MemoryKind;
     disposition?: MemoryDispositionKind;
   }): Promise<readonly MemoryArchiveRecord[]>;
   restore(ids: string[]): Promise<readonly MemoryRecord[]>;
@@ -129,7 +124,7 @@ export interface MemoryStore {
   getEmbeddings(ids: string[]): Promise<Map<string, Buffer>>;
   searchByEmbedding?(
     queryEmbedding: Float32Array,
-    options: { scopeKey?: string; kind?: MemoryKind; limit: number },
+    options: { scopeKey?: string; limit: number },
   ): Promise<MemoryRecord[]>;
   close(): void;
 }

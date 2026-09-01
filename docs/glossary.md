@@ -50,7 +50,7 @@ This glossary defines the naming conventions and runtime terms used across Acoly
 | Memory Toolkit | The on-demand `memory-search` tool the model invokes to access memory at runtime |
 | Message Kind | Semantic message classification used by history handling (`text`, `tool_payload`) |
 | Model Judgment | The model's responsibility for deciding how to complete the task within host constraints |
-| Observation | Memory record kind for facts extracted from conversations via `memory-observe` tool calls |
+| Observation | A memory record: one fact the distiller extracted from completed work |
 | Plugin | Agent Plugins directory whose `plugin.json` manifest declares the standard version, contributing skills and MCP servers from fixed locations |
 | Policy | Centralized subsystem rules, limits, or defaults that make intended behavior explicit without owning the implementation |
 | Provider | Model service selected for a request (`openai`, `anthropic`, `google`, or `vercel`) |

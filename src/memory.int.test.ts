@@ -72,7 +72,6 @@ describe("sqlite memory store", () => {
 
     const result = await removeMemory(id, { store: db });
     expect(result.kind).toBe("removed");
-    if (result.kind === "removed") expect(result.entry.kind).toBe("observation");
 
     const all = await listMemories({ store: db });
     expect(all.some((item) => item.id === id)).toBe(false);

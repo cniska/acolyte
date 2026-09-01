@@ -28,7 +28,6 @@ export function memoryStoreContractTests(
       const record: MemoryRecord = {
         id: "mem_test001",
         scopeKey: "sess_abc123",
-        kind: "observation",
         content: "project uses Bun, not Node",
         createdAt: "2026-03-04T12:00:00.000Z",
         tokenEstimate: 7,
@@ -44,7 +43,6 @@ export function memoryStoreContractTests(
       const older: MemoryRecord = {
         id: "mem_older001",
         scopeKey: "sess_abc123",
-        kind: "observation",
         content: "first observation",
         createdAt: "2026-03-04T10:00:00.000Z",
         tokenEstimate: 3,
@@ -52,7 +50,6 @@ export function memoryStoreContractTests(
       const newer: MemoryRecord = {
         id: "mem_newer001",
         scopeKey: "sess_abc123",
-        kind: "observation",
         content: "second observation",
         createdAt: "2026-03-04T11:00:00.000Z",
         tokenEstimate: 3,
@@ -69,7 +66,6 @@ export function memoryStoreContractTests(
       await s.write({
         id: "mem_sess1rec",
         scopeKey: "sess_session1",
-        kind: "observation",
         content: "session 1 fact",
         createdAt: "2026-03-04T12:00:00.000Z",
         tokenEstimate: 4,
@@ -77,7 +73,6 @@ export function memoryStoreContractTests(
       await s.write({
         id: "mem_sess2rec",
         scopeKey: "sess_session2",
-        kind: "observation",
         content: "session 2 fact",
         createdAt: "2026-03-04T12:00:00.000Z",
         tokenEstimate: 4,
@@ -95,7 +90,6 @@ export function memoryStoreContractTests(
       await s.write({
         id: "mem_rmtest01",
         scopeKey: "sess_abc123",
-        kind: "observation",
         content: "to be removed",
         createdAt: "2026-03-04T12:00:00.000Z",
         tokenEstimate: 3,
@@ -116,7 +110,6 @@ export function memoryStoreContractTests(
       const record: MemoryRecord = {
         id: "mem_replace1",
         scopeKey: "sess_abc123",
-        kind: "observation",
         content: "original",
         createdAt: "2026-03-04T12:00:00.000Z",
         tokenEstimate: 1,
@@ -128,55 +121,6 @@ export function memoryStoreContractTests(
       expect(records[0]?.content).toBe("updated");
     });
 
-    test("list filters by kind", async () => {
-      const s = await getStore();
-      await s.write({
-        id: "mem_obs001",
-        scopeKey: "sess_abc123",
-        kind: "observation",
-        content: "an observation",
-        createdAt: "2026-03-04T12:00:00.000Z",
-        tokenEstimate: 2,
-      });
-      await s.write({
-        id: "mem_stored01",
-        scopeKey: "user_abc123",
-        kind: "stored",
-        content: "a stored memory",
-        createdAt: "2026-03-04T12:00:00.000Z",
-        tokenEstimate: 3,
-      });
-      const stored = await s.list({ kind: "stored" });
-      expect(stored).toHaveLength(1);
-      expect(stored[0]?.id).toBe("mem_stored01");
-      const observations = await s.list({ kind: "observation" });
-      expect(observations).toHaveLength(1);
-      expect(observations[0]?.id).toBe("mem_obs001");
-    });
-
-    test("list filters by scope and kind", async () => {
-      const s = await getStore();
-      await s.write({
-        id: "mem_user01",
-        scopeKey: "user_abc123",
-        kind: "stored",
-        content: "user memory",
-        createdAt: "2026-03-04T12:00:00.000Z",
-        tokenEstimate: 2,
-      });
-      await s.write({
-        id: "mem_user02",
-        scopeKey: "user_abc123",
-        kind: "observation",
-        content: "user observation",
-        createdAt: "2026-03-04T12:00:00.000Z",
-        tokenEstimate: 2,
-      });
-      const stored = await s.list({ scopeKey: "user_abc123", kind: "stored" });
-      expect(stored).toHaveLength(1);
-      expect(stored[0]?.id).toBe("mem_user01");
-    });
-
     test("ignores unsafe session ids", async () => {
       const s = await getStore();
       const records = await s.list({ scopeKey: "../escape" });
@@ -185,7 +129,6 @@ export function memoryStoreContractTests(
       await s.write({
         id: "mem_invalid01",
         scopeKey: "../escape",
-        kind: "observation",
         content: "should not be written",
         createdAt: "2026-03-04T12:00:00.000Z",
         tokenEstimate: 3,
@@ -199,7 +142,6 @@ export function memoryStoreContractTests(
       await s.write({
         id: "mem_user001",
         scopeKey: "user_abc123",
-        kind: "observation",
         content: "user fact",
         createdAt: "2026-03-04T12:00:00.000Z",
         tokenEstimate: 2,
@@ -207,7 +149,6 @@ export function memoryStoreContractTests(
       await s.write({
         id: "mem_proj001",
         scopeKey: "proj_abc123",
-        kind: "observation",
         content: "project fact",
         createdAt: "2026-03-04T12:00:01.000Z",
         tokenEstimate: 2,
@@ -222,7 +163,6 @@ export function memoryStoreContractTests(
       await s.write({
         id,
         scopeKey: "proj_abc123",
-        kind: "observation",
         content,
         createdAt: "2026-03-04T12:00:00.000Z",
         tokenEstimate: 2,
@@ -247,7 +187,6 @@ export function memoryStoreContractTests(
       await s.write({
         id: "mem_retire002",
         scopeKey: "proj_abc123",
-        kind: "stored",
         content: "explicit memory",
         createdAt: "2026-03-04T09:30:00.000Z",
         tokenEstimate: 5,
@@ -258,7 +197,6 @@ export function memoryStoreContractTests(
       expect(archived[0]).toMatchObject({
         id: "mem_retire002",
         scopeKey: "proj_abc123",
-        kind: "stored",
         content: "explicit memory",
         createdAt: "2026-03-04T09:30:00.000Z",
         tokenEstimate: 5,
@@ -322,7 +260,6 @@ export function memoryStoreContractTests(
       await s.write({
         id: "mem_arch0oth1",
         scopeKey: "user_abc123",
-        kind: "stored",
         content: "other scope",
         createdAt: "2026-03-04T12:00:00.000Z",
         tokenEstimate: 2,
@@ -330,7 +267,7 @@ export function memoryStoreContractTests(
       await s.retire(["mem_arch0obs1", "mem_arch0oth1"], { kind: "noise" });
 
       expect((await s.listArchive({ scopeKey: "proj_abc123" })).map((r) => r.id)).toEqual(["mem_arch0obs1"]);
-      expect((await s.listArchive({ kind: "stored" })).map((r) => r.id)).toEqual(["mem_arch0oth1"]);
+      expect((await s.listArchive({ scopeKey: "user_abc123" })).map((r) => r.id)).toEqual(["mem_arch0oth1"]);
     });
 
     test("restore returns a record to the active set and empties it from the archive", async () => {
@@ -382,7 +319,6 @@ export function memoryStoreContractTests(
       await s.write({
         id: "mem_fidelity01",
         scopeKey: "proj_abc123",
-        kind: "stored",
         content: "the fact with every field set",
         createdAt: "2026-03-04T08:15:00.000Z",
         tokenEstimate: 9,
@@ -425,11 +361,10 @@ export function memoryStoreContractTests(
       expect(first && Number.isFinite(Date.parse(first.retiredAt))).toBe(true);
     });
 
-    test("a retired record is invisible to list by kind", async () => {
+    test("a retired record is invisible to list", async () => {
       const s = await getStore();
       await seed(s, "mem_hidden0001");
       await s.retire(["mem_hidden0001"], { kind: "noise" });
-      expect(await s.list({ kind: "observation" })).toHaveLength(0);
       expect(await s.list()).toHaveLength(0);
     });
   });
@@ -440,7 +375,6 @@ export function memoryStoreContractTests(
       await s.write({
         id: "mem_touch001",
         scopeKey: "user_abc123",
-        kind: "stored",
         content: "recall me",
         createdAt: "2026-03-04T12:00:00.000Z",
         tokenEstimate: 2,
@@ -458,7 +392,6 @@ export function memoryStoreContractTests(
       await s.write({
         id: "mem_touched1",
         scopeKey: "user_abc123",
-        kind: "stored",
         content: "will be touched",
         createdAt: "2026-03-04T12:00:00.000Z",
         tokenEstimate: 2,
@@ -466,7 +399,6 @@ export function memoryStoreContractTests(
       await s.write({
         id: "mem_untouchd",
         scopeKey: "user_abc123",
-        kind: "stored",
         content: "will not be touched",
         createdAt: "2026-03-04T12:00:01.000Z",
         tokenEstimate: 3,
@@ -555,7 +487,6 @@ export function memoryStoreContractTests(
       await s.write({
         id: "mem_cascade1",
         scopeKey: "sess_abc123",
-        kind: "observation",
         content: "test",
         createdAt: "2026-03-04T12:00:00.000Z",
         tokenEstimate: 1,

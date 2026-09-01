@@ -31,7 +31,6 @@ function rec(scopeKey: string, content: string): MemoryRecord {
   return {
     id: `mem_${String(seq).padStart(4, "0")}`,
     scopeKey,
-    kind: "observation",
     content,
     createdAt: `2026-01-01T00:00:${String(seq).padStart(2, "0")}.000Z`,
     tokenEstimate: 4,
