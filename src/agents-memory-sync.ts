@@ -8,7 +8,13 @@ import { estimateTokens } from "./token-estimate";
 
 export const AGENTS_MD_MEMORY_ID = "mem_agentsmd";
 
-type SyncResult = { kind: "synced" } | { kind: "removed" } | { kind: "skipped"; reason: string };
+export type SyncResult = { kind: "synced" } | { kind: "removed" } | { kind: "skipped"; reason: string };
+
+/** Whether the rules are in project memory, so a prompt can point at recall instead of carrying them. */
+export function rulesReachableFromMemory(result: SyncResult): boolean {
+  if (result.kind === "synced") return true;
+  return result.kind === "skipped" && result.reason === "unchanged";
+}
 
 const lastSyncedPromptByWorkspace = new Map<string, string>();
 

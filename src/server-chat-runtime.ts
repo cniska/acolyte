@@ -1,7 +1,7 @@
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { defaultCredentials } from "./agent-model";
-import { syncAgentsMdToProjectMemory } from "./agents-memory-sync";
+import { rulesReachableFromMemory, syncAgentsMdToProjectMemory } from "./agents-memory-sync";
 import type { ChatRequest } from "./api";
 import { readResolvedConfigSync } from "./config";
 import { createDebugLogger } from "./debug-flags";
@@ -271,13 +271,15 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     const config = readResolvedConfigSync({ cwd: workspaceResolution.workspacePath });
     // The daemon outlives a locale change, so its boot locale goes stale.
     setLocale(config.locale);
-    if (config.features.syncAgents) {
-      await syncAgentsMdToProjectMemory({ workspace: workspaceResolution.workspacePath });
-    }
+    const agentsSync = config.features.syncAgents
+      ? await syncAgentsMdToProjectMemory({ workspace: workspaceResolution.workspacePath })
+      : null;
     const soulPrompt = loadSoulPrompt();
-    const projectRulesPrompt = config.features.syncAgents
-      ? "Project rules are available via project memory. Use memory-search to retrieve them when needed."
-      : loadProjectRulesPrompt(workspaceResolution.workspacePath);
+    // A workspace with no project scope has nowhere to sync to, so the rules travel in the prompt.
+    const projectRulesPrompt =
+      agentsSync && rulesReachableFromMemory(agentsSync)
+        ? "Project rules are available via project memory. Use memory-search to retrieve them when needed."
+        : loadProjectRulesPrompt(workspaceResolution.workspacePath);
     let traceSinkFailureKind: Exclude<TraceSinkHealth, "written"> | null = null;
     let traceSinkDropped = 0;
     const reply = await runLifecycle({

@@ -32,7 +32,7 @@ The canonical resource IDs are `sess_*`, `proj_*`, and `user_*`.
 
 A project is identified by the `owner/repo` its `origin` remote names, lowercased and hashed into the key. Every clone and worktree of that repository reaches the same project memory, whether the remote is addressed over SSH or HTTPS and whichever forge hosts it; a fork has a different `origin`, so it is a different project. The readable name is stored beside the key rather than inside it, so a key stays an opaque identifier.
 
-A workspace whose repository has no such `origin` has no project scope. Session and user memory work there as usual, and an explicit project-scoped write reports that the workspace has no remote.
+A workspace whose repository has no such `origin` has no project scope. Session and user memory work there as usual. An explicit project-scoped write reports that the workspace has no remote; distillation and the `AGENTS.md` sync have nowhere to commit, so they record the skip in the trace and the rules travel in the prompt instead.
 
 ## Writing memory
 
