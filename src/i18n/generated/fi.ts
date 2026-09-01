@@ -436,6 +436,13 @@ export const FI_MESSAGES = {
     { kind: "text", value: "Tunnus ei nimeä tiliä, joten mitään ei tallennettu. Kirjaudu uudelleen." },
   ],
   "cli.login.token.empty": [{ kind: "text", value: "Tunnus ei voi olla tyhjä." }],
+  "cli.login.token.rejected": [
+    { kind: "text", value: "Pilvi hylkäsi tunnuksen, joten mitään ei tallennettu. Kirjaudu uudelleen." },
+  ],
+  "cli.login.token.unreachable": [
+    { kind: "text", value: "Tunnusta ei voitu tarkistaa, joten mitään ei tallennettu: " },
+    { kind: "arg", name: "reason" },
+  ],
   "cli.login.url.insecure": [
     { kind: "text", value: "Pilven osoitteen on käytettävä HTTPS:ää, ellei se osoita localhostiin." },
   ],

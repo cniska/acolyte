@@ -168,6 +168,8 @@
   "cli.login.url.insecure": "Pilven osoitteen on käytettävä HTTPS:ää, ellei se osoita localhostiin.",
   "cli.login.token.anonymous": "Tunnus ei nimeä tiliä, joten mitään ei tallennettu. Kirjaudu uudelleen.",
   "cli.login.token.empty": "Tunnus ei voi olla tyhjä.",
+  "cli.login.token.rejected": "Pilvi hylkäsi tunnuksen, joten mitään ei tallennettu. Kirjaudu uudelleen.",
+  "cli.login.token.unreachable": "Tunnusta ei voitu tarkistaa, joten mitään ei tallennettu: {reason}",
   "cli.login.waiting": "Odotetaan tunnistautumista…",
   "cli.login.welcome": "Kirjauduttu sisään tunnuksella {email}.",
   "cli.logout.done": "Kirjauduttu ulos.",

@@ -23,7 +23,7 @@ acolyte config set features.cloudSync true  # enable cloud sync (preview)
 acolyte login                               # store token and cloud URL
 ```
 
-A custom cloud URL must use HTTPS unless it targets localhost; `acolyte login` refuses a plaintext one before storing anything. Credentials are stored in the config directory as `credentials` (mode 0600). See [Paths](paths.md) for platform-specific locations. Environment variables `ACOLYTE_CLOUD_URL` and `ACOLYTE_CLOUD_TOKEN` take precedence over the credentials file.
+A custom cloud URL must use HTTPS unless it targets localhost; `acolyte login` refuses a plaintext one before storing anything. It also refuses a token that names no account, and one the cloud does not accept, so a stored credential always names the account its memory is keyed to. Credentials are stored in the config directory as `credentials` (mode 0600). See [Paths](paths.md) for platform-specific locations. Environment variables `ACOLYTE_CLOUD_URL` and `ACOLYTE_CLOUD_TOKEN` take precedence over the credentials file.
 
 ## Migration
 

@@ -100,6 +100,14 @@ export class CloudClient {
     };
   }
 
+  /**
+   * Proves the cloud accepts this token, so nothing is stored under an account it does not name.
+   * The active session is the cheapest authenticated read the API has.
+   */
+  async checkCredential(): Promise<void> {
+    await this.get(ROUTES.sessions.getActive, { schema: activeSessionSchema });
+  }
+
   /** Names a scope in the account, so the dashboard shows what the key stands for. */
   async setScopeLabel(scopeKey: string, label: string): Promise<void> {
     await this.post(ROUTES.scopeLabels.set, { body: { scopeKey, label } });

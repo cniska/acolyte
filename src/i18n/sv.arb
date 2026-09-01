@@ -168,6 +168,8 @@
   "cli.login.url.insecure": "Molnadressen måste använda HTTPS om den inte pekar på localhost.",
   "cli.login.token.anonymous": "Tokenen namnger inget konto, så ingenting sparades. Logga in igen.",
   "cli.login.token.empty": "Token får inte vara tom.",
+  "cli.login.token.rejected": "Molnet avvisade tokenen, så ingenting sparades. Logga in igen.",
+  "cli.login.token.unreachable": "Tokenen kunde inte kontrolleras, så ingenting sparades: {reason}",
   "cli.login.waiting": "Väntar på autentisering…",
   "cli.login.welcome": "Inloggad som {email}.",
   "cli.logout.done": "Utloggad.",

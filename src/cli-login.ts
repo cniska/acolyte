@@ -15,6 +15,7 @@ type LoginModeDeps = {
   printError: (message: string) => void;
   promptHidden: (question: string) => Promise<string | undefined>;
   writeCredential: (key: keyof Credentials, value: string) => Promise<void>;
+  checkCloudCredential: (url: string, token: string) => Promise<void>;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
   createId: () => string;
@@ -42,8 +43,9 @@ function reportMerge(deps: LoginModeDeps, merge: UserScopeMergeSummary): void {
 }
 
 /**
- * Stores the credentials, copies what is already on this machine into the account, and moves what the
- * machine remembered while signed out into it. Signing in is the first moment both the feature flag
+ * Stores the credentials once the cloud accepts them, copies what is already on this machine into the
+ * account, and moves what the machine remembered while signed out into it. Signing in is the first
+ * moment both the feature flag
  * and a token exist, and every cloud write upserts on the record id, so signing in again finishes
  * whatever a failed run left behind.
  */
@@ -62,6 +64,20 @@ async function completeLogin(deps: LoginModeDeps, url: string, token: string, co
     return;
   }
   const accountKey = userResourceIdForSubject(subject);
+
+  // The stored token decides which account every later write lands in, so a token the cloud refuses
+  // must not become one: it would key this machine's memory to an account that does not exist.
+  try {
+    await deps.checkCloudCredential(url, token);
+  } catch (error) {
+    deps.printError(
+      isCredentialRejection(error)
+        ? t("cli.login.token.rejected")
+        : t("cli.login.token.unreachable", { reason: errorMessage(error) }),
+    );
+    process.exitCode = 1;
+    return;
+  }
 
   await deps.writeCredential("cloudToken", token);
   await deps.writeCredential("cloudUrl", url);

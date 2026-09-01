@@ -5,6 +5,10 @@ import type { UserResourceId } from "./resource-id";
 import { createFileSessionStore } from "./session-store";
 import { mergeLocalUserScope, type UserScopeMergeSummary } from "./user-scope-merge";
 
+export async function checkCloudCredential(url: string, token: string): Promise<void> {
+  await new CloudClient(url, token).checkCredential();
+}
+
 /**
  * Opens the local stores directly rather than through their factories: the factories route to the
  * cloud once the flag is on, and `appConfig` reads credentials at import, so a login that just

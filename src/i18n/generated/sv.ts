@@ -437,6 +437,13 @@ export const SV_MESSAGES = {
     { kind: "text", value: "Tokenen namnger inget konto, så ingenting sparades. Logga in igen." },
   ],
   "cli.login.token.empty": [{ kind: "text", value: "Token får inte vara tom." }],
+  "cli.login.token.rejected": [
+    { kind: "text", value: "Molnet avvisade tokenen, så ingenting sparades. Logga in igen." },
+  ],
+  "cli.login.token.unreachable": [
+    { kind: "text", value: "Tokenen kunde inte kontrolleras, så ingenting sparades: " },
+    { kind: "arg", name: "reason" },
+  ],
   "cli.login.url.insecure": [
     { kind: "text", value: "Molnadressen måste använda HTTPS om den inte pekar på localhost." },
   ],

@@ -179,6 +179,8 @@ export type MessageArgs = {
   "cli.login.timeout": never;
   "cli.login.token.anonymous": never;
   "cli.login.token.empty": never;
+  "cli.login.token.rejected": never;
+  "cli.login.token.unreachable": { reason: string | number };
   "cli.login.url.insecure": never;
   "cli.login.waiting": never;
   "cli.login.welcome": { email: string | number };

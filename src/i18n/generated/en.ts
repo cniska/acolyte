@@ -429,6 +429,13 @@ export const EN_MESSAGES = {
     { kind: "text", value: "That token does not name an account, so nothing was stored. Sign in again." },
   ],
   "cli.login.token.empty": [{ kind: "text", value: "Token cannot be empty." }],
+  "cli.login.token.rejected": [
+    { kind: "text", value: "The cloud refused that token, so nothing was stored. Sign in again." },
+  ],
+  "cli.login.token.unreachable": [
+    { kind: "text", value: "The token could not be checked, so nothing was stored: " },
+    { kind: "arg", name: "reason" },
+  ],
   "cli.login.url.insecure": [{ kind: "text", value: "The cloud URL must use HTTPS unless it targets localhost." }],
   "cli.login.waiting": [{ kind: "text", value: "Waiting for authentication…" }],
   "cli.login.welcome": [

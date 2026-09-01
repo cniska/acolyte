@@ -34,6 +34,9 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     writeCredential: async () => {
       calls.push("writeCredential");
     },
+    checkCloudCredential: async () => {
+      calls.push("checkCloudCredential");
+    },
     commandError: (name) => {
       calls.push(`commandError:${name}`);
     },
@@ -181,6 +184,48 @@ describe("loginMode", () => {
     expect(calls).not.toContain("mergeUserScope");
     expect(process.exitCode).toBe(1);
     expect(output()).toContain("does not name an account");
+  });
+
+  test("refuses a token the cloud rejects, before storing anything", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? TOKEN : "https://custom.example.com"),
+      checkCloudCredential: async () => {
+        throw new CloudApiError(401, "unauthorized");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(calls).not.toContain("writeCredential");
+    expect(calls).not.toContain("migrateToCloud");
+    expect(calls).not.toContain("mergeUserScope");
+    expect(process.exitCode).toBe(1);
+    expect(output()).toContain("refused that token");
+  });
+
+  test("stores nothing when the token cannot be checked", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? TOKEN : "https://custom.example.com"),
+      checkCloudCredential: async () => {
+        throw new Error("connect ECONNREFUSED");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(calls).not.toContain("writeCredential");
+    expect(process.exitCode).toBe(1);
+    expect(output()).toContain("ECONNREFUSED");
+  });
+
+  test("checks the token before it is stored", async () => {
+    const { deps, calls } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? TOKEN : "https://custom.example.com"),
+    });
+
+    await loginMode([], deps);
+
+    expect(calls.indexOf("checkCloudCredential")).toBeLessThan(calls.indexOf("writeCredential"));
   });
 
   test("merges the local user scope into the account after the copy", async () => {

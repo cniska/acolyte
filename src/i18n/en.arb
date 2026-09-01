@@ -1016,6 +1016,19 @@
   "@cli.login.token.empty": {
     "description": "Shown when the token prompt was submitted with no value."
   },
+  "cli.login.token.rejected": "The cloud refused that token, so nothing was stored. Sign in again.",
+  "@cli.login.token.rejected": {
+    "description": "Shown when the cloud rejected the token during the check that runs before any credential is stored. Two sentences: the outcome, then the suggestion."
+  },
+  "cli.login.token.unreachable": "The token could not be checked, so nothing was stored: {reason}",
+  "@cli.login.token.unreachable": {
+    "description": "Shown when the check that runs before any credential is stored failed for a reason other than rejection, such as an unreachable cloud. {reason} is the underlying error message.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
   "cli.login.url.insecure": "The cloud URL must use HTTPS unless it targets localhost.",
   "@cli.login.url.insecure": {
     "description": "Shown when a custom cloud URL would send the token and the copied memories in plaintext. Keep HTTPS and localhost untranslated."
