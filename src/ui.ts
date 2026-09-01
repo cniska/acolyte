@@ -1,4 +1,4 @@
-import { stdout } from "node:process";
+import { stderr, stdout } from "node:process";
 import { palette } from "./palette";
 import { ansi } from "./tui/styles";
 
@@ -14,6 +14,15 @@ export function writeChunk(chunk: string): void {
     return;
   }
   stdout.write(chunk);
+}
+
+/** Diagnostics share the sink when one is installed, and stderr otherwise, so stdout stays a data stream. */
+function writeErrorChunk(chunk: string): void {
+  if (uiSink) {
+    uiSink(chunk);
+    return;
+  }
+  stderr.write(chunk);
 }
 
 function hexToAnsi(hex: string): string {
@@ -84,11 +93,16 @@ export function printOutput(content: string): void {
 }
 
 export function printWarning(content: string): void {
-  writeChunk(`${warningText(content)}\n`);
+  writeErrorChunk(`${warningText(content)}\n`);
 }
 
 export function printError(content: string): void {
-  writeChunk(`${errorText(content)}\n`);
+  writeErrorChunk(`${errorText(content)}\n`);
+}
+
+/** Already-formatted detail belonging to the error above it, so the two stay on one stream. */
+export function printErrorDetail(content: string): void {
+  writeErrorChunk(`${content}\n`);
 }
 
 export function clearScreen(): void {

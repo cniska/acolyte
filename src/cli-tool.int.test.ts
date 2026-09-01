@@ -44,32 +44,34 @@ describe("acolyte tool", () => {
 
   test("unknown tool names the id and lists the available tools", async () => {
     await withWorkspace(async (workspace) => {
-      const { code, stdout } = await runCliOutcome(["tool", "file-reed"], { cwd: workspace });
+      const { code, stdout, stderr } = await runCliOutcome(["tool", "file-reed"], { cwd: workspace });
       expect(code).toBe(1);
-      expect(stdout).toContain("file-reed");
-      expect(stdout).toContain("file-read");
+      expect(stderr).toContain("file-reed");
+      expect(stderr).toContain("file-read");
+      expect(stdout).toBe("");
     });
   });
 
   test("schema violation prints a readable validation error", async () => {
     await withWorkspace(async (workspace) => {
-      const { code, stdout } = await runCliOutcome(["tool", "file-read", "{}"], { cwd: workspace });
+      const { code, stdout, stderr } = await runCliOutcome(["tool", "file-read", "{}"], { cwd: workspace });
       expect(code).toBe(1);
-      expect(stdout).toContain("Invalid input for file-read:");
-      expect(stdout).toContain("path");
-      expect(stdout.startsWith("[")).toBe(false);
+      expect(stderr).toContain("Invalid input for file-read:");
+      expect(stderr).toContain("path");
+      expect(stderr.startsWith("[")).toBe(false);
+      expect(stdout).toBe("");
     });
   });
 
   test("a write outside the workspace boundary is refused and performs no I/O", async () => {
     await withWorkspace(async (workspace) => {
       const outside = join(workspace, "..", `escaped-${process.pid}.txt`);
-      const { code, stdout } = await runCliOutcome(
+      const { code, stderr } = await runCliOutcome(
         ["tool", "file-create", JSON.stringify({ path: outside, content: "escaped" })],
         { cwd: workspace },
       );
       expect(code).toBe(1);
-      expect(stdout).toContain("Sandbox violation");
+      expect(stderr).toContain("Sandbox violation");
       expect(existsSync(outside)).toBe(false);
     });
   });

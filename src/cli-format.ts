@@ -7,7 +7,7 @@ import type { ToolOutputPart } from "./tool-output-contract";
 import { resolveToolLabel, toolLabelKey } from "./tool-output-format";
 import { renderToolOutput } from "./tool-output-render";
 import { CLI_TOOL_OUTPUT_LIMITS } from "./tool-policy";
-import { dimText, printDim, printOutput, printToolHeader } from "./ui";
+import { dimText, printDim, printErrorDetail, printOutput, printToolHeader } from "./ui";
 
 export function displayPath(pathInput: string): string {
   const rel = relative(process.cwd(), pathInput);
@@ -26,7 +26,7 @@ export function formatIndentedDim(content: string): string {
 }
 
 export function printIndentedDim(content: string): void {
-  printOutput(formatIndentedDim(content));
+  printErrorDetail(formatIndentedDim(content));
 }
 
 export function printToolResult(toolId: string, raw: string, detail?: string): void {
