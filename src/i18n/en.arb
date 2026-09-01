@@ -1521,6 +1521,10 @@
   "@status.header": {
     "description": "Title above the status report, shown by both '/status' in chat and 'acolyte status' on the command line (status-format.ts:50). Single noun; must read well on both surfaces."
   },
+  "status.label.build": "Build",
+  "@status.label.build": {
+    "description": "Row label in the status report for the version and commit of the running server."
+  },
   "status.label.capabilities": "Capabilities",
   "@status.label.capabilities": {
     "description": "Row label in the status report listing what the server supports. Labels sit in a left column beside their values, so keep them short."

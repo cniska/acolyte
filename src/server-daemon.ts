@@ -1,6 +1,7 @@
 import { closeSync, openSync } from "node:fs";
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { formatVersionWithCommit, resolveCliCommitShort, resolveCliVersion } from "./cli-version";
 import {
   clearStaleStartupLock,
   DEFAULT_PORT,
@@ -57,7 +58,22 @@ export function apiUrlForPort(port: number): string {
   return `http://127.0.0.1:${port}`;
 }
 
-async function isServerHealthy(apiUrl: string, apiKey?: string, timeoutMs = HEALTHCHECK_TIMEOUT_MS): Promise<boolean> {
+type ServerIdentity = { protocolVersion: unknown; build: unknown };
+
+let localBuildIdentity: string | undefined;
+
+/** The protocol version is per release line, so it cannot tell a freshly launched update from the
+ *  daemon the build before it left running. The build identity can. */
+function localBuild(): string {
+  localBuildIdentity ??= formatVersionWithCommit(resolveCliVersion(), resolveCliCommitShort());
+  return localBuildIdentity;
+}
+
+async function readServerIdentity(
+  apiUrl: string,
+  apiKey?: string,
+  timeoutMs = HEALTHCHECK_TIMEOUT_MS,
+): Promise<ServerIdentity | null> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -65,14 +81,26 @@ async function isServerHealthy(apiUrl: string, apiKey?: string, timeoutMs = HEAL
       headers: apiKey ? { authorization: `Bearer ${apiKey}` } : undefined,
       signal: controller.signal,
     });
-    if (!response.ok) return false;
+    if (!response.ok) return null;
     const payload = await response.json().catch(() => null);
-    return field(payload, "protocol_version") === PROTOCOL_VERSION;
+    return { protocolVersion: field(payload, "protocol_version"), build: field(payload, "build") };
   } catch {
-    return false;
+    return null;
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+/** A daemon this client can talk to, whichever build it was started from. */
+async function isServerHealthy(apiUrl: string, apiKey?: string, timeoutMs = HEALTHCHECK_TIMEOUT_MS): Promise<boolean> {
+  const identity = await readServerIdentity(apiUrl, apiKey, timeoutMs);
+  return identity?.protocolVersion === PROTOCOL_VERSION;
+}
+
+/** A daemon this client may serve requests through: same protocol and the same build. */
+async function isServerReusable(apiUrl: string, apiKey?: string, timeoutMs = HEALTHCHECK_TIMEOUT_MS): Promise<boolean> {
+  const identity = await readServerIdentity(apiUrl, apiKey, timeoutMs);
+  return identity?.protocolVersion === PROTOCOL_VERSION && identity.build === localBuild();
 }
 
 async function waitForHealthyServerOrSpawnExit(
@@ -240,24 +268,29 @@ export async function ensureLocalServer(
   const startLockPath = startupLockPath(port, env);
 
   const lock = await readServerLock(lockPath);
-  if (lock) {
-    if (!isProcessAlive(lock.pid)) {
-      await rm(lockPath, { force: true });
-    } else if (await isServerHealthy(apiUrl, apiKey)) {
-      return { port, pid: lock.pid, started: false };
-    } else {
-      await rm(lockPath, { force: true });
-    }
+  if (lock && !isProcessAlive(lock.pid)) await rm(lockPath, { force: true });
+
+  if (await isServerReusable(apiUrl, apiKey)) {
+    const reusedLock = await readServerLock(lockPath);
+    return { port, pid: reusedLock?.pid ?? 0, started: false };
   }
 
-  if (await isServerHealthy(apiUrl, apiKey)) {
-    return { port, pid: 0, started: false };
+  // Whatever answers here belongs to another build or another protocol, and the port is the one
+  // thing it cannot share. Asking it to stop leaves a live turn alone, and a daemon that keeps one
+  // running keeps the port too, so this client serves through it until that turn is done.
+  if (await isServerListening(apiUrl)) {
+    const stopped = await stopLocalServer({ port, apiKey, env });
+    if (stopped.kind === "refused") {
+      const busyLock = await readServerLock(lockPath);
+      return { port, pid: busyLock?.pid ?? 0, started: false };
+    }
   }
+  await rm(lockPath, { force: true });
 
   const startupClaimed = await tryAcquireStartupLock(startLockPath, port);
   if (!startupClaimed) {
     const waitResult = await waitForHealthyServerOrStaleStartupLock(apiUrl, apiKey, timeoutMs, startLockPath);
-    if (waitResult === "retry") {
+    if (waitResult === "retry" || !(await isServerReusable(apiUrl, apiKey))) {
       if (retryCount >= MAX_STARTUP_RETRIES) throw new Error(t("cli.server.start_timeout", { url: apiUrl }));
       return ensureLocalServer(input, retryCount + 1);
     }

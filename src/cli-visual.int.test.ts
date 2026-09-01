@@ -56,6 +56,7 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
                 provider_auth: ["openai (api key)"],
                 model: "gpt-5-mini",
                 protocol_version: PROTOCOL_VERSION,
+                build: "1.2.3 (abc1234)",
                 capabilities: "stream.sse, error.structured",
                 service: "http://localhost:6767",
                 tasks_total: 0,
@@ -298,6 +299,7 @@ describe("cli visual regression", () => {
           Providers:          openai (api key)
           Model:              gpt-5-mini
           Protocol version:   ${PROTOCOL_VERSION}
+          Build:              1.2.3 (abc1234)
           Capabilities:       stream.sse, error.structured
           Service:            http://localhost:6767
           Tasks total:        0

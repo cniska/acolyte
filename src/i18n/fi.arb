@@ -245,6 +245,7 @@
   "run.args.invalid": "Virheelliset suoritusargumentit",
   "run.file_context.attached": "Tiedostokonteksti liitetty: {filePath}",
   "status.header": "Tila",
+  "status.label.build": "Koontiversio",
   "status.label.capabilities": "Ominaisuudet",
   "status.label.cloud_url": "Pilven URL",
   "status.label.cloud_user": "Käyttäjä",

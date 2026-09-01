@@ -38,6 +38,7 @@ Events are append-only and ordered per request.
 
 - the protocol is versioned and negotiated by capability handshake.
 - additive changes are preferred; breaking changes require version bump.
+- the status payload carries the daemon's `build` (version and commit); a client reuses a daemon only when that matches its own. See [Updates](./updates.md).
 
 ## Transport stance
 

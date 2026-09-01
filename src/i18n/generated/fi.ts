@@ -726,6 +726,7 @@ export const FI_MESSAGES = {
     { kind: "arg", name: "filePath" },
   ],
   "status.header": [{ kind: "text", value: "Tila" }],
+  "status.label.build": [{ kind: "text", value: "Koontiversio" }],
   "status.label.capabilities": [{ kind: "text", value: "Ominaisuudet" }],
   "status.label.cloud_url": [{ kind: "text", value: "Pilven URL" }],
   "status.label.cloud_user": [{ kind: "text", value: "Käyttäjä" }],

@@ -1,5 +1,5 @@
 import { appConfig } from "./app-config";
-import { compareVersions, resolveCliVersion } from "./cli-version";
+import { compareVersions, formatVersionWithCommit, resolveCliCommitShort, resolveCliVersion } from "./cli-version";
 import { decodeTokenSubject } from "./credentials";
 import { createStreamError, type ErrorId, errorIdSchema } from "./error-handling";
 import { mapQuotaErrorMessage } from "./error-messages";
@@ -118,6 +118,7 @@ async function createStatusPayload(): Promise<StatusPayload> {
     model,
     ...(memory ? { memory } : {}),
     protocol_version: PROTOCOL_VERSION,
+    build: formatVersionWithCommit(resolveCliVersion(), resolveCliCommitShort()),
     ...(stagedUpdate ? { update_staged: stagedUpdate } : {}),
     capabilities: formatServerCapabilities(),
     service: `http://localhost:${PORT}`,

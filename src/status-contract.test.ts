@@ -9,6 +9,7 @@ describe("parseStatusFields", () => {
       provider_auth: ["openai (api key)"],
       model: "gpt-5-mini",
       protocol_version: "1",
+      build: "1.2.3 (abc1234)",
       capabilities: "chat",
       service: "acolyte",
       tasks_total: 0,

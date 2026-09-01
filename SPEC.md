@@ -152,6 +152,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 ## 6. Protocol & task requirements (PR)
 
 - **PR-1** — The client/server transport contract is versioned and negotiated on connect; a version mismatch is rejected cleanly.
+- **PR-1a** — The daemon reports the version and commit it was started from, and a client serves requests only through a daemon of its own build. Meeting one from another build, the client asks it to shut down and starts its own; a daemon that refuses because a task is unfinished keeps serving until that task ends.
 - **PR-2** — A request is one task payload (message, history, session ID, runtime options); a response is an ordered, append-only event stream followed by exactly one terminal reply.
 - **PR-3** — Every request terminates with either a done reply or an error reply; a tool-output/result event always references a prior tool-call event's id; clients ignore unknown event fields for forward compatibility.
 - **PR-4** — Each chat request becomes a tracked task with a server-assigned stable id moving through accepted → queued → running → completed | failed | cancelled; only the defined transitions are allowed and terminal states permit no further transition.

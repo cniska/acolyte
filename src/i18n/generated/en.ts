@@ -699,6 +699,7 @@ export const EN_MESSAGES = {
     { kind: "arg", name: "filePath" },
   ],
   "status.header": [{ kind: "text", value: "Status" }],
+  "status.label.build": [{ kind: "text", value: "Build" }],
   "status.label.capabilities": [{ kind: "text", value: "Capabilities" }],
   "status.label.cloud_url": [{ kind: "text", value: "Cloud URL" }],
   "status.label.cloud_user": [{ kind: "text", value: "User" }],

@@ -245,6 +245,7 @@
   "run.args.invalid": "Ogiltiga körargument",
   "run.file_context.attached": "Filkontext bifogad från {filePath}",
   "status.header": "Status",
+  "status.label.build": "Bygge",
   "status.label.capabilities": "Funktioner",
   "status.label.cloud_url": "Moln-URL",
   "status.label.cloud_user": "Användare",

@@ -4,6 +4,7 @@ import { type TranslationKey, t } from "./i18n";
 import type { StatusFields } from "./status-contract";
 
 const STATUS_KEY_LABELS = {
+  build: "status.label.build",
   capabilities: "status.label.capabilities",
   cloud_url: "status.label.cloud_url",
   cloud_user: "status.label.cloud_user",

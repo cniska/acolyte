@@ -257,6 +257,7 @@ export type MessageArgs = {
   "run.args.invalid": never;
   "run.file_context.attached": { filePath: string | number };
   "status.header": never;
+  "status.label.build": never;
   "status.label.capabilities": never;
   "status.label.cloud_url": never;
   "status.label.cloud_user": never;

@@ -15,6 +15,7 @@ Skip the check with `--no-update` or `ACOLYTE_SKIP_UPDATE=1`. Force a check with
 ## Version compatibility
 
 - **Protocol** — the client-server protocol is versioned. Server and client validate the protocol version on connection and reject mismatches cleanly.
+- **Build** — the daemon reports the version and commit it was started from. A client serves requests only through a daemon of its own build: when a staged update starts, it asks the daemon the previous build left running to shut down and starts its own. A daemon that refuses because a turn is live keeps serving until that turn ends. `acolyte status` names the running build.
 - **Database schemas** — SQLite stores (memory, trace) use versioned forward migrations (`db-migrate.ts`). Each store defines a migrations array; pending migrations run automatically on startup within transactions. Migrations are cumulative — if a user skips several versions, all intermediate migrations run in sequence.
 - **Configuration** — same approach. Config migrations will be added when a release changes the config format.
 
