@@ -1,4 +1,5 @@
 import { CodedError } from "./coded-error";
+import { concurrentMap } from "./concurrent-map";
 import { CLOUD_ERROR_CODES, errorMessage } from "./error-contract";
 import { log } from "./log";
 import type { MemoryStore } from "./memory-contract";
@@ -11,6 +12,11 @@ export type CloudMigrationSummary = {
   failures: number;
   embeddingFailures: number;
 };
+
+// Each record costs a round trip for itself and another for its embedding, so a first login on a
+// well-used machine is thousands of them. Held low enough that a copy stays a background nuisance
+// rather than a burst the cloud reads as abuse.
+const COPY_CONCURRENCY = 8;
 
 export type CloudMigrationDeps = {
   localMemory: MemoryStore;
@@ -41,6 +47,17 @@ function warnSkipped(event: string, id: string, error: unknown): void {
 }
 
 /**
+ * Copies the first item on its own before fanning the rest out. A refused credential rejects every
+ * write it is given, so proving one succeeded first is what keeps a bad token from queueing writes
+ * it has no right to make.
+ */
+async function copyAll<T>(items: readonly T[], copy: (item: T) => Promise<void>): Promise<void> {
+  if (items.length === 0) return;
+  await copy(items[0] as T);
+  await concurrentMap(items.slice(1), COPY_CONCURRENCY, copy);
+}
+
+/**
  * Copies local memory and sessions into a cloud account. Every cloud write upserts on the record's
  * id, so an interrupted run is repaired by running it again rather than by tracking what landed.
  * The archive stays local: the cloud reaches an archive row only by retiring a live one, and that
@@ -57,7 +74,7 @@ export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise
     embeddingFailures: 0,
   };
 
-  for (const record of records) {
+  await copyAll(records, async (record) => {
     try {
       await deps.cloudMemory.write(record, scopeFromKey(record.scopeKey));
       summary.memories += 1;
@@ -65,7 +82,7 @@ export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise
       if (isCredentialRejection(error)) throw error;
       warnSkipped("cloud.migrate.memory_failed", record.id, error);
       summary.failures += 1;
-      continue;
+      return;
     }
     // A record that landed without its vector is still recallable by keyword overlap, so the
     // embedding is counted apart from the record rather than discarding a successful copy.
@@ -77,9 +94,9 @@ export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise
       warnSkipped("cloud.migrate.embedding_failed", record.id, error);
       summary.embeddingFailures += 1;
     }
-  }
+  });
 
-  for (const session of sessions) {
+  await copyAll(sessions, async (session) => {
     try {
       await deps.cloudSessions.saveSession(session);
       summary.sessions += 1;
@@ -88,7 +105,7 @@ export async function migrateLocalDataToCloud(deps: CloudMigrationDeps): Promise
       warnSkipped("cloud.migrate.session_failed", session.id, error);
       summary.failures += 1;
     }
-  }
+  });
 
   return summary;
 }
