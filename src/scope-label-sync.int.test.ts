@@ -62,6 +62,31 @@ describe("publishProjectLabel", () => {
     }
   });
 
+  test("retries after a refused publish, so a transient failure is not final", async () => {
+    let refuse = true;
+    const attempts: unknown[] = [];
+    const server = startTestServer(async (request) => {
+      attempts.push(await request.json());
+      if (refuse) {
+        refuse = false;
+        return new Response("nope", { status: 500 });
+      }
+      return new Response(null, { status: 204 });
+    });
+
+    try {
+      const workspace = dirs.createDir("acolyte-scope-label-retry-");
+      writeGitOrigin(workspace, "git@github.com:acolyte-sh/acolyte.git");
+
+      // Two calls in one process: the first is refused, so the second must try again.
+      await publishIn(workspace, `http://localhost:${server.port}`, "tok_test");
+
+      expect(attempts).toHaveLength(2);
+    } finally {
+      server.stop();
+    }
+  });
+
   test("says nothing about a workspace with no project scope", async () => {
     const requests: string[] = [];
     const server = startTestServer(async (request) => {

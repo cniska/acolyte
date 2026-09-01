@@ -89,6 +89,22 @@ describe("mergeLocalUserScope", () => {
     expect(local.removed).toEqual(["mem_local0001"]);
   });
 
+  test("moves one of two local observations that say the same thing", async () => {
+    const local = createStore({
+      rows: [
+        record({ id: "mem_local0001", content: "Prefers concise output." }),
+        record({ id: "mem_local0002", content: "Prefers   concise output. " }),
+      ],
+    });
+    const cloud = createStore();
+
+    const summary = await mergeLocalUserScope({ localMemory: local, cloudMemory: cloud, accountKey: ACCOUNT_KEY });
+
+    expect(summary).toMatchObject({ merged: 1, duplicates: 1 });
+    expect(cloud.written.map((row) => row.id)).toEqual(["mem_local0001"]);
+    expect(local.rows).toEqual([]);
+  });
+
   test("never content-dedupes a stored record, which the store does not either", async () => {
     const local = createStore({ rows: [record({ id: "mem_local0001", kind: "stored" })] });
     const cloud = createStore({ rows: [record({ id: "mem_cloud0001", scopeKey: ACCOUNT_KEY })] });

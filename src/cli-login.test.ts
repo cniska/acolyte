@@ -217,6 +217,20 @@ describe("loginMode", () => {
     expect(output()).toContain("Merged 0 local memories into your account.");
   });
 
+  test("reports a refused credential when the merge is the call that hits it", async () => {
+    const { deps, output } = createLoginDeps({
+      parseFlag: (_args, flag) => (flag === "--token" ? TOKEN : "https://custom.example.com"),
+      mergeUserScope: async () => {
+        throw new CloudApiError(401, "unauthorized");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(process.exitCode).toBe(1);
+    expect(output()).toContain("rejected the token");
+  });
+
   test("copies local data with the credentials the login obtained", async () => {
     const targets: string[] = [];
     const { deps } = createLoginDeps({
