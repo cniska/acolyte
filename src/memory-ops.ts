@@ -87,14 +87,7 @@ export async function addMemory(content: string, options: AddMemoryOptions = {})
 
   const { scope = "user", workspace, sessionId, resourceId } = options;
   const store = options.store ?? (await getMemoryStore());
-  const scopeKey = resolveScopeKey(scope, { sessionId, workspace, resourceId });
-  if (!scopeKey) {
-    throw new Error(
-      scope === "project"
-        ? "This workspace has no git remote, so it has no project memory"
-        : `Cannot resolve scope key for scope "${scope}"`,
-    );
-  }
+  const scopeKey = requireScopeKey(scope, { sessionId, workspace, resourceId });
 
   const record = {
     id: `mem_${createId()}`,
@@ -173,6 +166,17 @@ export function resolveScopeKey(scope: MemoryScope, ctx: ScopeContext): string |
   const fromResource = parseResourceId(ctx.resourceId);
   if (fromResource?.startsWith("user_")) return fromResource;
   return activeUserResourceId();
+}
+
+/** The scope a write lands in, or the reason there is none, so a caller cannot store into nowhere. */
+export function requireScopeKey(scope: MemoryScope, ctx: ScopeContext): string {
+  const scopeKey = resolveScopeKey(scope, ctx);
+  if (scopeKey) return scopeKey;
+  throw new Error(
+    scope === "project"
+      ? "This workspace has no git remote, so it has no project memory"
+      : `Cannot resolve scope key for scope "${scope}"`,
+  );
 }
 
 export function visibleScopeKeys(ctx: ScopeContext): Set<string> {

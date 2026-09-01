@@ -4,6 +4,7 @@ import {
   addObservation,
   listArchivedMemories,
   listMemories,
+  requireScopeKey,
   resolveScopeKey,
   restoreMemories,
   retireMemories,
@@ -36,6 +37,16 @@ describe("resolveScopeKey", () => {
 
   test("project yields no key without a workspace, never a cwd fallback", () => {
     expect(resolveScopeKey("project", {})).toBeNull();
+  });
+});
+
+describe("requireScopeKey", () => {
+  test("says why a workspace with no repository remote has nowhere to store a project fact", () => {
+    expect(() => requireScopeKey("project", { workspace: "/ws/one" })).toThrow("no git remote");
+  });
+
+  test("returns the key when the scope resolves", () => {
+    expect(requireScopeKey("project", { resourceId: PROJECT_KEY })).toBe(PROJECT_KEY);
   });
 });
 
