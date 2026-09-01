@@ -78,6 +78,8 @@ export function formatMarkerLine(glyph: string, glyphColor: string | undefined, 
   return `${head} ${color.dim(rest)}`;
 }
 
+export const headingText = (content: string): string => color.bold(color.white(content));
+
 export const warningText = (content: string): string => color.dim(color.yellow(content));
 
 export const errorText = (content: string): string => color.red(content);

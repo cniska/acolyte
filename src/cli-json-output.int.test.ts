@@ -213,6 +213,16 @@ describe("cli json output", () => {
     expect(result.stdout).toBe("");
   });
 
+  test("piped help carries no escape codes", () => {
+    const home = createDir("acolyte-cli-json-home-");
+    const workspace = createDir("acolyte-cli-json-workspace-");
+
+    const result = runCli(["--help"], createIsolatedEnv(home), workspace);
+
+    expect(result.stdout).toContain("Usage");
+    expect(result.stdout).not.toContain(String.fromCharCode(27));
+  });
+
   test("a diagnostic goes to stderr and leaves stdout empty", () => {
     const home = createDir("acolyte-cli-json-home-");
     const workspace = createDir("acolyte-cli-json-workspace-");
