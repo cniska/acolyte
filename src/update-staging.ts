@@ -11,8 +11,13 @@ export function stagingDir(env: Env = process.env): string {
   return join(dataDir(env), "bin");
 }
 
+/** The unit staging works in: what `stageBinary` creates and `pruneStagedVersions` removes whole. */
+export function stagedVersionDir(version: string, env: Env = process.env): string {
+  return join(stagingDir(env), version);
+}
+
 export function stagedBinaryPath(version: string, env: Env = process.env): string {
-  return join(stagingDir(env), version, APP_NAME);
+  return join(stagedVersionDir(version, env), APP_NAME);
 }
 
 /** Staged versions, newest first. */
@@ -39,7 +44,7 @@ export async function newestStagedVersion(env: Env = process.env): Promise<strin
 export async function pruneStagedVersions(keepFrom: string, env: Env = process.env): Promise<void> {
   for (const version of await listStagedVersions(env)) {
     if (compareVersions(version, keepFrom) < 0)
-      await rm(join(stagingDir(env), version), { recursive: true, force: true });
+      await rm(stagedVersionDir(version, env), { recursive: true, force: true });
   }
 }
 
@@ -49,7 +54,7 @@ export async function stageBinary(sourcePath: string, version: string, env: Env 
   // Two clients can stage the same release at once; a shared scratch name would let one rename a
   // copy the other is still truncating. Renaming distinct files onto one target is safe.
   const partial = `${target}.${randomUUID()}.partial`;
-  await mkdir(join(stagingDir(env), version), { recursive: true });
+  await mkdir(stagedVersionDir(version, env), { recursive: true });
   try {
     await copyFile(sourcePath, partial);
     await chmod(partial, 0o755);
