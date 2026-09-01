@@ -725,7 +725,7 @@ export const SV_MESSAGES = {
     { kind: "arg", name: "filePath" },
   ],
   "status.header": [{ kind: "text", value: "Status" }],
-  "status.label.build": [{ kind: "text", value: "Bygge" }],
+  "status.label.build": [{ kind: "text", value: "Byggversion" }],
   "status.label.capabilities": [{ kind: "text", value: "Funktioner" }],
   "status.label.cloud_url": [{ kind: "text", value: "Moln-URL" }],
   "status.label.cloud_user": [{ kind: "text", value: "Användare" }],
