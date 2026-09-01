@@ -7,11 +7,12 @@ set -eu
 BASELINE_BIN="__BASELINE_BIN__"
 BASELINE_VERSION="__BASELINE_VERSION__"
 
-# Mirrors src/paths.ts: a relative XDG_DATA_HOME is ignored.
+# Mirrors src/paths.ts: a relative XDG_DATA_HOME is ignored. Neither variable is required — with
+# no home to read, the baseline binary still runs.
 data_home="${XDG_DATA_HOME:-}"
 case "$data_home" in
   /*) ;;
-  *) data_home="${HOME}/.local/share" ;;
+  *) data_home="${HOME:-}/.local/share" ;;
 esac
 staged_dir="${data_home}/acolyte/bin"
 

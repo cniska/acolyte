@@ -11,6 +11,12 @@ sha256_of() {
   fi
 }
 
+# `|` delimits the substitution below and `&` and `\` are replacement metacharacters, so a home
+# directory holding any of them would corrupt the path written into the launcher rather than fail.
+escape_replacement() {
+  printf '%s' "$1" | sed -e 's/[\\|&]/\\&/g'
+}
+
 fetch_verified() {
   url="$1"
   sha_url="$2"
@@ -28,6 +34,11 @@ fetch_verified() {
 }
 
 main() {
+  if [ -z "${HOME:-}" ]; then
+    echo "HOME is not set; cannot choose an install directory." >&2
+    exit 1
+  fi
+
   if ! command -v shasum >/dev/null 2>&1 && ! command -v sha256sum >/dev/null 2>&1; then
     echo "Neither shasum nor sha256sum is available; cannot verify the download." >&2
     exit 1
@@ -82,7 +93,8 @@ main() {
   mv "${tmpdir}/acolyte" "${LIB_DIR}/acolyte"
   chmod +x "${LIB_DIR}/acolyte"
 
-  sed -e "s|__BASELINE_BIN__|${LIB_DIR}/acolyte|" -e "s|__BASELINE_VERSION__|${version}|" \
+  sed -e "s|__BASELINE_BIN__|$(escape_replacement "${LIB_DIR}/acolyte")|" \
+    -e "s|__BASELINE_VERSION__|$(escape_replacement "${version}")|" \
     "${tmpdir}/launcher.sh" > "${tmpdir}/launcher"
   mkdir -p "$INSTALL_DIR"
   chmod +x "${tmpdir}/launcher"

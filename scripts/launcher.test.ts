@@ -126,6 +126,15 @@ describe("launcher", () => {
     expect(await run(launcher, home, ["run", "hello"])).toEqual({ out: "staged-0.13.0 run hello", code: 0 });
   });
 
+  test("runs the baseline when the environment names no home", async () => {
+    const home = createHome();
+    const launcher = installLauncher(home, writeBaseline(home, "0.12.0"), "0.12.0");
+
+    const proc = Bun.spawn([launcher], { env: { PATH: process.env.PATH ?? "/usr/bin:/bin" }, stdout: "pipe" });
+    expect((await new Response(proc.stdout).text()).trim()).toBe("baseline-0.12.0");
+    expect(await proc.exited).toBe(0);
+  });
+
   test("fails loudly when the binary it would run is missing", async () => {
     const home = createHome();
     const launcher = installLauncher(home, join(home, ".local", "lib", "acolyte", "acolyte"), "0.12.0");
