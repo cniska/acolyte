@@ -31,4 +31,11 @@ describe("repositoryLabel", () => {
     expect(repositoryLabel("git@host:repo.git")).toBeNull();
     expect(repositoryLabel("  ")).toBeNull();
   });
+
+  test("has no identity to share for a path that is not rooted", () => {
+    expect(repositoryLabel("../work/acolyte")).toBeNull();
+    expect(repositoryLabel("~/git/owner/repo.git")).toBeNull();
+    expect(repositoryLabel("C:/Users/bob/repo")).toBeNull();
+    expect(repositoryLabel("owner/repo")).toBeNull();
+  });
 });

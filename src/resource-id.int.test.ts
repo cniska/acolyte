@@ -81,6 +81,25 @@ describe("project resource id", () => {
     expect(projectResourceIdFromWorkspace(worktree)).toBe(projectResourceIdForLabel("acolyte-sh/acolyte"));
   });
 
+  test("gives a fork the id of the repository it contributes to", async () => {
+    const fork = await createRepo("acolyte-proj-id-fork-", "git@github.com:contributor/acolyte.git");
+    await git(fork, ["remote", "add", "upstream", "git@github.com:acolyte-sh/acolyte.git"]);
+
+    expect(projectResourceIdFromWorkspace(fork)).toBe(projectResourceIdForLabel("acolyte-sh/acolyte"));
+  });
+
+  test("gives a fork with no upstream its own id", async () => {
+    const fork = await createRepo("acolyte-proj-id-lone-fork-", "git@github.com:contributor/acolyte.git");
+
+    expect(projectResourceIdFromWorkspace(fork)).toBe(projectResourceIdForLabel("contributor/acolyte"));
+  });
+
+  test("gives a checkout whose only remote is a local path no project id", async () => {
+    const repo = await createRepo("acolyte-proj-id-path-remote-", "../work/acolyte");
+
+    expect(projectResourceIdFromWorkspace(repo)).toBeNull();
+  });
+
   test("gives a checkout with no origin no project id", async () => {
     const repo = await createRepo("acolyte-proj-id-no-remote-");
 

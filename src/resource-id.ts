@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { originRepositoryLabel } from "./git-remote";
+import { projectRepositoryLabel } from "./git-remote";
 import { domainIdSchema } from "./id-contract";
 import { resolveProjectRoot } from "./workspace-sandbox";
 
@@ -26,9 +26,9 @@ function hashValue(value: string): string {
 
 // Read every time rather than cached: the daemon outlives `git remote add`, and a scope key that
 // keeps answering from before the remote existed is worse than the config read it saves.
-/** The `owner/repo` naming a workspace's project, or null when its `origin` names none. */
+/** The `owner/repo` naming a workspace's project, or null when its remotes name none. */
 export function projectLabelFromWorkspace(workspace: string): string | null {
-  return originRepositoryLabel(resolveProjectRoot(workspace));
+  return projectRepositoryLabel(resolveProjectRoot(workspace));
 }
 
 /** The repository's own name, without its owner, for surfaces that show the project rather than key it. */

@@ -30,13 +30,13 @@ Each record belongs to one scope:
 
 The canonical resource IDs are `sess_*`, `proj_*`, and `user_*`.
 
-A project is identified by the `owner/repo` its `origin` remote names, lowercased and hashed into the key. Every clone and worktree of that repository reaches the same project memory, whether the remote is addressed over SSH or HTTPS and whichever forge hosts it; a fork has a different `origin`, so it is a different project. The readable name is stored beside the key rather than inside it, so a key stays an opaque identifier.
+A project is identified by the `owner/repo` its `upstream` remote names, or its `origin` when there is no `upstream`, lowercased and hashed into the key. Every clone and worktree of that repository reaches the same project memory, whether the remote is addressed over SSH or HTTPS and whichever forge hosts it. A fork keeps the project it contributes to, since `upstream` names the repository it was forked from; a fork with no `upstream` remote is its own project. The readable name is stored beside the key rather than inside it, so a key stays an opaque identifier.
 
 With cloud sync on, Acolyte tells the account what the current workspace's project is called, since a key on its own is opaque there. Nothing else names a scope: a project whose checkout is gone keeps its key.
 
 The user scope is the account, not the machine: signed in it is keyed by the subject of the cloud token, so every machine signed into one account reaches one user scope; signed out every machine uses `user_local`. Signing in moves `user_local` into the account and reports what moved — see [Cloud](cloud.md). While signed out, what the account holds is out of reach.
 
-A workspace whose repository has no such `origin` has no project scope. Session and user memory work there as usual. An explicit project-scoped write reports that the workspace has no remote; distillation and the `AGENTS.md` sync have nowhere to commit, so they record the skip in the trace and the rules travel in the prompt instead.
+A workspace whose repository has no remote naming an `owner/repo` has no project scope, and a remote addressing a filesystem path names none. Session and user memory work there as usual. An explicit project-scoped write reports that the workspace has no remote; distillation and the `AGENTS.md` sync have nowhere to commit, so they record the skip in the trace and the rules travel in the prompt instead.
 
 ## Writing memory
 

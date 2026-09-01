@@ -25,22 +25,18 @@ function gitCommonDir(repoRoot: string): string | null {
   }
 }
 
-function readOriginUrl(configPath: string): string | null {
-  let text: string;
-  try {
-    text = readFileSync(configPath, "utf8");
-  } catch {
-    return null;
-  }
+// A fork's `upstream` names the repository it contributes to, and `origin` only the fork itself.
+const PROJECT_REMOTES = ["upstream", "origin"] as const;
 
-  let inOrigin = false;
-  for (const rawLine of text.split("\n")) {
+function remoteUrl(config: string, remote: string): string | null {
+  let inRemote = false;
+  for (const rawLine of config.split("\n")) {
     const line = rawLine.trim();
     if (line.startsWith("[")) {
-      inOrigin = /^\[remote\s+"origin"]$/.test(line);
+      inRemote = new RegExp(`^\\[remote\\s+"${remote}"]$`).test(line);
       continue;
     }
-    if (!inOrigin) continue;
+    if (!inRemote) continue;
     const url = line.match(/^url\s*=\s*(.+)$/)?.[1]?.trim();
     if (url) return url;
   }
@@ -55,8 +51,10 @@ export function repositoryLabel(url: string): string | null {
   const trimmed = url.trim();
   const scheme = /^[a-z][a-z0-9+.-]*:\/\//i.exec(trimmed)?.[0];
   const addressed = trimmed.slice(scheme?.length ?? 0).replace(/^[^/@]*@/, "");
-  // A path names a directory on one machine, not a repository other checkouts can share.
+  // A path names a directory on one machine, not a repository other checkouts can share. Without a
+  // scheme only the `host:path` shorthand names a host, and one leading letter is a Windows drive.
   if (addressed.startsWith("/")) return null;
+  if (!scheme && !/^[^/:]{2,}:/.test(addressed)) return null;
 
   // `host:path` addresses the same repository as `ssh://host/path`. Only the URL form can carry a
   // port, so in the shorthand a leading number is the first path segment and has to survive.
@@ -69,10 +67,20 @@ export function repositoryLabel(url: string): string | null {
   return ownerAndName.join("/").toLowerCase();
 }
 
-/** The `owner/repo` a checkout's `origin` names, or null when it has none to share. */
-export function originRepositoryLabel(repoRoot: string): string | null {
+/** The `owner/repo` a checkout belongs to, or null when it names none other checkouts can share. */
+export function projectRepositoryLabel(repoRoot: string): string | null {
   const commonDir = gitCommonDir(repoRoot);
   if (!commonDir) return null;
-  const url = readOriginUrl(join(commonDir, "config"));
-  return url ? repositoryLabel(url) : null;
+  let config: string;
+  try {
+    config = readFileSync(join(commonDir, "config"), "utf8");
+  } catch {
+    return null;
+  }
+  for (const remote of PROJECT_REMOTES) {
+    const url = remoteUrl(config, remote);
+    const label = url ? repositoryLabel(url) : null;
+    if (label) return label;
+  }
+  return null;
 }
