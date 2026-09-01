@@ -254,10 +254,11 @@ export async function restoreMemories(
   return restored.map(toMemoryEntry);
 }
 
+// The CLI runs in the workspace the user is asking about, so its working directory is that workspace.
 export const fileMemoryStore = {
-  list: (scope?: MemoryScope) => listMemories({ scope }),
-  add: (content: string, scope?: MemoryScope) => addMemory(content, { scope }),
-  remove: (id: string, scope?: MemoryScope) => removeMemory(id, { scope }),
-  listArchived: (scope?: MemoryScope) => listArchivedMemories({ scope }),
+  list: (scope?: MemoryScope) => listMemories({ scope, workspace: process.cwd() }),
+  add: (content: string, scope?: MemoryScope) => addMemory(content, { scope, workspace: process.cwd() }),
+  remove: (id: string, scope?: MemoryScope) => removeMemory(id, { scope, workspace: process.cwd() }),
+  listArchived: (scope?: MemoryScope) => listArchivedMemories({ scope, workspace: process.cwd() }),
   restore: (ids: readonly string[]) => restoreMemories(ids),
 };
