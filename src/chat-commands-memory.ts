@@ -189,7 +189,10 @@ async function handleMemoryAdd(
     return { stop: true, userText: text };
   }
   try {
-    const entry = await memoryApi.addMemory(content, { scope });
+    const entry = await memoryApi.addMemory(content, {
+      scope,
+      workspace: ctx.currentSession.workspace ?? process.cwd(),
+    });
     ctx.setRows((current) => [...current, createRow("system", t(SAVED_KEYS[entry.scope], { content }))]);
   } catch (error) {
     ctx.setRows((current) => [

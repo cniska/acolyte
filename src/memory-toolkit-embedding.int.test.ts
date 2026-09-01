@@ -3,7 +3,7 @@ import { type FakeProviderServer, startFakeProviderServer } from "../scripts/fak
 import type { MemoryRecord, MemoryStore } from "./memory-contract";
 import type { ScopeContext } from "./memory-ops";
 import { searchMemories } from "./memory-recall";
-import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
+import { defaultUserResourceId } from "./resource-id";
 import { pinEmbeddingProviders } from "./test-utils";
 
 let fake: FakeProviderServer;
@@ -21,11 +21,10 @@ afterAll(() => {
   restoreProviders();
 });
 
-const WS_ONE = "/ws/one";
-const projOne = projectResourceIdFromWorkspace(WS_ONE);
-const projTwo = projectResourceIdFromWorkspace("/ws/two");
+const projOne = "proj_one000000";
+const projTwo = "proj_two000000";
 const userKey = defaultUserResourceId();
-const ctx: ScopeContext = { sessionId: "sess_alpha", workspace: WS_ONE };
+const ctx: ScopeContext = { sessionId: "sess_alpha", resourceId: projOne };
 
 let seq = 0;
 function rec(scopeKey: string, content: string): MemoryRecord {

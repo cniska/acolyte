@@ -1,5 +1,6 @@
 import { resolve as resolvePath } from "node:path";
 import { z } from "zod";
+import { originRepositoryLabel } from "./git-remote";
 import { domainIdSchema } from "./id-contract";
 import { type Env, resolveHomeDir } from "./paths";
 import { resolveProjectRoot } from "./workspace-sandbox";
@@ -25,8 +26,36 @@ function hashValue(value: string): string {
   return hasher.digest("hex").slice(0, 12);
 }
 
-export function projectResourceIdFromWorkspace(workspace: string): ProjectResourceId {
-  return projectResourceIdSchema.parse(`proj_${hashValue(resolveProjectRoot(workspace))}`);
+const projectLabelCache = new Map<string, string | null>();
+
+/** The `owner/repo` naming a workspace's project, or null when its `origin` names none. */
+export function projectLabelFromWorkspace(workspace: string): string | null {
+  const projectRoot = resolveProjectRoot(workspace);
+  const cached = projectLabelCache.get(projectRoot);
+  if (cached !== undefined) return cached;
+
+  const label = originRepositoryLabel(projectRoot);
+  projectLabelCache.set(projectRoot, label);
+  return label;
+}
+
+/** The repository's own name, without its owner, for surfaces that show the project rather than key it. */
+export function projectNameFromWorkspace(workspace: string): string | null {
+  return projectLabelFromWorkspace(workspace)?.split("/").pop() ?? null;
+}
+
+/** The project a workspace belongs to, or null when it has no repository remote to be identified by. */
+export function projectResourceIdFromWorkspace(workspace: string): ProjectResourceId | null {
+  const label = projectLabelFromWorkspace(workspace);
+  return label ? projectResourceIdForLabel(label) : null;
+}
+
+export function projectResourceIdForLabel(label: string): ProjectResourceId {
+  return projectResourceIdSchema.parse(`proj_${hashValue(label)}`);
+}
+
+export function clearProjectResourceIdCache(): void {
+  projectLabelCache.clear();
 }
 
 export function defaultUserResourceId(env?: Env): UserResourceId {

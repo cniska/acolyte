@@ -312,7 +312,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       const successorsBySuperseded = new Map<string, string[]>();
 
       for (const obs of filtered) {
-        const factKey = resolveScopeKey(obs.scope, ctx, { strict: true });
+        const factKey = resolveScopeKey(obs.scope, ctx);
         if (!factKey) continue;
         const clamped = clampToTokenEstimate(normalizeMemoryText(obs.content), policy.maxOutputTokens);
         if (!clamped) continue;

@@ -30,7 +30,9 @@ Each record belongs to one scope:
 
 The canonical resource IDs are `sess_*`, `proj_*`, and `user_*`.
 
-A project is identified by its repository root. Opening a workspace on a subdirectory, or on a worktree of the same repository, therefore reaches the same project memory as opening it on the repository root. A workspace that is not inside a repository identifies itself.
+A project is identified by the `owner/repo` its `origin` remote names, lowercased and hashed into the key. Every clone and worktree of that repository reaches the same project memory, whether the remote is addressed over SSH or HTTPS and whichever forge hosts it; a fork has a different `origin`, so it is a different project. The readable name is stored beside the key rather than inside it, so a key stays an opaque identifier.
+
+A workspace whose repository has no such `origin` has no project scope. Session and user memory work there as usual, and an explicit project-scoped write reports that the workspace has no remote.
 
 ## Writing memory
 

@@ -10,7 +10,7 @@ import type { MemoryRecord } from "./memory-contract";
 import type { ScopeContext } from "./memory-ops";
 import { searchMemories } from "./memory-recall";
 import { createSqliteMemoryStore } from "./memory-store";
-import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
+import { defaultUserResourceId } from "./resource-id";
 import { pinEmbeddingProviders, tempDb } from "./test-utils";
 
 let fake: FakeProviderServer;
@@ -31,13 +31,11 @@ afterAll(() => {
 const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-toolkit-", createSqliteMemoryStore);
 afterEach(cleanupStores);
 
-const WS_ONE = "/ws/one";
-const WS_TWO = "/ws/two";
-const projOne = projectResourceIdFromWorkspace(WS_ONE);
-const projTwo = projectResourceIdFromWorkspace(WS_TWO);
+const projOne = "proj_one000000";
+const projTwo = "proj_two000000";
 const userKey = defaultUserResourceId();
 
-const ctx: ScopeContext = { sessionId: "sess_alpha", workspace: WS_ONE };
+const ctx: ScopeContext = { sessionId: "sess_alpha", resourceId: projOne };
 
 let seq = 0;
 function createRecord(
@@ -96,12 +94,12 @@ describe("searchMemories scope visibility", () => {
     const store = createStore();
     await store.write(createRecord("sess_alpha", "session note", "observation"));
     await store.write(createRecord(userKey, "durable pref"));
-    const results = await searchMemories("anything", { workspace: WS_ONE }, { store });
+    const results = await searchMemories("anything", { resourceId: projOne }, { store });
     expect(contents(results)).not.toContain("session note");
     expect(contents(results)).toContain("durable pref");
   });
 
-  test("a workspaceless context hides project memories, never defaulting to cwd", async () => {
+  test("a context with no project scope hides project memories, never defaulting to cwd", async () => {
     const store = createStore();
     await store.write(createRecord(projOne, "project fact"));
     await store.write(createRecord(userKey, "durable pref"));
@@ -126,7 +124,7 @@ describe("searchMemories scope option", () => {
   test("returns nothing when the requested scope is not in the context", async () => {
     const store = createStore();
     await store.write(createRecord(projOne, "project fact"));
-    const results = await searchMemories("anything", { workspace: WS_ONE }, { scope: "session", store });
+    const results = await searchMemories("anything", { resourceId: projOne }, { scope: "session", store });
     expect(results).toEqual([]);
   });
 });

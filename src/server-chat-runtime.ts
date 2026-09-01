@@ -248,7 +248,8 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     handlers.onError(payload);
     return;
   }
-  const canonicalResourceId = providedResourceId ?? projectResourceIdFromWorkspace(workspaceResolution.workspacePath);
+  const canonicalResourceId =
+    providedResourceId ?? projectResourceIdFromWorkspace(workspaceResolution.workspacePath) ?? undefined;
   const lifecycleRequest: ChatRequest = { ...chatRequest, resourceId: canonicalResourceId };
 
   log.info("chat request started", {

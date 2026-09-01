@@ -1,11 +1,23 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { addMemory, addObservation, listMemories, removeMemory } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
-import { defaultUserResourceId } from "./resource-id";
-import { tempDb } from "./test-utils";
+import { clearProjectResourceIdCache, defaultUserResourceId } from "./resource-id";
+import { tempDb, tempDir, writeGitOrigin } from "./test-utils";
 
 const { create: createDb, cleanup } = tempDb("acolyte-memory-", createSqliteMemoryStore);
-afterEach(cleanup);
+const { createDir, cleanupDirs } = tempDir();
+afterEach(() => {
+  cleanup();
+  cleanupDirs();
+  clearProjectResourceIdCache();
+});
+
+function createRepoWorkspace(): string {
+  const workspace = createDir("acolyte-memory-workspace-");
+  writeGitOrigin(workspace, "git@github.com:owner/repo.git");
+  clearProjectResourceIdCache();
+  return workspace;
+}
 
 describe("sqlite memory store", () => {
   test("adds user memory and retrieves it", async () => {
@@ -19,12 +31,13 @@ describe("sqlite memory store", () => {
 
   test("supports separate project and user memories", async () => {
     const db = createDb();
+    const workspace = createRepoWorkspace();
     await addMemory("Global preference", { scope: "user", store: db });
-    await addMemory("Project convention", { scope: "project", store: db });
+    await addMemory("Project convention", { scope: "project", workspace, store: db });
 
-    const projectOnly = await listMemories({ scope: "project", store: db });
+    const projectOnly = await listMemories({ scope: "project", workspace, store: db });
     const userOnly = await listMemories({ scope: "user", store: db });
-    const all = await listMemories({ store: db });
+    const all = await listMemories({ workspace, store: db });
 
     expect(projectOnly).toHaveLength(1);
     expect(projectOnly[0]?.scope).toBe("project");

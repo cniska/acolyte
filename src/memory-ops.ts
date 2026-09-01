@@ -30,8 +30,8 @@ function scopeKeysForScope(scope: MemoryScope | undefined, workspace?: string): 
   const keys: string[] = [];
   if (!scope || scope === "user") keys.push(defaultUserResourceId());
   if (!scope || scope === "project") {
-    const ws = workspace ?? process.cwd();
-    keys.push(projectResourceIdFromWorkspace(ws));
+    const projectKey = projectResourceIdFromWorkspace(workspace ?? process.cwd());
+    if (projectKey) keys.push(projectKey);
   }
   return keys;
 }
@@ -87,7 +87,10 @@ export async function addMemory(content: string, options: AddMemoryOptions = {})
   const { scope = "user", workspace, sessionId, resourceId } = options;
   const store = options.store ?? (await getMemoryStore());
   const scopeKey = resolveScopeKey(scope, { sessionId, workspace, resourceId });
-  if (!scopeKey) throw new Error(`Cannot resolve scope key for scope "${scope}"`);
+  if (!scopeKey) {
+    if (scope === "project") throw new Error("This workspace has no git remote, so it has no project memory");
+    throw new Error(`Cannot resolve scope key for scope "${scope}"`);
+  }
 
   const record = {
     id: `mem_${createId()}`,
@@ -156,17 +159,12 @@ export type ScopeContext = {
   resourceId?: ResourceId;
 };
 
-export function resolveScopeKey(
-  scope: MemoryScope,
-  ctx: ScopeContext,
-  options: { strict?: boolean } = {},
-): string | null {
+export function resolveScopeKey(scope: MemoryScope, ctx: ScopeContext): string | null {
   if (scope === "session") return ctx.sessionId ?? null;
   if (scope === "project") {
     const fromResource = parseResourceId(ctx.resourceId);
     if (fromResource?.startsWith("proj_")) return fromResource;
-    if (ctx.workspace) return projectResourceIdFromWorkspace(ctx.workspace);
-    return options.strict ? null : projectResourceIdFromWorkspace(process.cwd());
+    return ctx.workspace ? projectResourceIdFromWorkspace(ctx.workspace) : null;
   }
   const fromResource = parseResourceId(ctx.resourceId);
   if (fromResource?.startsWith("user_")) return fromResource;
@@ -176,7 +174,7 @@ export function resolveScopeKey(
 export function visibleScopeKeys(ctx: ScopeContext): Set<string> {
   const keys = new Set<string>();
   for (const scope of ["session", "project", "user"] as const) {
-    const key = resolveScopeKey(scope, ctx, { strict: true });
+    const key = resolveScopeKey(scope, ctx);
     if (key) keys.add(key);
   }
   return keys;

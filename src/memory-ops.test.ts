@@ -10,13 +10,15 @@ import {
   visibleScopeKeys,
 } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
-import { defaultUserResourceId, projectResourceIdFromWorkspace } from "./resource-id";
+import { defaultUserResourceId } from "./resource-id";
+
+const PROJECT_KEY = "proj_abc123";
 
 describe("resolveScopeKey", () => {
   test("session resolves to the session id, or null when absent", () => {
     expect(resolveScopeKey("session", { sessionId: "sess_alpha" })).toBe("sess_alpha");
     expect(resolveScopeKey("session", {})).toBeNull();
-    expect(resolveScopeKey("session", {}, { strict: true })).toBeNull();
+    expect(resolveScopeKey("session", {})).toBeNull();
   });
 
   test("user always resolves, honoring a user_ resourceId override", () => {
@@ -24,31 +26,24 @@ describe("resolveScopeKey", () => {
     expect(resolveScopeKey("user", { resourceId: "user_override1" })).toBe("user_override1");
   });
 
-  test("project derives from workspace path", () => {
-    expect(resolveScopeKey("project", { workspace: "/ws/one" })).toBe(projectResourceIdFromWorkspace("/ws/one"));
+  test("project needs a repository remote: a workspace without one yields no key", () => {
+    expect(resolveScopeKey("project", { workspace: "/ws/one" })).toBeNull();
   });
 
   test("project prefers a proj_ resourceId over workspace", () => {
-    const key = resolveScopeKey("project", { workspace: "/ws/one", resourceId: "proj_explicit1" });
-    expect(key).toBe("proj_explicit1");
+    const key = resolveScopeKey("project", { workspace: "/ws/one", resourceId: PROJECT_KEY });
+    expect(key).toBe(PROJECT_KEY);
   });
 
-  test("project is strict: no workspace/resourceId yields no key, never a cwd fallback", () => {
-    expect(resolveScopeKey("project", {}, { strict: true })).toBeNull();
-    expect(resolveScopeKey("project", {})).toBe(projectResourceIdFromWorkspace(process.cwd()));
-  });
-
-  test("distinct workspaces resolve to distinct project keys", () => {
-    const one = resolveScopeKey("project", { workspace: "/ws/one" });
-    const two = resolveScopeKey("project", { workspace: "/ws/two" });
-    expect(one).not.toBe(two);
+  test("project yields no key without a workspace, never a cwd fallback", () => {
+    expect(resolveScopeKey("project", {})).toBeNull();
   });
 });
 
 describe("visibleScopeKeys", () => {
   test("full context exposes session, project, and user keys", () => {
-    const keys = visibleScopeKeys({ sessionId: "sess_alpha", workspace: "/ws/one" });
-    expect(keys).toEqual(new Set(["sess_alpha", projectResourceIdFromWorkspace("/ws/one"), defaultUserResourceId()]));
+    const keys = visibleScopeKeys({ sessionId: "sess_alpha", resourceId: PROJECT_KEY });
+    expect(keys).toEqual(new Set(["sess_alpha", PROJECT_KEY, defaultUserResourceId()]));
   });
 
   test("user scope is always visible", () => {
@@ -56,14 +51,13 @@ describe("visibleScopeKeys", () => {
   });
 
   test("sessionless context hides the session key", () => {
-    const keys = visibleScopeKeys({ workspace: "/ws/one" });
+    const keys = visibleScopeKeys({ resourceId: PROJECT_KEY });
     expect(keys.has("sess_alpha")).toBe(false);
-    expect(keys.has(projectResourceIdFromWorkspace("/ws/one"))).toBe(true);
+    expect(keys.has(PROJECT_KEY)).toBe(true);
   });
 
-  test("workspaceless context hides the project key (no cwd fallback)", () => {
-    const keys = visibleScopeKeys({ sessionId: "sess_alpha" });
-    expect(keys.has(projectResourceIdFromWorkspace(process.cwd()))).toBe(false);
+  test("a workspace with no project scope hides the project key, never falling back to cwd", () => {
+    const keys = visibleScopeKeys({ sessionId: "sess_alpha", workspace: "/ws/one" });
     expect(keys).toEqual(new Set(["sess_alpha", defaultUserResourceId()]));
   });
 });
@@ -73,7 +67,7 @@ describe("addObservation", () => {
     const store = createSqliteMemoryStore(":memory:");
     const fact = "the build runs on bun";
     const userScope = defaultUserResourceId();
-    const projectScope = projectResourceIdFromWorkspace("/tmp/some-project");
+    const projectScope = PROJECT_KEY;
 
     expect(await addObservation(userScope, fact, { store })).not.toBeNull();
     expect(await addObservation(userScope, fact, { store })).toBeNull();

@@ -50,8 +50,10 @@ export async function syncAgentsMdToProjectMemory(options: {
   const prev = lastSyncedPromptByWorkspace.get(workspace);
   if (prev === snapshot.prompt) return { kind: "skipped", reason: "unchanged" };
 
+  const scopeKey = projectResourceIdFromWorkspace(workspace);
+  if (!scopeKey) return { kind: "skipped", reason: "no_project_scope" };
+
   try {
-    const scopeKey = projectResourceIdFromWorkspace(workspace);
     await store.write(
       {
         id: AGENTS_MD_MEMORY_ID,

@@ -92,6 +92,12 @@ export function gitEnv(overrides: Record<string, string> = {}): Record<string, s
   return { ...base, ...overrides };
 }
 
+/** Makes a directory read as a checkout of `url`, so it resolves to a project scope. */
+export function writeGitOrigin(dir: string, url: string): void {
+  mkdirSync(join(dir, ".git"), { recursive: true });
+  writeFileSync(join(dir, ".git", "config"), `[core]\n\tbare = false\n[remote "origin"]\n\turl = ${url}\n`, "utf8");
+}
+
 export function tempDb<T extends { close(): void }>(
   prefix: string,
   factory: (dbPath: string) => T,

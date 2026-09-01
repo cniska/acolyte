@@ -2,9 +2,9 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { dataDir } from "./paths";
-import { projectResourceIdFromWorkspace } from "./resource-id";
 import { createId } from "./short-id";
 import { runCommand } from "./tool-utils";
+import { resolveProjectRoot } from "./workspace-sandbox";
 
 export const workspaceNameSchema = z
   .string()
@@ -40,9 +40,16 @@ export async function resolveGitRepoRoot(cwd = process.cwd()): Promise<string> {
   return root;
 }
 
+// Worktrees belong to a checkout, not to the repository it clones: two checkouts of one repository on
+// this machine own separate worktrees, so this directory is named for the path rather than the remote.
+function checkoutStorageKey(workspace: string): string {
+  const hasher = new Bun.CryptoHasher("sha1");
+  hasher.update(resolveProjectRoot(workspace));
+  return hasher.digest("hex").slice(0, 12);
+}
+
 export function projectWorktreesDir(workspace: string): string {
-  const projId = projectResourceIdFromWorkspace(workspace);
-  return join(dataDir(), "projects", projId, "worktrees");
+  return join(dataDir(), "projects", checkoutStorageKey(workspace), "worktrees");
 }
 
 export async function createGitWorktree(options: {

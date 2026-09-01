@@ -345,7 +345,10 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
           .replace(/^memory\s*[:-]\s*/i, "")
           .replace(/\s+/g, " ")
           .trim();
-        await addMemory(distilled, { scope: naturalRememberDirective.scope });
+        await addMemory(distilled, {
+          scope: naturalRememberDirective.scope,
+          workspace: input.currentSession.workspace ?? process.cwd(),
+        });
         const savedKey =
           naturalRememberDirective.scope === "project" ? "chat.remember.saved.project" : "chat.remember.saved.user";
         const confirmation = t(savedKey, { content: distilled });
