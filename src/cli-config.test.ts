@@ -14,6 +14,7 @@ function createDeps(overrides?: Partial<ConfigModeDeps>): {
   const deps: ConfigModeDeps = {
     hasHelpFlag: () => false,
     printDim: (message) => dimLines.push(message),
+    printOutput: (message) => dimLines.push(message),
     printError: (message) => errorLines.push(message),
     readConfig: async () => ({}),
     readConfigForScope: async () => ({}),
@@ -41,6 +42,19 @@ describe("cli config", () => {
     });
     await configMode(["list"], deps);
     expect(dimLines).toContain("replyTimeoutMs:  30000");
+  });
+
+  test("list --json writes raw JSON without dim styling", async () => {
+    const lines: string[] = [];
+    const { deps } = createDeps({
+      printDim: (message) => lines.push(`\x1b[2m${message}\x1b[22m`),
+      printOutput: (message) => lines.push(message),
+      readConfig: async () => ({ locale: "en" }),
+    });
+    await configMode(["list", "--json"], deps);
+    const output = lines.join("\n");
+    expect(output.startsWith("{")).toBe(true);
+    expect(output.includes("\x1b[2m")).toBe(false);
   });
 
   test("unset forwards key", async () => {

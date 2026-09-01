@@ -9,6 +9,7 @@ function createDeps(overrides?: Partial<LogsDeps>): { deps: LogsDeps; output: ()
     hasHelpFlag: () => false,
     logPath: "/dev/null",
     printDim: (message) => lines.push(message),
+    printOutput: (message) => lines.push(message),
     printError: (message) => lines.push(`ERROR: ${message}`),
     readFile: async () => "",
     commandError: () => {},

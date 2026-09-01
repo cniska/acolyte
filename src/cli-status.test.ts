@@ -5,9 +5,15 @@ type StatusDeps = Parameters<typeof statusMode>[1];
 
 function createStatusDeps(): {
   deps: StatusDeps;
-  lines: { dim: string[]; err: string[]; help: string[]; subError: string[] };
+  lines: { dim: string[]; out: string[]; err: string[]; help: string[]; subError: string[] };
 } {
-  const lines = { dim: [] as string[], err: [] as string[], help: [] as string[], subError: [] as string[] };
+  const lines = {
+    dim: [] as string[],
+    out: [] as string[],
+    err: [] as string[],
+    help: [] as string[],
+    subError: [] as string[],
+  };
   const deps: StatusDeps = {
     apiUrlForPort: (port) => `http://127.0.0.1:${port}`,
     createClient: () =>
@@ -25,6 +31,7 @@ function createStatusDeps(): {
     isServerConnectionFailure: () => false,
     localServerStatus: async () => ({ running: false, pid: null, port: 6767 }),
     printDim: (line) => lines.dim.push(line),
+    printOutput: (line) => lines.out.push(line),
     printError: (line) => lines.err.push(line),
     serverApiKey: "key",
     serverPort: 6767,
@@ -48,6 +55,14 @@ describe("cli-status", () => {
     expect(lines.help).toEqual(["status"]);
   });
 
+  test("--json writes raw JSON without dim styling", async () => {
+    const { deps, lines } = createStatusDeps();
+    deps.printDim = (line) => lines.dim.push(`\x1b[2m${line}\x1b[22m`);
+    await statusMode(["--json"], deps);
+    expect(lines.out[0].startsWith("{")).toBe(true);
+    expect(lines.out[0]).not.toContain("\x1b[2m");
+  });
+
   test("prints local-start hint when connection fails and local server is down", async () => {
     const { deps, lines } = createStatusDeps();
     deps.createClient = () =>
@@ -60,5 +75,28 @@ describe("cli-status", () => {
 
     await statusMode([], deps);
     expect(lines.dim).toContain("Server is not running. Start it with: acolyte start");
+  });
+
+  test("--json reports stopped server as JSON and exits non-zero", async () => {
+    const previousExitCode = process.exitCode;
+    process.exitCode = undefined;
+    const { deps, lines } = createStatusDeps();
+    deps.createClient = () =>
+      ({
+        status: async () => {
+          throw new Error("Cannot reach server at http://127.0.0.1:6767");
+        },
+      }) as never;
+    deps.isServerConnectionFailure = (error) => error instanceof Error && error.message.includes("Cannot reach server");
+    deps.printDim = (line) => lines.dim.push(`\x1b[2m${line}\x1b[22m`);
+
+    try {
+      await statusMode(["--json"], deps);
+      expect(lines.out).toEqual([JSON.stringify({ ok: false, state: "stopped", port: 6767 })]);
+      expect(lines.dim).toEqual([]);
+      expect(process.exitCode as unknown).toBe(1);
+    } finally {
+      process.exitCode = typeof previousExitCode === "number" ? previousExitCode : 0;
+    }
   });
 });

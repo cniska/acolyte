@@ -37,12 +37,13 @@ type MemoryModeDeps = {
   ops: MemoryOps;
   hasHelpFlag: (args: string[]) => boolean;
   printDim: (message: string) => void;
+  printOutput: (message: string) => void;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };
 
 export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<void> {
-  const { ops, hasHelpFlag, printDim, commandError, commandHelp } = deps;
+  const { ops, hasHelpFlag, printDim, printOutput, commandError, commandHelp } = deps;
   if (hasHelpFlag(args)) {
     commandHelp("memory");
     return;
@@ -71,14 +72,14 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
     const resolvedScope = scope === "all" ? undefined : (scope as MemoryScope);
     const rows = archived ? await ops.listArchived(resolvedScope) : await ops.list(resolvedScope);
     if (rows.length === 0) {
-      printDim(t(archived ? "cli.memory.archive.none" : "cli.memory.none"));
+      if (!json) printDim(t(archived ? "cli.memory.archive.none" : "cli.memory.none"));
       return;
     }
     const out: CliOutput = json ? createJsonOutput() : createTextOutput();
     const tableRows = rows.slice(0, 50).map(toTableRow);
     out.addTable(json ? tableRows : fitFlexColumn(tableRows, "content"));
     const rendered = out.render();
-    if (rendered) printDim(rendered);
+    if (rendered) (json ? printOutput : printDim)(rendered);
     return;
   }
 

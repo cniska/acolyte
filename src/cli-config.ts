@@ -14,6 +14,7 @@ import { translationLocaleSchema } from "./i18n/locales";
 type ConfigModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   printDim: (message: string) => void;
+  printOutput: (message: string) => void;
   printError: (message: string) => void;
   readConfig: typeof readConfigType;
   readConfigForScope: typeof readConfigForScopeType;
@@ -51,6 +52,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
   const {
     hasHelpFlag,
     printDim,
+    printOutput,
     printError,
     readConfig,
     readConfigForScope,
@@ -97,7 +99,7 @@ export async function configMode(args: string[], deps: ConfigModeDeps): Promise<
       }
       out.addTable(rows);
       const rendered = out.render();
-      if (rendered) printDim(rendered);
+      if (rendered) (json ? printOutput : printDim)(rendered);
       return;
     }
     case "set": {

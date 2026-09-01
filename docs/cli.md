@@ -25,7 +25,7 @@ The Acolyte CLI provides interactive chat, one-shot runs, session and memory man
 
 Run `acolyte <command> help` for detailed usage.
 
-All list commands support `--json` for machine-readable output.
+All list commands support `--json` for machine-readable output. A `--json` run prints only its data on stdout — logs and errors go to stderr, and informational messages such as an empty result are omitted, so an empty result is an empty stream. `acolyte status --json` exits non-zero when the server is stopped.
 
 ## Local models
 
@@ -100,3 +100,18 @@ acolyte trace task <id>          # inspect a task's lifecycle trace
 acolyte trace task <id> --json   # output as JSON lines
 acolyte trace --lines 100        # show last 100 tasks
 ```
+
+Narrow a task's timeline with either filter, or both together:
+
+```bash
+acolyte trace task <id> --event lifecycle.model_usage        # keep one event
+acolyte trace task <id> --event lifecycle.error,lifecycle.window.drop
+acolyte trace task <id> --tool shell-exec                    # one tool, calls and results
+acolyte trace task <id> --event lifecycle.tool.result --tool file-read
+```
+
+An `--event` name must come from the trace event catalog; an unknown name is refused. A filter renders one row per event rather than the paired call/result timeline, and applies to `--json` as well. Filters take a task, not the task list.
+
+## Output and color
+
+Human output is colored only when stdout is a terminal, so redirecting or piping any command yields plain text. `NO_COLOR` in the environment turns color off for a terminal too.

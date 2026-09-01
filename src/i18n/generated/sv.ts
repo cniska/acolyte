@@ -564,6 +564,21 @@ export const SV_MESSAGES = {
     { kind: "text", value: "Inga rader hittades för task_id=" },
     { kind: "arg", name: "taskId" },
   ],
+  "cli.trace.no_matching_events": [
+    { kind: "text", value: "Inga händelser matchar filtret: task_id=" },
+    { kind: "arg", name: "taskId" },
+  ],
+  "cli.trace.unknown_event": [
+    { kind: "text", value: "Okänd spårningshändelse: " },
+    { kind: "arg", name: "event" },
+  ],
+  "cli.trace.filter_needs_value": [
+    { kind: "arg", name: "flag" },
+    { kind: "text", value: " behöver ett värde" },
+  ],
+  "cli.trace.filter_needs_task": [
+    { kind: "text", value: "Filter gäller en enskild uppgift: acolyte trace task <id> --event <name>" },
+  ],
   "cli.trace.no_store": [{ kind: "text", value: "Inga spårdata tillgängliga. Kör en uppgift först." }],
   "cli.trace.no_tasks": [{ kind: "text", value: "Inga uppgifter hittades." }],
   "cli.trace.unknown_subcommand": [

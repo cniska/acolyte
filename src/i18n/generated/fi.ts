@@ -563,6 +563,21 @@ export const FI_MESSAGES = {
     { kind: "text", value: "Riviä ei löytynyt: task_id=" },
     { kind: "arg", name: "taskId" },
   ],
+  "cli.trace.no_matching_events": [
+    { kind: "text", value: "Yksikään tapahtuma ei vastaa suodatinta: task_id=" },
+    { kind: "arg", name: "taskId" },
+  ],
+  "cli.trace.unknown_event": [
+    { kind: "text", value: "Tuntematon jäljitystapahtuma: " },
+    { kind: "arg", name: "event" },
+  ],
+  "cli.trace.filter_needs_value": [
+    { kind: "arg", name: "flag" },
+    { kind: "text", value: " tarvitsee arvon" },
+  ],
+  "cli.trace.filter_needs_task": [
+    { kind: "text", value: "Suodattimet koskevat yksittäistä tehtävää: acolyte trace task <id> --event <name>" },
+  ],
   "cli.trace.no_store": [{ kind: "text", value: "Jälkitietoja ei ole saatavilla. Suorita ensin tehtävä." }],
   "cli.trace.no_tasks": [{ kind: "text", value: "Tehtäviä ei löytynyt." }],
   "cli.trace.unknown_subcommand": [

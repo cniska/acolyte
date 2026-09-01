@@ -2,6 +2,7 @@ import type { appConfig as appConfigType } from "./app-config";
 import type { createClient as createClientType } from "./client-factory";
 import { t } from "./i18n";
 import type { apiUrlForPort as apiUrlForPortType, localServerStatus as localServerStatusType } from "./server-daemon";
+import { stoppedStatusPayloadSchema } from "./status-contract";
 import type { formatStatus as formatStatusType } from "./status-format";
 
 type StatusModeDeps = {
@@ -13,6 +14,7 @@ type StatusModeDeps = {
   isServerConnectionFailure: (error: unknown) => boolean;
   localServerStatus: typeof localServerStatusType;
   printDim: (message: string) => void;
+  printOutput: (message: string) => void;
   printError: (message: string) => void;
   serverApiKey: typeof appConfigType.server.apiKey;
   serverPort: typeof appConfigType.server.port;
@@ -34,6 +36,7 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
     isServerConnectionFailure,
     localServerStatus,
     printDim,
+    printOutput,
     printError,
     serverApiKey,
     serverPort,
@@ -55,7 +58,7 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
   try {
     const status = await client.status();
     if (json) {
-      printDim(`${JSON.stringify(status)}\n`);
+      printOutput(JSON.stringify(status));
     } else {
       printDim(formatStatus(status));
     }
@@ -63,7 +66,14 @@ export async function statusMode(args: string[], deps: StatusModeDeps): Promise<
     if (isServerConnectionFailure(error)) {
       const localStatus = await localServerStatus({ port: serverPort, apiKey: serverApiKey });
       if (!localStatus.running) {
-        printDim(t("cli.status.local_start_hint"));
+        if (json) {
+          printOutput(
+            JSON.stringify(stoppedStatusPayloadSchema.parse({ ok: false, state: "stopped", port: localStatus.port })),
+          );
+          process.exitCode = 1;
+        } else {
+          printDim(t("cli.status.local_start_hint"));
+        }
         return;
       }
     }

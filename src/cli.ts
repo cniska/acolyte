@@ -6,6 +6,7 @@ import { commands, usage } from "./cli-command-registry";
 import { checkAndUpdateOnStartup, updateMode } from "./cli-update";
 import { formatVersionWithCommit, resolveCliCommitShort, resolveCliVersion } from "./cli-version";
 import { setLocale } from "./i18n";
+import { setLogSink } from "./log";
 import { printOutput } from "./ui";
 
 setLocale(appConfig.locale);
@@ -19,6 +20,10 @@ function isTopLevelHelpCommand(command: string | undefined): boolean {
 
 function isTopLevelVersionCommand(command: string | undefined): boolean {
   return command === "version" || command === "--version" || command === "-V";
+}
+
+export function isJsonOutputCommand(args: string[]): boolean {
+  return args.includes("--json");
 }
 
 async function main(): Promise<void> {
@@ -43,7 +48,10 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (update === "force" && command !== "update") {
+  setLogSink((line) => process.stderr.write(line));
+
+  const jsonOutput = isJsonOutputCommand(args);
+  if (update === "force" && command !== "update" && !jsonOutput) {
     await updateMode();
   }
 

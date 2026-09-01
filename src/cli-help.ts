@@ -1,6 +1,7 @@
 import { alignCols } from "./chat-format";
 import type { CliCommandHelp } from "./cli-contract";
 import { t } from "./i18n";
+import { dimText, headingText } from "./ui";
 
 type Print = (text: string) => void;
 
@@ -49,13 +50,11 @@ export function printUsage(
 ): void {
   const commands = createUsageCommandRows(docs);
   const options = createUsageOptionRows();
-  const dim = (text: string): string => `\x1b[2m${text}\x1b[22m`;
-  const whiteBold = (text: string): string => `\x1b[1m\x1b[37m${text}\x1b[39m\x1b[22m`;
 
   // Align commands and options together so columns share the same width
   const allRows: string[][] = [
-    ...commands.map((r) => [r.command, dim(r.description)]),
-    ...options.map((r) => [r.option, dim(r.description)]),
+    ...commands.map((r) => [r.command, dimText(r.description)]),
+    ...options.map((r) => [r.option, dimText(r.description)]),
   ];
   const aligned = alignCols(allRows);
   const commandLines = aligned.slice(0, commands.length);
@@ -64,16 +63,16 @@ export function printUsage(
   printLineBreak(printOutput);
   printOutput(formatCliTitle(version));
   printLineBreak(printOutput);
-  printOutput(whiteBold(t("cli.help.section.usage")));
+  printOutput(headingText(t("cli.help.section.usage")));
   printOutput("  acolyte");
   printOutput("  acolyte <COMMAND> [ARGS]");
   printLineBreak(printOutput);
 
-  printOutput(whiteBold(t("cli.help.section.commands")));
+  printOutput(headingText(t("cli.help.section.commands")));
   for (const line of commandLines) printOutput(`  ${line}`);
   printLineBreak(printOutput);
 
-  printOutput(whiteBold(t("cli.help.section.options")));
+  printOutput(headingText(t("cli.help.section.options")));
   for (const line of optionLines) printOutput(`  ${line}`);
   printLineBreak(printOutput);
 }

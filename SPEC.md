@@ -56,7 +56,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **FR-23** — `acolyte run "<prompt>"` executes a one-shot task and exits; `--file <path>` adds file context.
 - **FR-24** — `acolyte skill <name> [prompt]` runs a one-shot task with a named skill active.
 - **FR-25** — `acolyte resume [id]` / `acolyte history` continue and list prior sessions; a session is resolvable by ID prefix.
-- **FR-26** — `acolyte start|stop|restart|ps|status` manage and report daemon lifecycle; `status` also reports daemon health, including memory storage and size and known resource misconfiguration.
+- **FR-26** — `acolyte start|stop|restart|ps|status` manage and report daemon lifecycle; `status` also reports daemon health, including memory storage and size and known resource misconfiguration. When the daemon is not running, `status --json` emits a stopped-state JSON object and exits non-zero; the human start hint appears only in text mode.
 - **FR-27** — `acolyte auth [provider]` authenticates a provider by API key or, where supported, subscription, and reports/removes credentials (see §5 SEC).
 - **FR-28** — `acolyte config list|set|unset` reads and writes runtime configuration at user or project scope.
 - **FR-29** — `acolyte memory list|add|restore` manages persistent memory notes and their archive (see §3 MEM).
@@ -64,8 +64,10 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **FR-31** — `acolyte trace [list] | trace task <id>` inspects task timelines (see §8 OBS).
 - **FR-32** — `acolyte tool <tool-id> ['<json-input>']` runs a single tool directly: input is an optional single JSON-object argument validated by the tool's input schema, and the run is still subject to the workspace boundary.
 - **FR-33** — `acolyte update` forces an update check; `acolyte login` / `acolyte logout` manage cloud credentials when cloud sync is enabled, and `login` copies the machine's durable memories and sessions into the account.
-- **FR-34** — All list-style commands accept `--json` for machine-readable output.
+- **FR-34** — All list-style commands accept `--json` for machine-readable output, and a `--json` invocation writes only parseable JSON records to stdout without startup notices, styling, or other human output before them. An empty result writes an empty stream.
+- **FR-34a** — Errors and warnings are written to stderr, so a command's stdout carries only what the command was asked to produce.
 - **FR-35** — `acolyte <command> help` (or `-h`/`--help`) prints detailed usage for that command.
+- **FR-51** — Human-facing CLI output carries color only when its destination is a terminal and `NO_COLOR` is unset; redirected or piped output is plain text.
 
 ### 2.5 Options / configuration
 
@@ -189,6 +191,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 - **OBS-1** — Every request is recorded as an ordered, task-scoped trace covering lifecycle phases, tool calls with the arguments that determine what they return and with their results, errors, budget blocks, memory loads and commits, and a final summary. Recording is local.
 - **OBS-2** — Traces are queryable after the fact: recent tasks are listable, and a single task's timeline and summary are renderable, with a machine-readable output mode.
+- **OBS-2a** — A single task's timeline can be narrowed to named events, to one tool's events, or to both at once, in every output mode. A name outside the recorded event vocabulary is refused rather than silently matching nothing.
 - **OBS-3** — Structured daemon logs are tailable and filterable by line count, level, session, and time window.
 
 ## 9. Non-functional requirements (NF)
@@ -230,7 +233,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **AC-9** — File discovery for find/search omits the always-ignored directories and honors nested gitignore, and a gitignore negation cannot re-include an always-ignored directory. (FR-11, FR-45)
 - **AC-10** — The model retrieves relevant prior context via a memory search scoped so that no other session's or project's records appear, and user-scoped records are always visible; after the request, a durable observation is committed in the background without delaying the response. (MEM-2, MEM-4, MEM-5, MEM-7)
 - **AC-11** — Each tracked task exposes its state transitions through the defined state machine, an abort moves an active/queued task to cancelled, and closing the connection cancels its outstanding tasks. (PR-4, PR-5, PR-7)
-- **AC-12** — `acolyte trace task <id>` renders the task's ordered tool timeline and summary from local storage, and works with the daemon offline from any provider telemetry; a trace-store write failure did not fail the originating task. (FR-31, OBS-1, OBS-2, NF-6, SEC-9)
+- **AC-12** — `acolyte trace task <id>` renders the task's ordered tool timeline and summary from local storage, and works with the daemon offline from any provider telemetry; a trace-store write failure did not fail the originating task. Narrowing the same task by event name, by tool, or by both yields only matching events in every output mode, and an unknown event name is refused. Piped human output carries no color. (FR-31, FR-51, OBS-1, OBS-2, OBS-2a, NF-6, SEC-9)
 - **AC-13** — With MCP enabled, a reachable server's tools appear to the agent, and an unreachable server is skipped with a warning while the request still completes. (FR-21, FR-47, SEC-8)
 - **AC-14** — In interactive chat, completed transcript rows move to scrollback and are not repainted, streaming and typed input update state without a lost or stale value, and a message typed mid-turn is queued and processed in order; a keystroke or paste delivered as two terminal reads still arrives as one event; a command revealing a result larger than its window never grows past that window and keeps what it showed, whether it succeeded or failed and wherever it sat in the turn, while an edit keeps its whole diff and a create shows every line of its content; interrupting or exiting while a turn is in flight cancels that task and stops it — no further model call or tool call runs. (TUI-2, TUI-5, TUI-10, TUI-12, TUI-18, TUI-19, TUI-20, TUI-21, TUI-21a, TUI-22, TUI-23, TUI-24, TUI-25, LC-14)
 - **AC-15** — `acolyte auth <provider>` stores a key with owner-only permissions, an environment-provided key overrides it for that provider, and `--logout` removes the selected credential(s); a disabled feature flag leaves its commands and behavior entirely absent. (FR-27, FR-37, SEC-6, SEC-7)

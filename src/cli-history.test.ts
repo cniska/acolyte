@@ -31,6 +31,7 @@ function createDeps(overrides?: Partial<HistoryDeps>): { deps: HistoryDeps; outp
   const deps: HistoryDeps = {
     hasHelpFlag: () => false,
     printDim: (message) => lines.push(message),
+    printOutput: (message) => lines.push(message),
     getSessionStore: async () => createMockStore(),
     commandError: () => {},
     commandHelp: () => {},
@@ -123,5 +124,29 @@ describe("cli-history", () => {
     const parsed = JSON.parse(output()) as Record<string, string>;
     expect(parsed.id).toBe("aaa");
     expect(parsed.title).toBe("First");
+  });
+
+  test("--json writes raw JSON without dim styling", async () => {
+    const sessions: Session[] = [
+      {
+        id: "aaa",
+        createdAt: "9999-01-01T00:00:00.000Z",
+        updatedAt: "9999-01-01T00:00:00.000Z",
+        title: "First",
+        model: "gpt-4",
+        messages: [],
+        tokenUsage: [],
+      },
+    ];
+    const lines: string[] = [];
+    const { deps } = createDeps({
+      getSessionStore: async () => createMockStore(sessions),
+      printDim: (message) => lines.push(`\x1b[2m${message}\x1b[22m`),
+      printOutput: (message) => lines.push(message),
+    });
+    await historyMode(["--json"], deps);
+    const output = lines.join("\n");
+    expect(output.startsWith("{")).toBe(true);
+    expect(output.includes("\x1b[2m")).toBe(false);
   });
 });
