@@ -4,7 +4,7 @@ import { createRow } from "./chat-contract";
 import { formatUsage } from "./cli-help";
 import { type TranslationKey, t } from "./i18n";
 import { formatDisposition, type MemoryScope } from "./memory-contract";
-import { addMemory, listArchivedMemories, listMemories, removeMemory } from "./memory-ops";
+import { listArchivedMemories, listMemories, removeMemory } from "./memory-ops";
 
 type MemoryContextScope = "all" | "user" | "project";
 
@@ -19,12 +19,6 @@ const NONE_KEYS = {
   project: "chat.memory.none.project",
   user: "chat.memory.none.user",
 } as const satisfies Record<MemoryContextScope, TranslationKey>;
-
-const SAVED_KEYS = {
-  project: "chat.remember.saved.project",
-  user: "chat.remember.saved.user",
-  session: "chat.remember.saved.session",
-} as const satisfies Record<MemoryScope, TranslationKey>;
 
 const REMOVED_KEYS = {
   project: "chat.memory.rm.removed.project",
@@ -45,13 +39,11 @@ function sessionWorkspace(ctx: CommandContext): string {
 
 export function resolveMemoryApi(ctx: CommandContext): {
   listMemories: typeof listMemories;
-  addMemory: typeof addMemory;
   removeMemory: typeof removeMemory;
   listArchivedMemories: typeof listArchivedMemories;
 } {
   return {
     listMemories,
-    addMemory,
     removeMemory,
     listArchivedMemories,
     ...ctx.memoryApi,
@@ -169,44 +161,6 @@ async function renderArchivedList(
   return { stop: true, userText: text };
 }
 
-async function handleMemoryAdd(
-  ctx: CommandContext,
-  memoryApi: ReturnType<typeof resolveMemoryApi>,
-  parsed: ParsedCommand,
-): Promise<CommandResult> {
-  const { text } = ctx;
-  let scope: MemoryScope = "user";
-  const contentParts: string[] = [];
-  for (const part of parsed.args) {
-    if (part === "--project") {
-      scope = "project";
-      continue;
-    }
-    if (part === "--user") {
-      scope = "user";
-      continue;
-    }
-    contentParts.push(part);
-  }
-  const content = contentParts.join(" ").trim();
-  if (!content) {
-    ctx.setRows((current) => [...current, createRow("system", formatUsage(subcommandUsage(MEMORY_SPEC, "add")))]);
-    return { stop: true, userText: text };
-  }
-  try {
-    const entry = await memoryApi.addMemory(content, { scope, workspace: sessionWorkspace(ctx) });
-    ctx.setRows((current) => [...current, createRow("system", t(SAVED_KEYS[entry.scope], { content }))]);
-  } catch (error) {
-    ctx.setRows((current) => [
-      ...current,
-      createRow("system", error instanceof Error ? error.message : t("chat.remember.failed")),
-    ]);
-  }
-  return { stop: true, userText: text };
-}
-
 export const runMemoryList: CommandHandler = (ctx, parsed) => handleMemoryList(ctx, resolveMemoryApi(ctx), parsed);
-
-export const runMemoryAdd: CommandHandler = (ctx, parsed) => handleMemoryAdd(ctx, resolveMemoryApi(ctx), parsed);
 
 export const runMemoryRemove: CommandHandler = (ctx, parsed) => handleMemoryRemove(ctx, resolveMemoryApi(ctx), parsed);

@@ -53,7 +53,6 @@ Components register handlers through `useInput`. Only handlers with `isActive: t
 - `/usage` — show token usage
 - `/memory` — manage memory; on its own it shows memory notes
 - `/memory list [all|user|project] [--archived]` — show memory notes
-- `/memory add [--user|--project] <text>` — save memory note
 - `/memory rm <id-prefix>` — remove memory note
 - `/skill:<name> [prompt]` — run a skill
 - `/skills` — show skills picker

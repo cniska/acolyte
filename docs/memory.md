@@ -17,7 +17,7 @@ Turn and task activity
 
 Memory has two record kinds:
 
-- **Stored** — A fact explicitly added by a user or the `memory-add` tool.
+- **Stored** — A fact written straight to the store rather than distilled from work.
 - **Observation** — A fact extracted from completed work by the distiller.
 
 Each record belongs to one scope:
@@ -50,7 +50,7 @@ Before writing, the distiller can inspect relevant existing records without mark
 
 ## Recalling memory
 
-The model calls `memory-search` when prior context is useful. Durable memory is never injected wholesale into the system prompt. `memory-add` lets the model explicitly save a user- or project-scoped fact.
+The model calls `memory-search` when prior context is useful. Durable memory is never injected wholesale into the system prompt.
 
 Recall first limits records to scopes the caller could write. It then ranks them with cosine similarity and TF-IDF weighted token overlap. Topic embedding matches narrow the candidate set when enough matching records exist; otherwise recall uses the full visible corpus. A missing query embedding returns a classified error rather than a partially ranked result.
 

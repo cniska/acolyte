@@ -4,7 +4,7 @@ import { parseSlashCommand } from "./chat-commands-contract";
 import type { ChatMessage } from "./chat-contract";
 import { type ChatRow, createRow } from "./chat-contract";
 import { invalidateRepoPathCandidates } from "./chat-file-ref";
-import { formatSubmitError, isAbortError, resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
+import { formatSubmitError, isAbortError } from "./chat-message-handler-helpers";
 import { createMessageStreamState } from "./chat-message-handler-stream";
 import { startRemoteTaskFollowup } from "./chat-message-handler-task-followup";
 import { createTokenUsageEntry } from "./chat-session";
@@ -22,7 +22,6 @@ import {
 import type { Client, PendingState } from "./client-contract";
 import { t } from "./i18n";
 import { log } from "./log";
-import { addMemory } from "./memory-ops";
 import { palette } from "./palette";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 
@@ -319,53 +318,10 @@ export function createMessageHandler(input: CreateMessageHandlerInput): {
       input.setRows((current) => [...current, createRow("system", t("chat.command.unknown", { command: text }))]);
       return;
     }
-    const naturalRememberDirective = resolveNaturalRememberDirective(text);
     commitComposer();
 
     if (text === "?") {
       input.setShowHelp((current) => !current);
-      return;
-    }
-    if (naturalRememberDirective) {
-      const userMessage = input.createMessage("user", text);
-      input.currentSession.messages.push(userMessage);
-      input.currentSession.updatedAt = input.nowIso();
-      const { row: userRow } = applyUserTurn({
-        session: input.currentSession,
-        displayText,
-      });
-      input.setRows((current) => [...current, userRow]);
-      startPending();
-      input.setPendingState({ kind: "running" });
-      try {
-        const distilled = naturalRememberDirective.content
-          .trim()
-          .replace(/^[-*]\s+/, "")
-          .replace(/^["'`]|["'`]$/g, "")
-          .replace(/^memory\s*[:-]\s*/i, "")
-          .replace(/\s+/g, " ")
-          .trim();
-        await addMemory(distilled, {
-          scope: naturalRememberDirective.scope,
-          workspace: input.currentSession.workspace ?? process.cwd(),
-        });
-        const savedKey =
-          naturalRememberDirective.scope === "project" ? "chat.remember.saved.project" : "chat.remember.saved.user";
-        const confirmation = t(savedKey, { content: distilled });
-        const assistant = input.createMessage("assistant", confirmation);
-        input.currentSession.messages.push(assistant);
-        input.currentSession.updatedAt = input.nowIso();
-        input.setRows((current) => [...current, createRow("system", confirmation, { dim: true })]);
-        await input.persist();
-      } catch (error) {
-        input.setRows((current) => [
-          ...current,
-          createRow("system", error instanceof Error ? error.message : t("chat.remember.failed"), { dim: true }),
-        ]);
-      } finally {
-        stopPending();
-        input.setPendingState(null);
-      }
       return;
     }
     if (text.startsWith("/")) {

@@ -94,7 +94,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 - **MEM-1** — Memory persists across sessions in three scopes: session, project, and user. A project is identified by the `owner/repo` a repository remote names, so every checkout and worktree of one repository shares one project scope however that remote is addressed and whichever forge hosts it.
 - **MEM-2** — Memory is retrieved on demand through memory tools the model invokes when it needs context; durable memory is never injected wholesale into the system prompt.
-- **MEM-3** — The model can search and add memory records at runtime.
+- **MEM-3** — *Retired (superseded by MEM-2 and MEM-20).*
 - **MEM-4** — After each request, a background distillation step extracts durable observations from the conversation and from a record of the turn's own work — the files it changed, the commands it ran and whether they failed — and commits them at the appropriate scope, tagged with an optional single-word topic. An observation is one self-contained claim about the work that could not be recovered by reading the code; a turn that establishes nothing durable commits nothing.
 - **MEM-5** — Recall is scope-guarded: a record is returned only if the caller's context could have written to its scope — session facts only to their own session, project facts only to the current project, user facts always visible.
 - **MEM-6** — Recall ranks records by relevance combining semantic similarity and keyword overlap; when the query cannot be embedded, recall fails with a classified error naming the cause rather than returning results ranked on the remaining partial signal.
@@ -111,6 +111,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **MEM-17** — A fork belongs to the project it contributes to: identity comes from the `upstream` remote where one exists and from `origin` otherwise, so a contributor's clone reaches the memory of the repository it forked, and a fork with no `upstream` is its own project.
 - **MEM-18** — A remote addressing a filesystem path names no repository other checkouts can share, so it yields no project identity.
 - **MEM-19** — A workspace whose repository has no remote naming an `owner/repo`, and a workspace that is not in a repository, has no project scope: session and user memory still work there, an explicit project-scoped write fails saying the workspace has no remote, and a background project-scoped commit is skipped and recorded in the trace.
+- **MEM-20** — No user-initiated path writes a memory record: no tool the model can call, no command, and no typed phrase stores one, so a "remember this" message is answered the way any other message is.
 
 ## 4. Lifecycle & completion requirements (LC)
 
@@ -236,7 +237,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **AC-6** — A composed prompt exceeding the per-call input limit fails the call with a system/tools/messages token breakdown before reaching the provider. (LC-8, LC-9)
 - **AC-7** — A tool attempting to read or write outside the sandbox boundary — including via a symlink and via `acolyte tool` — returns the structured sandbox-violation error and performs no I/O outside the boundary, while a worktree nested in its repository can reach project-owned paths in that repository. (FR-5, FR-32, SEC-1, SEC-2, SEC-3, SEC-4, SEC-10)
 - **AC-9** — File discovery for find/search omits the always-ignored directories and honors nested gitignore, and a gitignore negation cannot re-include an always-ignored directory. (FR-11, FR-45)
-- **AC-10** — The model retrieves relevant prior context via a memory search scoped so that no other session's or project's records appear, and user-scoped records are always visible; after the request, a durable observation is committed in the background without delaying the response. (MEM-2, MEM-4, MEM-5, MEM-7)
+- **AC-10** — The model retrieves relevant prior context via a memory search scoped so that no other session's or project's records appear, and user-scoped records are always visible; after the request, a durable observation is committed in the background without delaying the response, and no other path wrote a record. (MEM-2, MEM-4, MEM-5, MEM-7, MEM-20)
 - **AC-11** — Each tracked task exposes its state transitions through the defined state machine, an abort moves an active/queued task to cancelled, and closing the connection cancels its outstanding tasks. (PR-4, PR-5, PR-7)
 - **AC-12** — `acolyte trace task <id>` renders the task's ordered tool timeline and summary from local storage, and works with the daemon offline from any provider telemetry; a trace-store write failure did not fail the originating task. Narrowing the same task by event name, by tool, or by both yields only matching events in every output mode, and an unknown event name is refused. Piped human output carries no color. (FR-31, FR-51, OBS-1, OBS-2, OBS-2a, NF-6, SEC-9)
 - **AC-13** — With MCP enabled, a reachable server's tools appear to the agent, and an unreachable server is skipped with a warning while the request still completes. (FR-21, FR-47, SEC-8)

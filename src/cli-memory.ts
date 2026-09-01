@@ -5,14 +5,8 @@ import { formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
 import { formatDisposition, type MemoryArchiveEntry, type MemoryEntry, type MemoryScope } from "./memory-contract";
 
-const SAVED_KEYS = {
-  project: "cli.memory.saved.project",
-  user: "cli.memory.saved.user",
-} as const;
-
 type MemoryOps = {
   list: (scope?: MemoryScope) => Promise<MemoryEntry[]>;
-  add: (content: string, scope: MemoryScope) => Promise<MemoryEntry>;
   listArchived: (scope?: MemoryScope) => Promise<MemoryArchiveEntry[]>;
   restore: (ids: readonly string[]) => Promise<readonly MemoryEntry[]>;
 };
@@ -95,30 +89,6 @@ export async function memoryMode(args: string[], deps: MemoryModeDeps): Promise<
       return;
     }
     printDim(t("cli.memory.restored", { count: restored.length, ids: restored.map((e) => e.id).join(", ") }));
-    return;
-  }
-
-  if (subcommand === "add") {
-    let scope: "user" | "project" = "user";
-    const contentParts: string[] = [];
-    for (const token of rest) {
-      if (token === "--project") {
-        scope = "project";
-        continue;
-      }
-      if (token === "--user") {
-        scope = "user";
-        continue;
-      }
-      contentParts.push(token);
-    }
-    const content = contentParts.join(" ").trim();
-    if (!content) {
-      commandError("memory", formatUsage("acolyte memory add [--user|--project] <memory text>"));
-      return;
-    }
-    const entry = await ops.add(content, scope);
-    printDim(t(SAVED_KEYS[scope], { id: entry.id }));
     return;
   }
 

@@ -24,8 +24,6 @@ describe("toolsets", () => {
       "gitLog",
       "gitShow",
       "gitStatus",
-      "memoryAdd",
-      "memoryObserve",
       "memorySearch",
       "readFile",
       "runCommand",

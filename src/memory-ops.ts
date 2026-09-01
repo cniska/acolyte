@@ -73,43 +73,6 @@ export async function listMemories(options: MemoryOptions = {}): Promise<MemoryE
   return entries;
 }
 
-export interface AddMemoryOptions {
-  scope?: MemoryScope;
-  workspace?: string;
-  sessionId?: string;
-  resourceId?: ResourceId;
-  store?: MemoryStore;
-}
-
-export async function addMemory(content: string, options: AddMemoryOptions = {}): Promise<MemoryEntry> {
-  const trimmed = content.trim();
-  if (!trimmed) throw new Error("Memory content cannot be empty");
-
-  const { scope = "user", workspace, sessionId, resourceId } = options;
-  const store = options.store ?? (await getMemoryStore());
-  const scopeKey = requireScopeKey(scope, { sessionId, workspace, resourceId });
-
-  const record = {
-    id: `mem_${createId()}`,
-    scopeKey,
-    kind: "stored" as const,
-    content: trimmed,
-    createdAt: new Date().toISOString(),
-    tokenEstimate: estimateTokens(trimmed),
-  };
-  await store.write(record, scope);
-  log.debug("memory.stored.added", { id: record.id, scope, tokens: record.tokenEstimate });
-
-  try {
-    const vec = await embedText(trimmed);
-    if (vec) await store.writeEmbedding(record.id, scopeKey, embeddingToBuffer(vec));
-  } catch (error) {
-    log.warn("memory.stored.embed_failed", { id: record.id, error: String(error) });
-  }
-
-  return toMemoryEntry(record);
-}
-
 export interface AddObservationOptions {
   topic?: string | null;
   store?: MemoryStore;
@@ -265,7 +228,6 @@ export async function restoreMemories(
 // The CLI runs in the workspace the user is asking about, so its working directory is that workspace.
 export const fileMemoryStore = {
   list: (scope?: MemoryScope) => listMemories({ scope, workspace: process.cwd() }),
-  add: (content: string, scope?: MemoryScope) => addMemory(content, { scope, workspace: process.cwd() }),
   remove: (id: string, scope?: MemoryScope) => removeMemory(id, { scope, workspace: process.cwd() }),
   listArchived: (scope?: MemoryScope) => listArchivedMemories({ scope, workspace: process.cwd() }),
   restore: (ids: readonly string[]) => restoreMemories(ids),

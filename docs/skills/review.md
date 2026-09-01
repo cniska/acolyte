@@ -67,8 +67,6 @@ Look for these patterns in every review:
 - escape hatches, bypass flags, and special-case options that are broader than the behavior they enable
 - updated implementation that leaves stale references behind in tests or docs
 
-When a finding reveals a durable project convention, record it with `memory-add` so later work inherits it.
-
 ## Dependency review
 
 If the change adds a dependency, check:

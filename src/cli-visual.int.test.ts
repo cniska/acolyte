@@ -444,13 +444,12 @@ describe("cli visual regression", () => {
     {
       args: ["memory", "help"],
       output: dedent(`
-        Usage: acolyte memory <list|add|restore> [options]
+        Usage: acolyte memory <list|restore> [options]
 
         Description: manage memory
 
         Examples:
           acolyte memory list
-          acolyte memory add --project "prefer bun run verify"
           acolyte memory list --archived
           acolyte memory restore mem_abc123
       `),

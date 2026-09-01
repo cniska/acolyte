@@ -154,37 +154,6 @@
   "@chat.model.failed": {
     "description": "Shown when /model could not apply the requested model."
   },
-  "chat.remember.failed": "Failed to save memory.",
-  "@chat.remember.failed": {
-    "description": "Shown when saving a memory note did not succeed."
-  },
-  "chat.remember.saved.project": "Saved project memory: {content}",
-  "@chat.remember.saved.project": {
-    "description": "Confirmation after a note is stored in the project scope. A complete sentence per scope, so the scope word can inflect naturally. {content} is the note text, shown verbatim.",
-    "placeholders": {
-      "content": {
-        "type": "String"
-      }
-    }
-  },
-  "chat.remember.saved.session": "Saved session memory: {content}",
-  "@chat.remember.saved.session": {
-    "description": "Confirmation after a note is stored in the session scope. A complete sentence per scope, so the scope word can inflect naturally. {content} is the note text, shown verbatim.",
-    "placeholders": {
-      "content": {
-        "type": "String"
-      }
-    }
-  },
-  "chat.remember.saved.user": "Saved user memory: {content}",
-  "@chat.remember.saved.user": {
-    "description": "Confirmation after a note is stored in the user scope. A complete sentence per scope, so the scope word can inflect naturally. {content} is the note text, shown verbatim.",
-    "placeholders": {
-      "content": {
-        "type": "String"
-      }
-    }
-  },
   "chat.resume.ambiguous": "Ambiguous prefix: {prefix}. Matches: {matches}",
   "@chat.resume.ambiguous": {
     "description": "Shown when a session id prefix matches more than one session. {prefix} is what the user typed; {matches} is a comma-joined list of full session ids.",
@@ -287,10 +256,6 @@
   "chat.slash.help.memory": "manage memory",
   "@chat.slash.help.memory": {
     "description": "Help text for the /memory command group in the slash-command list. Lowercase verb phrase, no trailing period."
-  },
-  "chat.slash.help.memory.add": "add memory note",
-  "@chat.slash.help.memory.add": {
-    "description": "Help text for the '/memory add' subcommand. Lowercase verb phrase, no trailing period."
   },
   "chat.slash.help.memory.list": "show memory notes",
   "@chat.slash.help.memory.list": {
@@ -1101,24 +1066,6 @@
         "type": "number"
       },
       "ids": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.memory.saved.project": "Saved project memory {id}.",
-  "@cli.memory.saved.project": {
-    "description": "Confirmation after the CLI stores a note in the project scope. {id} is the new note's identifier.",
-    "placeholders": {
-      "id": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.memory.saved.user": "Saved user memory {id}.",
-  "@cli.memory.saved.user": {
-    "description": "Confirmation after the CLI stores a note in the user scope. {id} is the new note's identifier.",
-    "placeholders": {
-      "id": {
         "type": "String"
       }
     }

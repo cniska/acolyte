@@ -38,7 +38,6 @@ const TOOL_LABEL_KEYS: Record<string, string> = {
   "code-edit": "tool.label.code_edit",
   "test-run": "tool.label.test_run",
   "memory-search": "tool.label.memory_search",
-  "memory-add": "tool.label.memory_add",
   "memory-remove": "tool.label.memory_remove",
 };
 
@@ -67,7 +66,6 @@ const TOOL_LABELS: Record<string, string> = {
   "tool.label.git_log": "Git Log",
   "tool.label.git_show": "Git Show",
   "tool.label.git_status": "Git Status",
-  "tool.label.memory_add": "Add (Memory)",
   "tool.label.memory_remove": "Remove (Memory)",
   "tool.label.memory_search": "Search (Memory)",
   "tool.label.shell_run": "Run",

@@ -38,7 +38,7 @@ describe("chat effects helpers", () => {
 describe("slash suggestion selection", () => {
   test("a changed candidate list returns the selection to the top match", async () => {
     const { result, unmount } = suggestionsHarness("/m");
-    expect(result.current.slashSuggestions).toEqual(["/model", "/memory", "/memory add", "/memory rm", "/memory list"]);
+    expect(result.current.slashSuggestions).toEqual(["/model", "/memory", "/memory rm", "/memory list"]);
 
     result.current.setSlashSuggestionIndex(1);
     await wait();
@@ -46,7 +46,7 @@ describe("slash suggestion selection", () => {
 
     result.current.setValue("/me");
     await wait();
-    expect(result.current.slashSuggestions).toEqual(["/memory", "/memory add", "/memory rm", "/memory list"]);
+    expect(result.current.slashSuggestions).toEqual(["/memory", "/memory rm", "/memory list"]);
     expect(result.current.slashSuggestionIndex).toBe(0);
 
     unmount();
