@@ -280,12 +280,14 @@ export async function ensureLocalServer(
   // running keeps the port too, so this client serves through it until that turn is done.
   if (await isServerListening(apiUrl)) {
     const stopped = await stopLocalServer({ port, apiKey, env });
-    if (stopped.kind === "refused") {
-      const busyLock = await readServerLock(lockPath);
-      return { port, pid: busyLock?.pid ?? 0, started: false };
+    // Refused means a turn is live; unresponsive means it outlived the signal. Either way it still
+    // holds the port, and serving through it beats failing the client outright. A daemon that did
+    // stop took its own lock with it, so nothing here removes one it may no longer own.
+    if (stopped.kind === "refused" || stopped.kind === "unresponsive") {
+      const heldLock = await readServerLock(lockPath);
+      return { port, pid: heldLock?.pid ?? 0, started: false };
     }
   }
-  await rm(lockPath, { force: true });
 
   const startupClaimed = await tryAcquireStartupLock(startLockPath, port);
   if (!startupClaimed) {
