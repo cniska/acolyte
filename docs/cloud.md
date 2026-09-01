@@ -35,6 +35,10 @@ Cloud writes upsert on the record id, so signing in again copies only what a pre
 
 Migration runs one direction. Disabling `cloudSync` returns the CLI to the local database without the records written while cloud storage was active.
 
+## Scope names
+
+A scope key is a hash of what it names — a repository's `owner/repo`, or the account id — so the cloud cannot read a name out of one. Acolyte publishes the current workspace's project name to the account as it works, and the dashboard shows it in place of the key. A scope nothing has named keeps its key.
+
 ## Authentication
 
 EdDSA JWT tokens (Ed25519) with a `sub` claim identifying the user. All data is isolated by `owner_id` derived from the token subject.

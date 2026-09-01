@@ -17,6 +17,7 @@ import { loadProjectRulesPrompt } from "./project-rules";
 import { bareModelId, isProviderAvailable, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
 import { parseResourceId, projectResourceIdFromWorkspace } from "./resource-id";
+import { publishProjectLabel } from "./scope-label-sync";
 import type { RunChatHandlers, StreamErrorPayload } from "./server-contract";
 import { createId } from "./short-id";
 import { isActiveSkillsPayload } from "./skill-contract";
@@ -271,6 +272,8 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     const config = readResolvedConfigSync({ cwd: workspaceResolution.workspacePath });
     // The daemon outlives a locale change, so its boot locale goes stale.
     setLocale(config.locale);
+    // The account stores names for its scopes; only this machine can derive this project's.
+    void publishProjectLabel(workspaceResolution.workspacePath);
     const agentsSync = config.features.syncAgents
       ? await syncAgentsMdToProjectMemory({ workspace: workspaceResolution.workspacePath })
       : null;
