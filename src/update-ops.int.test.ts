@@ -39,7 +39,7 @@ async function createRelease(): Promise<{ tarball: ArrayBuffer; checksum: string
 }
 
 describe("stageUpdate", () => {
-  test("stages a verified release under its version and drops older builds", async () => {
+  test("stages a verified release under its version", async () => {
     useOwnDataHome();
     const { tarball, checksum } = await createRelease();
     const server = startTestServer((req) =>
@@ -59,7 +59,8 @@ describe("stageUpdate", () => {
 
       expect(result).toEqual({ success: true });
       expect(await Bun.file(stagedBinaryPath("0.27.0")).text()).toBe(BINARY_BODY);
-      expect(await listStagedVersions()).toEqual(["0.27.0"]);
+      // Staging only publishes; the start that runs the new build is what clears what it replaced.
+      expect(await listStagedVersions()).toEqual(["0.27.0", "0.1.0"]);
     } finally {
       server.stop();
     }

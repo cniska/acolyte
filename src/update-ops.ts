@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { APP_NAME } from "./app-contract";
 import { errorMessage } from "./error-contract";
-import { pruneStagedVersions, stageBinary } from "./update-staging";
+import { stageBinary } from "./update-staging";
 
 const FETCH_TIMEOUT_MS = 5_000;
 
@@ -116,7 +116,6 @@ export async function stageUpdate(
     const extractedPath = await extractBinary(tarPath, extractDir);
 
     await stageBinary(extractedPath, version);
-    await pruneStagedVersions(version);
 
     return { success: true };
   } catch (error) {
