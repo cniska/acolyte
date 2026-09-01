@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { stdout } from "node:process";
 import { compareVersions, resolveCliVersion, UNVERSIONED_CLI_VERSION } from "./cli-version";
@@ -141,11 +141,6 @@ async function isAlreadyStaged(version: string): Promise<boolean> {
   return await Bun.file(stagedBinaryPath(version)).exists();
 }
 
-/** A failed staging attempt must not be silenced for a day by the check it already made. */
-async function clearCache(baseDir: string): Promise<void> {
-  await rm(cachePath(baseDir), { force: true });
-}
-
 export async function updateMode(): Promise<void> {
   const currentVersion = resolveCliVersion();
   const update = await checkForUpdate(currentVersion, { force: true });
@@ -163,7 +158,6 @@ export async function updateMode(): Promise<void> {
   renderHeader(currentVersion, update.latest);
   const result = await stageUpdate(update.downloadUrl, update.checksumUrl, update.latest, renderProgress);
   if (!result.success) {
-    await clearCache(stateDir());
     renderError(result.error ?? "unknown error");
     return;
   }
@@ -188,9 +182,10 @@ export async function stageUpdateOnStartup(options?: { skip?: boolean }): Promis
     if (!update?.available) return;
     if (await isAlreadyStaged(update.latest)) return;
 
-    const result = await stageUpdate(update.downloadUrl, update.checksumUrl, update.latest);
-    if (!result.success) await clearCache(stateDir());
+    // A failure needs no bookkeeping: the day-cache still names this release, so the next start
+    // reads it and tries again without asking GitHub a second time.
+    await stageUpdate(update.downloadUrl, update.checksumUrl, update.latest);
   } catch {
-    await clearCache(stateDir()).catch(() => {});
+    // A start must not fail over an update it was not asked for.
   }
 }
