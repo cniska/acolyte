@@ -6,11 +6,13 @@ Acolyte manages automatic binary updates, protocol compatibility, database migra
 
 The `acolyte` command on your PATH is a launcher. It runs whichever is newer: the binary the install owns, or a staged build under `<data>/bin/<version>/acolyte` (see [Paths](./paths.md)).
 
-The CLI checks for updates on startup (at most once per 24 hours). When a newer version exists, it downloads the binary, verifies the checksum, and stages it. Nothing is printed and the running session is untouched; the staged build starts the next time you run `acolyte`. Builds older than the one running are removed at startup, so the staging directory holds one build.
+Starting the chat checks for a newer release, at most once per 24 hours. It downloads the binary, verifies the checksum, and stages it silently; the staged build runs the next time you start Acolyte. Only `x.y.z` versions are staged. An update writes inside the data directory alone, never to a file an installer or package manager owns.
 
-Staging writes only inside the data directory, so an update never overwrites a file an installer or package manager owns.
+Each start also removes staged builds the running one has caught up with, so the directory holds at most the build waiting to run.
 
 Skip the check with `--no-update` or `ACOLYTE_SKIP_UPDATE=1`. Force a check with `acolyte update`, which reports progress and the version it staged. `acolyte status` names a staged version while one is waiting.
+
+Delete `<data>/bin` to return to the binary the install owns. A staged build that fails at startup cannot stage its own replacement, so this is the way back to a version that runs.
 
 ## Version compatibility
 
