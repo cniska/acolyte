@@ -7,7 +7,7 @@ import type { ToolOutputPart } from "./tool-output-contract";
 import { resolveToolLabel, toolLabelKey } from "./tool-output-format";
 import { renderToolOutput } from "./tool-output-render";
 import { CLI_TOOL_OUTPUT_LIMITS } from "./tool-policy";
-import { dimText, printDim, printErrorDetail, printOutput, printToolHeader } from "./ui";
+import { dimText, printDim, printErrorDetail, printToolHeader } from "./ui";
 
 export function displayPath(pathInput: string): string {
   const rel = relative(process.cwd(), pathInput);

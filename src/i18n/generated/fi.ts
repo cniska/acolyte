@@ -571,6 +571,10 @@ export const FI_MESSAGES = {
     { kind: "text", value: "Tuntematon jäljitystapahtuma: " },
     { kind: "arg", name: "event" },
   ],
+  "cli.trace.filter_needs_value": [
+    { kind: "arg", name: "flag" },
+    { kind: "text", value: " tarvitsee arvon" },
+  ],
   "cli.trace.filter_needs_task": [
     { kind: "text", value: "Suodattimet koskevat yksittäistä tehtävää: acolyte trace task <id> --event <name>" },
   ],

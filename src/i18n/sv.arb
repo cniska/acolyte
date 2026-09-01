@@ -205,6 +205,7 @@
   "cli.trace.no_lines_for_task": "Inga rader hittades för task_id={taskId}",
   "cli.trace.no_store": "Inga spårdata tillgängliga. Kör en uppgift först.",
   "cli.trace.filter_needs_task": "Filter gäller en enskild uppgift: acolyte trace task <id> --event <name>",
+  "cli.trace.filter_needs_value": "{flag} behöver ett värde",
   "cli.trace.no_matching_events": "Inga händelser matchar filtret: task_id={taskId}",
   "cli.trace.no_tasks": "Inga uppgifter hittades.",
   "cli.trace.unknown_event": "Okänd spårningshändelse: {event}",

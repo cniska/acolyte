@@ -572,6 +572,10 @@ export const SV_MESSAGES = {
     { kind: "text", value: "Okänd spårningshändelse: " },
     { kind: "arg", name: "event" },
   ],
+  "cli.trace.filter_needs_value": [
+    { kind: "arg", name: "flag" },
+    { kind: "text", value: " behöver ett värde" },
+  ],
   "cli.trace.filter_needs_task": [
     { kind: "text", value: "Filter gäller en enskild uppgift: acolyte trace task <id> --event <name>" },
   ],

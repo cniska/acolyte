@@ -1,4 +1,4 @@
-import { hasBoolFlag, parseFlag, parsePositional, parseTailCount } from "./cli-args";
+import { hasBoolFlag, parseFlag, parsePositional, parseRepeatableFlag, parseTailCount } from "./cli-args";
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import { elapsedMs, formatDuration, formatRelativeTime } from "./datetime";
 import { t } from "./i18n";
@@ -257,8 +257,16 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
   const tailCount = parseTailCount(parseFlag(args, ["--lines", "-n"]));
   const isJson = hasBoolFlag(args, "--json");
 
+  const missingValue = ["--event", "--tool"].find(
+    (flag) => args.includes(flag) && parseFlag(args, [flag]) === undefined,
+  );
+  if (missingValue) {
+    commandError("trace", t("cli.trace.filter_needs_value", { flag: missingValue }));
+    return;
+  }
+
   const filter: TraceFilter = {
-    events: parseCommaList(parseFlag(args, ["--event"])),
+    events: parseRepeatableFlag(args, "--event", "").flatMap((value) => parseCommaList(value)),
     tool: parseFlag(args, ["--tool"]),
   };
   const unknownEvent = filter.events.find((event) => !isCatalogTraceEvent(event));
@@ -282,25 +290,26 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
     if (taskIds.length === 0) {
       const latest = traceStore.listTasks(1)[0];
       if (!latest) {
-        printDim(t("cli.trace.no_tasks"));
+        if (!isJson) printDim(t("cli.trace.no_tasks"));
         return;
       }
       taskIds = [latest.taskId];
     }
-    for (let i = 0; i < taskIds.length; i++) {
-      const taskId = taskIds[i];
+    let rendered = false;
+    for (const taskId of taskIds) {
       if (!taskId) continue;
       const stored = traceStore.listByTaskId(taskId);
       if (stored.length === 0) {
-        printDim(t("cli.trace.no_lines_for_task", { taskId }));
+        if (!isJson) printDim(t("cli.trace.no_lines_for_task", { taskId }));
         continue;
       }
       const lines = hasFilter ? stored.filter((line) => matchesTraceFilter(line, filter)) : stored;
       if (lines.length === 0) {
-        printDim(t("cli.trace.no_matching_events", { taskId }));
+        if (!isJson) printDim(t("cli.trace.no_matching_events", { taskId }));
         continue;
       }
-      if (i > 0) out.addSeparator();
+      if (rendered) out.addSeparator();
+      rendered = true;
       if (out.verbose || isJson) {
         for (const line of lines) {
           out.addRow(isJson ? jsonRowData(line) : verboseRowData(line));
@@ -316,7 +325,7 @@ export async function traceMode(args: string[], deps: TraceModeDeps): Promise<vo
     }
     const tasks = traceStore.listTasks(tailCount);
     if (tasks.length === 0) {
-      printDim(t("cli.trace.no_tasks"));
+      if (!isJson) printDim(t("cli.trace.no_tasks"));
     } else {
       out.addTable(
         tasks.map((task) => ({

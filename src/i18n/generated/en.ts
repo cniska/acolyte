@@ -557,6 +557,10 @@ export const EN_MESSAGES = {
     { kind: "text", value: "Unknown trace event: " },
     { kind: "arg", name: "event" },
   ],
+  "cli.trace.filter_needs_value": [
+    { kind: "arg", name: "flag" },
+    { kind: "text", value: " needs a value" },
+  ],
   "cli.trace.filter_needs_task": [
     { kind: "text", value: "Filters apply to a task: acolyte trace task <id> --event <name>" },
   ],

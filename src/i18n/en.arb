@@ -1276,6 +1276,15 @@
       }
     }
   },
+  "cli.trace.filter_needs_value": "{flag} needs a value",
+  "@cli.trace.filter_needs_value": {
+    "description": "Shown when --event or --tool is passed without the name to filter by. {flag} is the flag as typed and must not be translated.",
+    "placeholders": {
+      "flag": {
+        "type": "String"
+      }
+    }
+  },
   "cli.trace.filter_needs_task": "Filters apply to a task: acolyte trace task <id> --event <name>",
   "@cli.trace.filter_needs_task": {
     "description": "Shown when --event or --tool is passed to the task list instead of a single task. The command example is literal and must not be translated."

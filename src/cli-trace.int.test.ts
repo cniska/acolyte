@@ -682,6 +682,47 @@ describe("traceMode", () => {
     expect(output()).toContain("No events match the filter");
   });
 
+  test("a filter flag with no value is refused rather than ignored", async () => {
+    for (const flag of ["--event", "--tool"]) {
+      let errorMsg = "";
+      const { deps, output } = createDeps({
+        traceStore: createFilterStore(),
+        commandError: (_name, msg) => {
+          errorMsg = msg ?? "";
+        },
+      });
+      await traceMode(["task", "task_f", flag], deps);
+      expect(errorMsg).toContain(flag);
+      expect(output()).toBe("");
+    }
+  });
+
+  test("every --event flag is applied, not just the first", async () => {
+    const { deps, output } = createDeps({ traceStore: createFilterStore() });
+    await traceMode(["task", "task_f", "--event", "lifecycle.start", "--event", "lifecycle.model_usage"], deps);
+    const text = output();
+    expect(text).toContain("lifecycle.start");
+    expect(text).toContain("lifecycle.model_usage");
+    expect(text).not.toContain("lifecycle.tool.call");
+  });
+
+  test("a task that printed nothing leaves no separator behind", async () => {
+    const store = createFilterStore();
+    store.write({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      taskId: "task_empty",
+      event: "lifecycle.start",
+      fields: { model: "gpt-5" },
+    });
+    const { deps, output } = createDeps({ traceStore: store });
+    await traceMode(["task", "task_empty,task_f", "--tool", "shell-exec"], deps);
+    const body = output()
+      .split("\n")
+      .filter((line) => line.startsWith("timestamp="));
+    expect(body.length).toBeGreaterThan(0);
+    expect(output()).not.toContain("\n\ntimestamp=");
+  });
+
   test("a filter on the task list is refused", async () => {
     let errorMsg = "";
     const { deps } = createDeps({

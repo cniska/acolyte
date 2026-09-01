@@ -217,6 +217,7 @@ export type MessageArgs = {
   "cli.trace.no_lines_for_task": { taskId: string | number };
   "cli.trace.no_matching_events": { taskId: string | number };
   "cli.trace.unknown_event": { event: string | number };
+  "cli.trace.filter_needs_value": { flag: string | number };
   "cli.trace.filter_needs_task": never;
   "cli.trace.no_store": never;
   "cli.trace.no_tasks": never;

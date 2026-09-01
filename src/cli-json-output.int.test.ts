@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { dataDir } from "./paths";
 import { gitEnv, startTestServer, tempDir } from "./test-utils";
+import { createTraceStore } from "./trace-store";
 
 const { createDir, cleanupDirs } = tempDir();
 
@@ -144,6 +146,81 @@ describe("cli json output", () => {
 
     expect(result.exitCode).toBe(0);
     expectJsonStdout(result.stdout);
+  });
+
+  function seedTraceStore(home: string, seed: (store: ReturnType<typeof createTraceStore>) => void): void {
+    const dir = dataDir({ HOME: home });
+    mkdirSync(dir, { recursive: true });
+    const store = createTraceStore(join(dir, "trace.db"));
+    seed(store);
+    store.close();
+  }
+
+  test("trace task --json writes nothing when the store holds no such task", () => {
+    const home = createDir("acolyte-cli-json-home-");
+    const workspace = createDir("acolyte-cli-json-workspace-");
+    seedTraceStore(home, (store) =>
+      store.write({
+        timestamp: "2026-01-01T00:00:00.000Z",
+        taskId: "task_present",
+        event: "lifecycle.start",
+        fields: { model: "gpt-5" },
+      }),
+    );
+
+    const result = runCli(["trace", "task", "task_missing", "--json"], createIsolatedEnv(home), workspace);
+
+    expect(result.stdout).toBe("");
+  });
+
+  test("trace --json writes nothing when the store holds no tasks", () => {
+    const home = createDir("acolyte-cli-json-home-");
+    const workspace = createDir("acolyte-cli-json-workspace-");
+    seedTraceStore(home, () => {});
+
+    const result = runCli(["trace", "--json"], createIsolatedEnv(home), workspace);
+
+    expect(result.stdout).toBe("");
+  });
+
+  test("trace task --json filtered to nothing writes nothing", () => {
+    const home = createDir("acolyte-cli-json-home-");
+    const workspace = createDir("acolyte-cli-json-workspace-");
+    seedTraceStore(home, (store) =>
+      store.write({
+        timestamp: "2026-01-01T00:00:00.000Z",
+        taskId: "task_present",
+        event: "lifecycle.tool.call",
+        fields: { tool: "file-read" },
+      }),
+    );
+
+    const result = runCli(
+      ["trace", "task", "task_present", "--tool", "web-fetch", "--json"],
+      createIsolatedEnv(home),
+      workspace,
+    );
+
+    expect(result.stdout).toBe("");
+  });
+
+  test("history --json writes nothing when there are no sessions", () => {
+    const home = createDir("acolyte-cli-json-home-");
+    const workspace = createDir("acolyte-cli-json-workspace-");
+
+    const result = runCli(["history", "--json"], createIsolatedEnv(home), workspace);
+
+    expect(result.stdout).toBe("");
+  });
+
+  test("a diagnostic goes to stderr and leaves stdout empty", () => {
+    const home = createDir("acolyte-cli-json-home-");
+    const workspace = createDir("acolyte-cli-json-workspace-");
+
+    const result = runCli(["trace", "task", "task_missing"], createIsolatedEnv(home), workspace);
+
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("No trace data available");
   });
 
   test("status --json reports a stopped daemon as parseable JSON", () => {

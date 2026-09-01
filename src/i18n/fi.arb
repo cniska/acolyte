@@ -205,6 +205,7 @@
   "cli.trace.no_lines_for_task": "Riviä ei löytynyt: task_id={taskId}",
   "cli.trace.no_store": "Jälkitietoja ei ole saatavilla. Suorita ensin tehtävä.",
   "cli.trace.filter_needs_task": "Suodattimet koskevat yksittäistä tehtävää: acolyte trace task <id> --event <name>",
+  "cli.trace.filter_needs_value": "{flag} tarvitsee arvon",
   "cli.trace.no_matching_events": "Yksikään tapahtuma ei vastaa suodatinta: task_id={taskId}",
   "cli.trace.no_tasks": "Tehtäviä ei löytynyt.",
   "cli.trace.unknown_event": "Tuntematon jäljitystapahtuma: {event}",
