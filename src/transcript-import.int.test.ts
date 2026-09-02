@@ -61,11 +61,16 @@ describe("transcript import", () => {
       store,
     );
 
-    const plans = await planImport({ dir: transcripts, since: new Date(0), ledger: emptyImportLedger(), policy });
-    expect(plans.map((plan) => plan.project)).toEqual(["acme/widgets"]);
+    const { sessions } = await planImport({
+      dir: transcripts,
+      since: new Date(0),
+      ledger: emptyImportLedger(),
+      policy,
+    });
+    expect(sessions.map((session) => session.project)).toEqual(["acme/widgets"]);
 
     const results = await runImport({
-      plans,
+      plans: sessions,
       distiller,
       ledger: emptyImportLedger(),
       saveLedger: (next) => writeImportLedger(ledgerPath, next),
@@ -78,7 +83,7 @@ describe("transcript import", () => {
 
     const ledger = await readImportLedger(ledgerPath);
     const rerun = await planImport({ dir: transcripts, since: new Date(0), ledger, policy });
-    expect(rerun.map((plan) => plan.pending)).toEqual([0]);
+    expect(rerun.sessions.map((session) => session.pending)).toEqual([0]);
   });
 
   test("a second run over an unchanged window writes nothing and retires nothing", async () => {
@@ -102,7 +107,7 @@ describe("transcript import", () => {
 
     const first = await planImport({ dir: transcripts, since: new Date(0), ledger: emptyImportLedger(), policy });
     await runImport({
-      plans: first,
+      plans: first.sessions,
       distiller,
       ledger: emptyImportLedger(),
       saveLedger: (next) => writeImportLedger(ledgerPath, next),
@@ -113,7 +118,7 @@ describe("transcript import", () => {
     const ledger = await readImportLedger(ledgerPath);
     const second = await planImport({ dir: transcripts, since: new Date(0), ledger, policy });
     await runImport({
-      plans: second,
+      plans: second.sessions,
       distiller,
       ledger,
       saveLedger: (next) => writeImportLedger(ledgerPath, next),
@@ -132,25 +137,25 @@ describe("transcript import", () => {
     const longAgo = new Date(Date.now() - 72 * 3_600_000);
     utimesSync(stale, longAgo, longAgo);
 
-    const plans = await planImport({
+    const { sessions } = await planImport({
       dir: transcripts,
       since: new Date(Date.now() - 24 * 3_600_000),
       ledger: emptyImportLedger(),
       policy,
     });
 
-    expect(plans.map((plan) => plan.sourceSessionId)).toEqual(["new"]);
+    expect(sessions.map((session) => session.sourceSessionId)).toEqual(["new"]);
   });
 
   test("a transcript directory that does not exist plans nothing", async () => {
-    const plans = await planImport({
+    const plan = await planImport({
       dir: join(createDir("acolyte-empty-"), "missing"),
       since: new Date(0),
       ledger: emptyImportLedger(),
       policy,
     });
 
-    expect(plans).toEqual([]);
+    expect(plan).toEqual({ sessions: [], heldBack: 0 });
   });
 });
 

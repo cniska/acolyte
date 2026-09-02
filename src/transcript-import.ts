@@ -113,22 +113,33 @@ export type PlanImportOptions = {
   dir: string;
   since: Date;
   ledger: ImportLedger;
+  maxTurns?: number;
   reader?: ImportReader;
   resolveProject?: ProjectResolver;
   policy?: MemoryPolicy;
+};
+
+export type ImportPlan = {
+  readonly sessions: readonly ImportSessionPlan[];
+  readonly heldBack: number;
 };
 
 /**
  * Reads the transcripts in the window and says what a run would distill. Project scope comes from
  * the checkout each session recorded working in, resolved now: the source names a project by a path
  * that may no longer exist, and Acolyte keys one by its repository remote.
+ *
+ * `maxTurns` bounds the run by cutting each session's tail rather than dropping whole sessions, so
+ * the turns that are taken still replay in order and the ledger records exactly how far each got.
  */
-export async function planImport(options: PlanImportOptions): Promise<ImportSessionPlan[]> {
+export async function planImport(options: PlanImportOptions): Promise<ImportPlan> {
   const reader = options.reader ?? fileImportReader;
   const resolveProject = options.resolveProject ?? projectLabelFromWorkspace;
   const policy = options.policy ?? defaultMemoryPolicy;
   const files = await reader.listTranscripts(options.dir, options.since);
-  const plans: ImportSessionPlan[] = [];
+  const sessions: ImportSessionPlan[] = [];
+  let budget = options.maxTurns ?? Number.POSITIVE_INFINITY;
+  let heldBack = 0;
 
   for (const file of files) {
     const transcript = parseClaudeCodeTranscript(await reader.readTranscript(file.path));
@@ -136,19 +147,24 @@ export async function planImport(options: PlanImportOptions): Promise<ImportSess
     const sourceSessionId = transcript.sessionId ?? sessionIdFromPath(file.path);
     const consumed = consumedExchanges(options.ledger, CLAUDE_CODE_SOURCE, sourceSessionId);
     const workspace = transcript.workspace;
-    plans.push({
+    const available = Math.max(transcript.exchanges.length - consumed, 0);
+    const taken = Math.min(available, budget);
+    budget -= taken;
+    heldBack += available - taken;
+    const exchanges = transcript.exchanges.slice(0, consumed + taken);
+    sessions.push({
       sourceSessionId,
       path: file.path,
       sessionId: importedSessionId(CLAUDE_CODE_SOURCE, sourceSessionId),
       workspace,
       project: workspace ? resolveProject(workspace) : null,
-      exchanges: transcript.exchanges,
+      exchanges,
       consumed,
-      pending: Math.max(transcript.exchanges.length - consumed, 0),
-      estimatedTokens: estimatePendingTokens(transcript.exchanges, consumed, policy),
+      pending: taken,
+      estimatedTokens: estimatePendingTokens(exchanges, consumed, policy),
     });
   }
-  return plans;
+  return { sessions, heldBack };
 }
 
 export type ImportSessionResult = {

@@ -382,28 +382,73 @@ export const SV_MESSAGES = {
   ],
   "cli.import.col.session": [{ kind: "text", value: "session" }],
   "cli.import.col.project": [{ kind: "text", value: "projekt" }],
+  "cli.import.col.calls": [{ kind: "text", value: "anrop" }],
   "cli.import.col.turns": [{ kind: "text", value: "turer" }],
   "cli.import.col.facts": [{ kind: "text", value: "fakta" }],
   "cli.import.col.superseded": [{ kind: "text", value: "ersatta" }],
   "cli.import.col.tokens": [{ kind: "text", value: "tokens" }],
+  "cli.import.invalid_max_turns": [
+    { kind: "text", value: "Ogiltigt --max-turns-värde: " },
+    { kind: "arg", name: "value" },
+    { kind: "text", value: ". Använd ett heltal, minst 1." },
+  ],
+  "cli.import.held_back": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " tur" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turer" },
+        ],
+      },
+    },
+    { kind: "text", value: " väntar fortfarande; kör kommandot igen för nästa omgång." },
+  ],
   "cli.import.none": [
     { kind: "text", value: "Inga oimporterade transkript de senaste " },
     { kind: "arg", name: "since" },
     { kind: "text", value: "." },
   ],
   "cli.import.plan": [
-    { kind: "arg", name: "sessions" },
-    { kind: "text", value: " sessioner, " },
-    { kind: "arg", name: "exchanges" },
-    { kind: "text", value: " turer att destillera, ~" },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " tur" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turer" },
+        ],
+      },
+    },
+    { kind: "text", value: " att destillera, ~" },
     { kind: "arg", name: "tokens" },
     { kind: "text", value: " prompt-tokens." },
   ],
   "cli.import.done": [
-    { kind: "arg", name: "sessions" },
-    { kind: "text", value: " sessioner, " },
-    { kind: "arg", name: "facts" },
-    { kind: "text", value: " fakta, " },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " faktum" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " fakta" },
+        ],
+      },
+    },
+    { kind: "text", value: " sparade, " },
     { kind: "arg", name: "superseded" },
     { kind: "text", value: " ersatta, ~" },
     { kind: "arg", name: "tokens" },

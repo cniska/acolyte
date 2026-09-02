@@ -161,13 +161,16 @@ export type MessageArgs = {
   "cli.args.invalid_since": { value: string | number };
   "cli.import.col.session": never;
   "cli.import.col.project": never;
+  "cli.import.col.calls": never;
   "cli.import.col.turns": never;
   "cli.import.col.facts": never;
   "cli.import.col.superseded": never;
   "cli.import.col.tokens": never;
+  "cli.import.invalid_max_turns": { value: string | number };
+  "cli.import.held_back": { count: number };
   "cli.import.none": { since: string | number };
-  "cli.import.plan": { exchanges: number; sessions: number; tokens: number };
-  "cli.import.done": { facts: number; path: string | number; sessions: number; superseded: number; tokens: number };
+  "cli.import.plan": { count: number; tokens: number };
+  "cli.import.done": { count: number; path: string | number; superseded: number; tokens: number };
   "cli.import.reset": { path: string | number };
   "cli.login.opening.browser": never;
   "cli.login.open.manually": { url: string | number };

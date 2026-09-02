@@ -891,6 +891,10 @@
   "@cli.import.col.project": {
     "description": "Column header in the 'import' table: the owner/repo the session's working directory belongs to. Lowercase, no trailing period."
   },
+  "cli.import.col.calls": "calls",
+  "@cli.import.col.calls": {
+    "description": "Column header in the 'import' table: distill calls the run actually made, which is fewer than the turns it took when a session's opening turns are too short to distill. Lowercase, no trailing period."
+  },
   "cli.import.col.turns": "turns",
   "@cli.import.col.turns": {
     "description": "Column header in the 'import' table: turns handed to distillation. Lowercase, no trailing period."
@@ -907,6 +911,24 @@
   "@cli.import.col.tokens": {
     "description": "Column header in the 'import' table: prompt tokens the distill calls used or are estimated to use. Lowercase, no trailing period."
   },
+  "cli.import.invalid_max_turns": "Invalid --max-turns value: {value}. Use a whole number of turns, 1 or more.",
+  "@cli.import.invalid_max_turns": {
+    "description": "Shown when --max-turns is given something other than a positive whole number. '--max-turns' is a literal flag name; {value} is what the user typed.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.import.held_back": "{count, plural, one {# turn} other {# turns}} still waiting; run it again to take the next batch.",
+  "@cli.import.held_back": {
+    "description": "Appended to the 'import' summary when --max-turns stopped the run short. The ledger makes the next run continue where this one ended.",
+    "placeholders": {
+      "count": {
+        "type": "number"
+      }
+    }
+  },
   "cli.import.none": "No unimported transcripts in the last {since}.",
   "@cli.import.none": {
     "description": "Shown by 'import' when the window holds no session the ledger has not already consumed. {since} is the duration the user asked for, such as 24h.",
@@ -916,14 +938,11 @@
       }
     }
   },
-  "cli.import.plan": "{sessions} sessions, {exchanges} turns to distill, ~{tokens} prompt tokens.",
+  "cli.import.plan": "{count, plural, one {# turn} other {# turns}} to distill, ~{tokens} prompt tokens.",
   "@cli.import.plan": {
-    "description": "Summary line under the 'import --dry-run' table. {tokens} is an estimate, hence the tilde.",
+    "description": "Summary line under the 'import --dry-run' table; the table above it lists the sessions. {tokens} is an estimate, hence the tilde.",
     "placeholders": {
-      "sessions": {
-        "type": "number"
-      },
-      "exchanges": {
+      "count": {
         "type": "number"
       },
       "tokens": {
@@ -931,14 +950,11 @@
       }
     }
   },
-  "cli.import.done": "{sessions} sessions, {facts} facts, {superseded} superseded, ~{tokens} tokens. Written to {path}",
+  "cli.import.done": "{count, plural, one {# fact} other {# facts}} kept, {superseded} superseded, ~{tokens} tokens. Written to {path}",
   "@cli.import.done": {
     "description": "Summary line under the 'import' table once the run finishes. {path} is the throwaway directory the import wrote to, not the real corpus.",
     "placeholders": {
-      "sessions": {
-        "type": "number"
-      },
-      "facts": {
+      "count": {
         "type": "number"
       },
       "superseded": {

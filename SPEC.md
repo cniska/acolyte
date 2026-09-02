@@ -70,7 +70,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **FR-34a** — Errors and warnings are written to stderr, so a command's stdout carries only what the command was asked to produce.
 - **FR-34b** — An error that reaches the top of the CLI, from a command or from the chat renderer, prints one line saying what the user can do about it and exits non-zero. The thrown message, any response body it carried, and the stack are shown only when `ACOLYTE_DEBUG=cli` asks for them.
 - **FR-35** — `acolyte <command> help` (or `-h`/`--help`) prints detailed usage for that command.
-- **FR-52** — `acolyte import` distills a rolling window of another agent's session transcripts, defaulting to the last 24 hours and settable with `--since`; `--dry-run` reports what a run would distill and its estimated prompt cost, and `--reset` discards what earlier runs wrote. The command is hidden from the command table while its target is a throwaway corpus.
+- **FR-52** — `acolyte import` distills a rolling window of another agent's session transcripts, defaulting to the last 24 hours and settable with `--since`. A run distills at most `--max-turns` turns, taking each session in order and cutting the last one short, and reports how many turns it held back; a further run continues from there. `--dry-run` reports what a run would distill and its estimated prompt cost, and `--reset` discards what earlier runs wrote. The command is hidden from the command table while its target is a throwaway corpus.
 - **FR-51** — Human-facing CLI output carries color only when its destination is a terminal and `NO_COLOR` is unset; redirected or piped output is plain text.
 
 ### 2.5 Options / configuration

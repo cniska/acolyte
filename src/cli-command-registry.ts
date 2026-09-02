@@ -346,9 +346,9 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
     hidden: true,
     help: () => ({
       command: "import",
-      usage: "acolyte import [--since <duration>] [--dry-run] [--reset] [--json]",
+      usage: "acolyte import [--since <duration>] [--max-turns <n>] [--dry-run] [--reset] [--json]",
       description: t("cli.help.desc.import"),
-      examples: ["acolyte import --dry-run", "acolyte import --since 3d", "acolyte import --reset"],
+      examples: ["acolyte import --dry-run", "acolyte import --max-turns 10", "acolyte import --reset"],
     }),
     handler: (args) =>
       importMode(args, {

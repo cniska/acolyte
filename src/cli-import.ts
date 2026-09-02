@@ -6,9 +6,12 @@ import { parseSince } from "./datetime";
 import { t } from "./i18n";
 import type { ImportLedger } from "./import-ledger";
 import type { MemoryDistiller, MemoryStore } from "./memory-contract";
-import type { ImportSessionPlan, ImportSessionResult, RunImportOptions } from "./transcript-import";
+import type { ImportPlan, ImportSessionPlan, ImportSessionResult, RunImportOptions } from "./transcript-import";
 
 const DEFAULT_SINCE = "24h";
+// One distill call per turn, so this is the run's model-call budget. A day of transcripts is
+// hundreds of turns; the ledger makes a bounded first bite resumable rather than a partial import.
+const DEFAULT_MAX_TURNS = 25;
 const STORE_FILE = "memory.db";
 const LEDGER_FILE = "ledger.json";
 
@@ -16,7 +19,7 @@ export type ImportModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   transcriptDir: string;
   scratchDir: string;
-  planImport: (options: { dir: string; since: Date; ledger: ImportLedger }) => Promise<ImportSessionPlan[]>;
+  planImport: (options: { dir: string; since: Date; ledger: ImportLedger; maxTurns: number }) => Promise<ImportPlan>;
   runImport: (options: RunImportOptions) => Promise<ImportSessionResult[]>;
   createStore: (path: string) => MemoryStore;
   createDistiller: (store: MemoryStore) => MemoryDistiller;
@@ -38,6 +41,7 @@ function columnLabels(): Record<string, string> {
     session: t("cli.import.col.session"),
     project: t("cli.import.col.project"),
     turns: t("cli.import.col.turns"),
+    calls: t("cli.import.col.calls"),
     facts: t("cli.import.col.facts"),
     superseded: t("cli.import.col.superseded"),
     tokens: t("cli.import.col.tokens"),
@@ -57,7 +61,7 @@ function resultRow(result: ImportSessionResult): Record<string, string> {
   return {
     session: shortId(result.plan.sourceSessionId),
     project: result.plan.project ?? "-",
-    turns: String(result.distilled),
+    calls: String(result.distilled),
     facts: String(result.facts),
     superseded: String(result.superseded),
     tokens: String(result.tokens),
@@ -84,8 +88,8 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
     deps.commandHelp("import");
     return;
   }
-  const usage = formatUsage("acolyte import [--since <duration>] [--dry-run] [--reset] [--json]");
-  if (parsePositional(args, ["--since"]).length > 0) {
+  const usage = formatUsage("acolyte import [--since <duration>] [--max-turns <n>] [--dry-run] [--reset] [--json]");
+  if (parsePositional(args, ["--since", "--max-turns"]).length > 0) {
     deps.commandError("import", usage);
     return;
   }
@@ -94,6 +98,12 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
   const since = parseSince(sinceRaw);
   if (!since) {
     deps.commandError("import", t("cli.args.invalid_since", { value: sinceRaw }));
+    return;
+  }
+  const maxTurnsRaw = parseFlag(args, "--max-turns");
+  const maxTurns = maxTurnsRaw === undefined ? DEFAULT_MAX_TURNS : Number(maxTurnsRaw);
+  if (!Number.isInteger(maxTurns) || maxTurns < 1) {
+    deps.commandError("import", t("cli.import.invalid_max_turns", { value: maxTurnsRaw ?? "" }));
     return;
   }
   const json = hasBoolFlag(args, "--json");
@@ -106,8 +116,9 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
 
   const ledgerPath = join(deps.scratchDir, LEDGER_FILE);
   const ledger = await deps.readLedger(ledgerPath);
-  const plans = await deps.planImport({ dir: deps.transcriptDir, since, ledger });
-  const pending = plans.filter((plan) => plan.pending > 0);
+  const plan = await deps.planImport({ dir: deps.transcriptDir, since, ledger, maxTurns });
+  const pending = plan.sessions.filter((session) => session.pending > 0);
+  const heldBack = plan.heldBack > 0 ? ` ${t("cli.import.held_back", { count: plan.heldBack })}` : "";
 
   if (pending.length === 0) {
     if (!json) deps.printDim(t("cli.import.none", { since: sinceRaw }));
@@ -116,11 +127,10 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
 
   if (dryRun) {
     const summary = t("cli.import.plan", {
-      sessions: pending.length,
-      exchanges: pending.reduce((sum, plan) => sum + plan.pending, 0),
-      tokens: pending.reduce((sum, plan) => sum + plan.estimatedTokens, 0),
+      count: pending.reduce((sum, session) => sum + session.pending, 0),
+      tokens: pending.reduce((sum, session) => sum + session.estimatedTokens, 0),
     });
-    emit(pending.map(planRow), summary, json, deps);
+    emit(pending.map(planRow), summary + heldBack, json, deps);
     return;
   }
 
@@ -133,13 +143,12 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
       saveLedger: (next) => deps.writeLedger(ledgerPath, next),
     });
     const summary = t("cli.import.done", {
-      sessions: results.length,
-      facts: results.reduce((sum, result) => sum + result.facts, 0),
+      count: results.reduce((sum, result) => sum + result.facts, 0),
       superseded: results.reduce((sum, result) => sum + result.superseded, 0),
       tokens: results.reduce((sum, result) => sum + result.tokens, 0),
       path: deps.scratchDir,
     });
-    emit(results.map(resultRow), summary, json, deps);
+    emit(results.map(resultRow), summary + heldBack, json, deps);
   } finally {
     store.close();
   }

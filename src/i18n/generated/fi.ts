@@ -378,28 +378,73 @@ export const FI_MESSAGES = {
   ],
   "cli.import.col.session": [{ kind: "text", value: "istunto" }],
   "cli.import.col.project": [{ kind: "text", value: "projekti" }],
+  "cli.import.col.calls": [{ kind: "text", value: "kutsua" }],
   "cli.import.col.turns": [{ kind: "text", value: "vuoroa" }],
   "cli.import.col.facts": [{ kind: "text", value: "faktaa" }],
   "cli.import.col.superseded": [{ kind: "text", value: "korvattua" }],
   "cli.import.col.tokens": [{ kind: "text", value: "tokenia" }],
+  "cli.import.invalid_max_turns": [
+    { kind: "text", value: "Virheellinen --max-turns-arvo: " },
+    { kind: "arg", name: "value" },
+    { kind: "text", value: ". Käytä kokonaislukua, vähintään 1." },
+  ],
+  "cli.import.held_back": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " vuoro" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " vuoroa" },
+        ],
+      },
+    },
+    { kind: "text", value: " odottaa yhä; aja komento uudelleen seuraavaa erää varten." },
+  ],
   "cli.import.none": [
     { kind: "text", value: "Ei tuomattomia keskustelutallenteita viimeisen " },
     { kind: "arg", name: "since" },
     { kind: "text", value: " ajalta." },
   ],
   "cli.import.plan": [
-    { kind: "arg", name: "sessions" },
-    { kind: "text", value: " istuntoa, " },
-    { kind: "arg", name: "exchanges" },
-    { kind: "text", value: " vuoroa tislattavaksi, ~" },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " vuoro" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " vuoroa" },
+        ],
+      },
+    },
+    { kind: "text", value: " tislattavaksi, ~" },
     { kind: "arg", name: "tokens" },
     { kind: "text", value: " kehotetokenia." },
   ],
   "cli.import.done": [
-    { kind: "arg", name: "sessions" },
-    { kind: "text", value: " istuntoa, " },
-    { kind: "arg", name: "facts" },
-    { kind: "text", value: " faktaa, " },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " fakta" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " faktaa" },
+        ],
+      },
+    },
+    { kind: "text", value: " talteen, " },
     { kind: "arg", name: "superseded" },
     { kind: "text", value: " korvattua, ~" },
     { kind: "arg", name: "tokens" },

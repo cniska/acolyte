@@ -371,28 +371,73 @@ export const EN_MESSAGES = {
   ],
   "cli.import.col.session": [{ kind: "text", value: "session" }],
   "cli.import.col.project": [{ kind: "text", value: "project" }],
+  "cli.import.col.calls": [{ kind: "text", value: "calls" }],
   "cli.import.col.turns": [{ kind: "text", value: "turns" }],
   "cli.import.col.facts": [{ kind: "text", value: "facts" }],
   "cli.import.col.superseded": [{ kind: "text", value: "superseded" }],
   "cli.import.col.tokens": [{ kind: "text", value: "tokens" }],
+  "cli.import.invalid_max_turns": [
+    { kind: "text", value: "Invalid --max-turns value: " },
+    { kind: "arg", name: "value" },
+    { kind: "text", value: ". Use a whole number of turns, 1 or more." },
+  ],
+  "cli.import.held_back": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turn" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turns" },
+        ],
+      },
+    },
+    { kind: "text", value: " still waiting; run it again to take the next batch." },
+  ],
   "cli.import.none": [
     { kind: "text", value: "No unimported transcripts in the last " },
     { kind: "arg", name: "since" },
     { kind: "text", value: "." },
   ],
   "cli.import.plan": [
-    { kind: "arg", name: "sessions" },
-    { kind: "text", value: " sessions, " },
-    { kind: "arg", name: "exchanges" },
-    { kind: "text", value: " turns to distill, ~" },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turn" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turns" },
+        ],
+      },
+    },
+    { kind: "text", value: " to distill, ~" },
     { kind: "arg", name: "tokens" },
     { kind: "text", value: " prompt tokens." },
   ],
   "cli.import.done": [
-    { kind: "arg", name: "sessions" },
-    { kind: "text", value: " sessions, " },
-    { kind: "arg", name: "facts" },
-    { kind: "text", value: " facts, " },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " fact" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " facts" },
+        ],
+      },
+    },
+    { kind: "text", value: " kept, " },
     { kind: "arg", name: "superseded" },
     { kind: "text", value: " superseded, ~" },
     { kind: "arg", name: "tokens" },

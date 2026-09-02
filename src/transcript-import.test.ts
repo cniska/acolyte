@@ -4,6 +4,7 @@ import type { MemoryCommitContext, MemoryCommitMetrics, MemoryDistiller } from "
 import {
   CLAUDE_CODE_SOURCE,
   type ImportReader,
+  type ImportSessionPlan,
   importedSessionId,
   importSession,
   planImport,
@@ -51,14 +52,22 @@ function recordingDistiller(): { distiller: MemoryDistiller; calls: MemoryCommit
   return { distiller, calls };
 }
 
-const plan = (files: Record<string, string>, ledger: ImportLedger = emptyImportLedger()) =>
+const fullPlan = (files: Record<string, string>, ledger: ImportLedger, maxTurns?: number) =>
   planImport({
     dir: "/transcripts",
     since: new Date(0),
     ledger,
+    maxTurns,
     reader: readerFor(files),
     resolveProject: () => "acme/widgets",
   });
+
+async function plan(
+  files: Record<string, string>,
+  ledger: ImportLedger = emptyImportLedger(),
+): Promise<ImportSessionPlan[]> {
+  return [...(await fullPlan(files, ledger)).sessions];
+}
 
 describe("planImport", () => {
   test("reports each session's exchanges and the project its workspace names", async () => {
@@ -92,6 +101,52 @@ describe("planImport", () => {
 
   test("skips a transcript that holds no exchange", async () => {
     expect(await plan({ "/transcripts/empty.jsonl": line({ type: "mode", mode: "normal" }) })).toEqual([]);
+  });
+
+  test("a turn budget cuts each session's tail and reports what it held back", async () => {
+    const result = await fullPlan(
+      {
+        "/transcripts/a.jsonl": sessionFile("s1", "/repo", 5),
+        "/transcripts/b.jsonl": sessionFile("s2", "/repo", 5),
+      },
+      emptyImportLedger(),
+      7,
+    );
+
+    expect(result.sessions.map((session) => session.pending)).toEqual([5, 2]);
+    expect(result.sessions[1].exchanges.map((exchange) => exchange.prompt)).toEqual(["ask 0", "ask 1"]);
+    expect(result.heldBack).toBe(3);
+  });
+
+  test("a budget already spent leaves the remaining sessions untouched", async () => {
+    const result = await fullPlan(
+      {
+        "/transcripts/a.jsonl": sessionFile("s1", "/repo", 4),
+        "/transcripts/b.jsonl": sessionFile("s2", "/repo", 4),
+      },
+      emptyImportLedger(),
+      4,
+    );
+
+    expect(result.sessions.map((session) => session.pending)).toEqual([4, 0]);
+    expect(result.heldBack).toBe(4);
+  });
+
+  test("nothing is held back when the budget covers the window", async () => {
+    const result = await fullPlan({ "/transcripts/a.jsonl": sessionFile("s1", "/repo", 3) }, emptyImportLedger(), 10);
+
+    expect(result).toMatchObject({ heldBack: 0 });
+    expect(result.sessions[0].pending).toBe(3);
+  });
+
+  test("a budgeted run resumes from the ledger where it stopped", async () => {
+    const files = { "/transcripts/a.jsonl": sessionFile("s1", "/repo", 5) };
+    const first = await fullPlan(files, emptyImportLedger(), 2);
+    const ledger = markConsumed(emptyImportLedger(), CLAUDE_CODE_SOURCE, "s1", first.sessions[0].exchanges.length);
+    const second = await fullPlan(files, ledger, 2);
+
+    expect(second.sessions[0]).toMatchObject({ consumed: 2, pending: 2 });
+    expect(second.heldBack).toBe(1);
   });
 
   test("names a session by its file when the records carry no id", async () => {
