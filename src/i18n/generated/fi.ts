@@ -414,9 +414,18 @@ export const FI_MESSAGES = {
     },
   ],
   "cli.import.none": [
-    { kind: "text", value: "Ei tuomattomia keskustelutallenteita viimeisen " },
+    { kind: "text", value: "Ei tuomattomia projektin " },
+    { kind: "arg", name: "project" },
+    { kind: "text", value: " keskustelutallenteita viimeisen " },
     { kind: "arg", name: "since" },
     { kind: "text", value: " ajalta." },
+  ],
+  "cli.import.no_project": [
+    {
+      kind: "text",
+      value:
+        "Tällä työtilalla ei ole projektia. Tuonti lukee sen repositorion tallenteet, jossa komento ajetaan, ja repositorio tunnistetaan owner/repo-etävarastosta; siirry sellaiseen ja aja komento uudelleen.",
+    },
   ],
   "cli.import.plan": [
     {
@@ -425,17 +434,102 @@ export const FI_MESSAGES = {
       arms: {
         one: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " vuoro" },
+          { kind: "text", value: " tislauskutsu" },
         ],
         other: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " vuoroa" },
+          { kind: "text", value: " tislauskutsua" },
         ],
       },
     },
-    { kind: "text", value: " tislattavaksi, ~" },
-    { kind: "arg", name: "tokens" },
+    { kind: "text", value: ", " },
+    { kind: "arg", name: "low" },
+    { kind: "text", value: "–" },
+    { kind: "arg", name: "high" },
     { kind: "text", value: " kehotetokenia." },
+  ],
+  "cli.import.confirm": [
+    { kind: "text", value: "Tislataanko " },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " kutsu" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " kutsua" },
+        ],
+      },
+    },
+    { kind: "text", value: " hintaan " },
+    { kind: "arg", name: "low" },
+    { kind: "text", value: "–" },
+    { kind: "arg", name: "high" },
+    { kind: "text", value: " kehotetokenia? [y/N]:" },
+  ],
+  "cli.import.cancelled": [{ kind: "text", value: "Mitään ei tuotu." }],
+  "cli.import.needs_consent": [
+    {
+      kind: "text",
+      value:
+        "Tuonti kuluttaa mallikutsuja. Aja se päätteessä vahvistaaksesi suunnitelman tai anna --yes hyväksyäksesi sen kysymättä.",
+    },
+  ],
+  "cli.import.stale": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " istunto" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " istuntoa" },
+        ],
+      },
+    },
+    { kind: "text", value: " ohitettu, enintään " },
+    { kind: "arg", name: "commits" },
+    { kind: "text", value: " committia jäljessä; --include-stale ottaa ne mukaan." },
+  ],
+  "cli.import.undated": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " istunto" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " istuntoa" },
+        ],
+      },
+    },
+    { kind: "text", value: " ohitettu, koska aikaleima puuttuu; --include-stale ottaa ne mukaan." },
+  ],
+  "cli.import.unattributable": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " istunto" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " istuntoa" },
+        ],
+      },
+    },
+    { kind: "text", value: " aikavälillä viittaa hakemistoon, joka ei enää tunnista projektia." },
   ],
   "cli.import.done": [
     {

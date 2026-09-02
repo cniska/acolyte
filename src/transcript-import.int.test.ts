@@ -1,11 +1,11 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { emptyImportLedger, readImportLedger, writeImportLedger } from "./import-ledger";
+import { emptyImportLedger, type ImportLedger, readImportLedger, writeImportLedger } from "./import-ledger";
 import { createMemoryPolicy, type MemoryStore } from "./memory-contract";
 import { createMemoryDistiller, type DistillObservation } from "./memory-distiller";
 import { createSqliteMemoryStore } from "./memory-store";
-import { pinEmbeddingProviders, tempDb, tempDir, writeGitOrigin } from "./test-utils";
+import { gitEnv, pinEmbeddingProviders, tempDb, tempDir, writeGitOrigin } from "./test-utils";
 import { CLAUDE_CODE_SOURCE, IMPORT_COMMIT_SCOPES, planImport, runImport } from "./transcript-import";
 
 const { createDir, cleanupDirs } = tempDir();
@@ -27,19 +27,34 @@ afterEach(() => {
   cleanupStores();
 });
 
-function writeTranscript(dir: string, sessionId: string, cwd: string, prompts: string[]): string {
+function writeTranscript(dir: string, sessionId: string, cwd: string, prompts: string[], timestamp?: string): string {
+  const at = timestamp ?? new Date().toISOString();
   const lines = prompts.flatMap((prompt, index) => [
-    JSON.stringify({ type: "user", sessionId, cwd, message: { role: "user", content: prompt } }),
+    JSON.stringify({ type: "user", sessionId, cwd, timestamp: at, message: { role: "user", content: prompt } }),
     JSON.stringify({
       type: "assistant",
       sessionId,
       cwd,
+      timestamp: at,
       message: { role: "assistant", content: [{ type: "text", text: `answered ${index}` }] },
     }),
   ]);
   const path = join(dir, `${sessionId}.jsonl`);
   writeFileSync(path, `${lines.join("\n")}\n`, "utf8");
   return path;
+}
+
+/** The gates a run applies before spending: this suite is about what distillation then does. */
+function planFor(dir: string, workspace: string, ledger: ImportLedger, since = new Date(0)) {
+  return planImport({
+    dir,
+    since,
+    workspace,
+    project: "acme/widgets",
+    ledger,
+    policy,
+    countCommitsSince: async () => 0,
+  });
 }
 
 function distillerWriting(observations: DistillObservation[], store: MemoryStore) {
@@ -61,12 +76,7 @@ describe("transcript import", () => {
       store,
     );
 
-    const { sessions } = await planImport({
-      dir: transcripts,
-      since: new Date(0),
-      ledger: emptyImportLedger(),
-      policy,
-    });
+    const { sessions } = await planFor(transcripts, workspace, emptyImportLedger());
     expect(sessions.map((session) => session.project)).toEqual(["acme/widgets"]);
 
     const results = await runImport({
@@ -83,7 +93,7 @@ describe("transcript import", () => {
     expect(stored[0].scopeKey).toStartWith("proj_");
 
     const ledger = await readImportLedger(ledgerPath);
-    const rerun = await planImport({ dir: transcripts, since: new Date(0), ledger, policy });
+    const rerun = await planFor(transcripts, workspace, ledger);
     expect(rerun.sessions.map((session) => session.pending)).toEqual([0]);
   });
 
@@ -105,12 +115,7 @@ describe("transcript import", () => {
       ],
     });
 
-    const { sessions } = await planImport({
-      dir: transcripts,
-      since: new Date(0),
-      ledger: emptyImportLedger(),
-      policy,
-    });
+    const { sessions } = await planFor(transcripts, workspace, emptyImportLedger());
     await runImport({
       plans: sessions,
       distiller,
@@ -146,7 +151,7 @@ describe("transcript import", () => {
       },
     });
 
-    const first = await planImport({ dir: transcripts, since: new Date(0), ledger: emptyImportLedger(), policy });
+    const first = await planFor(transcripts, workspace, emptyImportLedger());
     await runImport({
       plans: first.sessions,
       distiller,
@@ -158,7 +163,7 @@ describe("transcript import", () => {
     const callsAfterFirst = calls;
 
     const ledger = await readImportLedger(ledgerPath);
-    const second = await planImport({ dir: transcripts, since: new Date(0), ledger, policy });
+    const second = await planFor(transcripts, workspace, ledger);
     await runImport({
       plans: second.sessions,
       distiller,
@@ -175,30 +180,70 @@ describe("transcript import", () => {
   test("the window selects sessions by last activity", async () => {
     const transcripts = createDir("acolyte-transcripts-");
     const workspace = createDir("acolyte-workspace-");
-    const stale = writeTranscript(transcripts, "old", workspace, ["ancient"]);
+    writeGitOrigin(workspace, "git@github.com:acme/widgets.git");
+    const older = writeTranscript(transcripts, "old", workspace, ["ancient"]);
     writeTranscript(transcripts, "new", workspace, ["recent"]);
     const longAgo = new Date(Date.now() - 72 * 3_600_000);
-    utimesSync(stale, longAgo, longAgo);
+    utimesSync(older, longAgo, longAgo);
 
-    const { sessions } = await planImport({
-      dir: transcripts,
-      since: new Date(Date.now() - 24 * 3_600_000),
-      ledger: emptyImportLedger(),
-      policy,
-    });
+    const { sessions } = await planFor(
+      transcripts,
+      workspace,
+      emptyImportLedger(),
+      new Date(Date.now() - 24 * 3_600_000),
+    );
 
     expect(sessions.map((session) => session.sourceSessionId)).toEqual(["new"]);
   });
 
-  test("a transcript directory that does not exist plans nothing", async () => {
-    const plan = await planImport({
-      dir: join(createDir("acolyte-empty-"), "missing"),
+  test("takes the sessions a real checkout has barely moved past and leaves the rest", async () => {
+    const transcripts = createDir("acolyte-transcripts-");
+    const workspace = createDir("acolyte-workspace-");
+    const at = (offsetMinutes: number) => new Date(Date.now() + offsetMinutes * 60_000).toISOString();
+    // Dated explicitly because `--since` resolves to the second: a commit sharing the session's
+    // second would otherwise count as movement past it.
+    const git = (date: string, ...args: string[]) =>
+      Bun.spawnSync({
+        cmd: ["git", ...args],
+        cwd: workspace,
+        env: gitEnv({ GIT_DIR: join(workspace, ".git"), GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }),
+      });
+    git(at(-60), "init", "-q", ".");
+    git(at(-60), "remote", "add", "origin", "git@github.com:acme/widgets.git");
+    git(at(-60), "commit", "-q", "--allow-empty", "-m", "before the session");
+
+    writeTranscript(transcripts, "aaa", workspace, ["first"], at(-30));
+    for (let i = 0; i < 3; i++) git(at(-10 + i), "commit", "-q", "--allow-empty", "-m", `after ${i}`);
+
+    const measured = await planImport({
+      dir: transcripts,
       since: new Date(0),
+      workspace,
+      project: "acme/widgets",
       ledger: emptyImportLedger(),
       policy,
     });
+    const gated = await planImport({
+      dir: transcripts,
+      since: new Date(0),
+      workspace,
+      project: "acme/widgets",
+      ledger: emptyImportLedger(),
+      stalenessBudget: 2,
+      policy,
+    });
 
-    expect(plan).toEqual({ sessions: [], heldBack: 0 });
+    expect(measured.sessions.map((session) => session.movement)).toEqual([3]);
+    expect(gated.sessions).toEqual([]);
+    expect(gated.stale.map((session) => session.movement)).toEqual([3]);
+  });
+
+  test("a transcript directory that does not exist plans nothing", async () => {
+    const plan = await planFor(join(createDir("acolyte-empty-"), "missing"), createDir("acolyte-workspace-"), {
+      ...emptyImportLedger(),
+    });
+
+    expect(plan).toEqual({ sessions: [], heldBack: 0, stale: [], unattributable: 0 });
   });
 });
 

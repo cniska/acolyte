@@ -418,9 +418,18 @@ export const SV_MESSAGES = {
     },
   ],
   "cli.import.none": [
-    { kind: "text", value: "Inga oimporterade transkript de senaste " },
+    { kind: "text", value: "Inga oimporterade transkript för " },
+    { kind: "arg", name: "project" },
+    { kind: "text", value: " de senaste " },
     { kind: "arg", name: "since" },
     { kind: "text", value: "." },
+  ],
+  "cli.import.no_project": [
+    {
+      kind: "text",
+      value:
+        "Den här arbetsytan har inget projekt. Import läser transkripten för det repository kommandot körs i, identifierat av en owner/repo-fjärr; ställ dig i ett sådant och kör igen.",
+    },
   ],
   "cli.import.plan": [
     {
@@ -429,17 +438,102 @@ export const SV_MESSAGES = {
       arms: {
         one: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " tur" },
+          { kind: "text", value: " destilleringsanrop" },
         ],
         other: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " turer" },
+          { kind: "text", value: " destilleringsanrop" },
         ],
       },
     },
-    { kind: "text", value: " att destillera, ~" },
-    { kind: "arg", name: "tokens" },
+    { kind: "text", value: ", " },
+    { kind: "arg", name: "low" },
+    { kind: "text", value: "–" },
+    { kind: "arg", name: "high" },
     { kind: "text", value: " prompt-tokens." },
+  ],
+  "cli.import.confirm": [
+    { kind: "text", value: "Destillera " },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " anrop" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " anrop" },
+        ],
+      },
+    },
+    { kind: "text", value: " för " },
+    { kind: "arg", name: "low" },
+    { kind: "text", value: "–" },
+    { kind: "arg", name: "high" },
+    { kind: "text", value: " prompt-tokens? [y/N]:" },
+  ],
+  "cli.import.cancelled": [{ kind: "text", value: "Inget importerat." }],
+  "cli.import.needs_consent": [
+    {
+      kind: "text",
+      value:
+        "En import kostar modellanrop. Kör den i en terminal för att bekräfta planen, eller ange --yes för att godta den utan fråga.",
+    },
+  ],
+  "cli.import.stale": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " session" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " sessioner" },
+        ],
+      },
+    },
+    { kind: "text", value: " hoppades över, upp till " },
+    { kind: "arg", name: "commits" },
+    { kind: "text", value: " commits efter; --include-stale tar med dem." },
+  ],
+  "cli.import.undated": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " session" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " sessioner" },
+        ],
+      },
+    },
+    { kind: "text", value: " hoppades över eftersom tidsstämpel saknas; --include-stale tar med dem." },
+  ],
+  "cli.import.unattributable": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " session" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " sessioner" },
+        ],
+      },
+    },
+    { kind: "text", value: " i fönstret pekar på en katalog som inte längre identifierar ett projekt." },
   ],
   "cli.import.done": [
     {

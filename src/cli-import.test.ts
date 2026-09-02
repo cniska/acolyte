@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { type ImportModeDeps, importMode } from "./cli-import";
 import { emptyImportLedger, type ImportLedger } from "./import-ledger";
 import type { MemoryStore } from "./memory-contract";
-import type { ImportSessionPlan, ImportSessionResult, RunImportOptions } from "./transcript-import";
+import type { ImportSessionPlan, ImportSessionResult, RunImportOptions, StaleSessionRef } from "./transcript-import";
 
 function samplePlan(overrides: Partial<ImportSessionPlan> = {}): ImportSessionPlan {
   return {
@@ -11,9 +11,13 @@ function samplePlan(overrides: Partial<ImportSessionPlan> = {}): ImportSessionPl
     sessionId: "sess_abc123",
     workspace: "/repo",
     project: "acme/widgets",
+    lastActivityAt: "2026-08-20T09:00:00.000Z",
+    movement: 3,
+    stale: false,
     exchanges: [],
     consumed: 0,
     pending: 4,
+    calls: 2,
     estimatedTokens: 1_200,
     ...overrides,
   };
@@ -26,47 +30,65 @@ type Harness = {
   errors: { name: string; message?: string }[];
   removed: string[];
   saved: ImportLedger[];
+  asked: string[];
   closed: number;
   runs: RunImportOptions[];
 };
 
-function harness(
-  plans: ImportSessionPlan[],
-  ledger: ImportLedger = emptyImportLedger(),
-  distillAvailable = true,
-): Harness {
+type HarnessOptions = {
+  ledger?: ImportLedger;
+  distillAvailable?: boolean;
+  interactive?: boolean;
+  answer?: string | null;
+  project?: string | null;
+  stale?: StaleSessionRef[];
+  unattributable?: number;
+};
+
+function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harness {
   const dim: string[] = [];
   const out: string[] = [];
   const errors: { name: string; message?: string }[] = [];
   const removed: string[] = [];
   const saved: ImportLedger[] = [];
+  const asked: string[] = [];
   const runs: RunImportOptions[] = [];
   const state = { closed: 0 };
   const store = { close: () => state.closed++ } as unknown as MemoryStore;
+  const ledger = options.ledger ?? emptyImportLedger();
 
   const deps: ImportModeDeps = {
     hasHelpFlag: () => false,
+    interactive: options.interactive ?? true,
+    prompt: (question) => {
+      asked.push(question);
+      return options.answer === undefined ? "y" : options.answer;
+    },
     transcriptDir: "/transcripts",
     scratchDir: "/scratch",
+    workspace: "/checkout",
+    project: options.project === undefined ? "acme/widgets" : options.project,
     planImport: async ({ maxTurns }) => ({
       sessions: plans.map((plan) => ({ ...plan, pending: Math.min(plan.pending, maxTurns) })),
       heldBack: Math.max(plans.reduce((sum, plan) => sum + plan.pending, 0) - maxTurns, 0),
+      stale: options.stale ?? [],
+      unattributable: options.unattributable ?? 0,
     }),
-    runImport: async (options) => {
-      runs.push(options);
-      const results: ImportSessionResult[] = options.plans.map((plan) => ({
+    runImport: async (runOptions) => {
+      runs.push(runOptions);
+      const results: ImportSessionResult[] = runOptions.plans.map((plan) => ({
         plan,
         distilled: 2,
         facts: 3,
         superseded: 1,
         tokens: 500,
       }));
-      for (const _ of results) saved.push(options.ledger);
+      for (const _ of results) saved.push(runOptions.ledger);
       return results;
     },
     createStore: () => store,
     createDistiller: () => ({ commit: async () => undefined }),
-    resolveModel: () => ({ model: "openai/gpt-5-mini", available: distillAvailable }),
+    resolveModel: () => ({ model: "openai/gpt-5-mini", available: options.distillAvailable ?? true }),
     readLedger: async () => ledger,
     writeLedger: async (_path, next) => {
       saved.push(next);
@@ -87,6 +109,7 @@ function harness(
     errors,
     removed,
     saved,
+    asked,
     runs,
     get closed() {
       return state.closed;
@@ -138,7 +161,7 @@ describe("importMode", () => {
   });
 
   test("refuses to run without a usable model, naming what to connect", async () => {
-    const h = harness([samplePlan()], emptyImportLedger(), false);
+    const h = harness([samplePlan()], { distillAvailable: false });
     await importMode([], h.deps);
 
     expect(h.errors[0].message).toContain("openai/gpt-5-mini");
@@ -148,7 +171,7 @@ describe("importMode", () => {
   });
 
   test("--dry-run still works with no usable model, since it makes no model call", async () => {
-    const h = harness([samplePlan()], emptyImportLedger(), false);
+    const h = harness([samplePlan()], { distillAvailable: false });
     await importMode(["--dry-run"], h.deps);
 
     expect(h.errors).toEqual([]);
@@ -192,7 +215,7 @@ describe("importMode", () => {
 
   test("--json prints one record per session and no summary prose", async () => {
     const h = harness([samplePlan()]);
-    await importMode(["--json"], h.deps);
+    await importMode(["--json", "--yes"], h.deps);
 
     expect(h.dim).toEqual([]);
     expect(JSON.parse(h.out.join("\n"))).toMatchObject({
@@ -201,5 +224,110 @@ describe("importMode", () => {
       facts: "3",
       superseded: "1",
     });
+  });
+
+  test("refuses where there is no project to import, naming what it needs", async () => {
+    const h = harness([samplePlan()], { project: null });
+    await importMode([], h.deps);
+
+    expect(h.errors[0].message).toContain("owner/repo");
+    expect(h.runs).toEqual([]);
+    expect(h.removed).toEqual([]);
+  });
+
+  test("shows the plan and the cost band, then asks before the first model call", async () => {
+    const h = harness([samplePlan()]);
+    await importMode([], h.deps);
+
+    expect(h.dim.join("\n")).toContain("2 distill calls");
+    expect(h.dim.join("\n")).toContain("1200–41200");
+    expect(h.asked).toHaveLength(1);
+    expect(h.asked[0]).toContain("1200–41200");
+    expect(h.runs).toHaveLength(1);
+  });
+
+  test("a refused question imports nothing", async () => {
+    const h = harness([samplePlan()], { answer: "n" });
+    await importMode([], h.deps);
+
+    expect(h.runs).toEqual([]);
+    expect(h.dim.join("\n")).toContain("Nothing imported");
+  });
+
+  test("--yes runs without asking", async () => {
+    const h = harness([samplePlan()]);
+    await importMode(["--yes"], h.deps);
+
+    expect(h.asked).toEqual([]);
+    expect(h.runs).toHaveLength(1);
+  });
+
+  test("refuses rather than assume consent when nobody can answer", async () => {
+    const h = harness([samplePlan()], { interactive: false });
+    await importMode([], h.deps);
+
+    expect(h.errors[0].message).toContain("--yes");
+    expect(h.asked).toEqual([]);
+    expect(h.runs).toEqual([]);
+  });
+
+  test("--json cannot show a plan to consent to, so it needs --yes", async () => {
+    const h = harness([samplePlan()]);
+    await importMode(["--json"], h.deps);
+
+    expect(h.errors[0].message).toContain("--yes");
+    expect(h.runs).toEqual([]);
+  });
+
+  test("--dry-run asks nothing, since it spends nothing", async () => {
+    const h = harness([samplePlan()]);
+    await importMode(["--dry-run"], h.deps);
+
+    expect(h.asked).toEqual([]);
+    expect(h.runs).toEqual([]);
+  });
+
+  test("reports the sessions the staleness budget kept out and how to reach them", async () => {
+    const h = harness([samplePlan()], {
+      stale: [
+        { sourceSessionId: "old1", lastActivityAt: "2026-01-01T00:00:00.000Z", movement: 88 },
+        { sourceSessionId: "old2", lastActivityAt: "2026-02-01T00:00:00.000Z", movement: 240 },
+      ],
+    });
+    await importMode(["--dry-run"], h.deps);
+
+    expect(h.dim.join("\n")).toContain("2 sessions skipped, up to 240 commits behind");
+    expect(h.dim.join("\n")).toContain("--include-stale");
+  });
+
+  test("reports the sessions that carry no timestamp separately from the ones measured", async () => {
+    const h = harness([samplePlan()], {
+      stale: [
+        { sourceSessionId: "old1", lastActivityAt: "2026-01-01T00:00:00.000Z", movement: 88 },
+        { sourceSessionId: "undated", lastActivityAt: null, movement: null },
+      ],
+    });
+    await importMode(["--dry-run"], h.deps);
+
+    expect(h.dim.join("\n")).toContain("1 session skipped, up to 88 commits behind");
+    expect(h.dim.join("\n")).toContain("1 session skipped for carrying no timestamp");
+  });
+
+  test("reports the in-window sessions no project can be resolved for", async () => {
+    const h = harness([samplePlan()], { unattributable: 3 });
+    await importMode(["--dry-run"], h.deps);
+
+    expect(h.dim.join("\n")).toContain("3 sessions in the window");
+  });
+
+  test("says why a window that held only stale sessions imported nothing", async () => {
+    const h = harness([samplePlan({ pending: 0 })], {
+      stale: [{ sourceSessionId: "old1", lastActivityAt: "2026-01-01T00:00:00.000Z", movement: 88 }],
+    });
+    await importMode([], h.deps);
+
+    expect(h.dim.join("\n")).toContain("acme/widgets");
+    expect(h.dim.join("\n")).toContain("88 commits behind");
+    expect(h.runs).toEqual([]);
   });
 });

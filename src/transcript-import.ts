@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { DistillScope } from "./distill-ops";
+import { gitCommitsSince } from "./git-ops";
 import { consumedExchanges, type ImportLedger, markConsumed } from "./import-ledger";
 import { defaultMemoryPolicy, type MemoryDistiller, type MemoryPolicy } from "./memory-contract";
 import { estimateDistillPromptTokens } from "./memory-distiller";
@@ -70,16 +71,35 @@ export function importedSessionId(source: string, sourceSessionId: string): stri
   return `sess_${hasher.digest("hex").slice(0, 12)}`;
 }
 
+/**
+ * Commits a project may accrue past a session before its tape stops earning what distilling it
+ * costs. Not a claim about truth: chronological replay and write-time supersession own correctness,
+ * and this bounds where the turn budget is spent. The starting value is the gap in the measured
+ * distribution of a real machine's corpora, between live projects and abandoned ones.
+ */
+export const DEFAULT_STALENESS_BUDGET = 50;
+
 export type ImportSessionPlan = {
   readonly sourceSessionId: string;
   readonly path: string;
   readonly sessionId: string;
   readonly workspace: string | null;
   readonly project: string | null;
+  readonly lastActivityAt: string | null;
+  readonly movement: number | null;
+  readonly stale: boolean;
   readonly exchanges: readonly TranscriptExchange[];
   readonly consumed: number;
   readonly pending: number;
+  readonly calls: number;
   readonly estimatedTokens: number;
+};
+
+/** A session the staleness budget kept out of the run, reported so the exclusion is never silent. */
+export type StaleSessionRef = {
+  readonly sourceSessionId: string;
+  readonly lastActivityAt: string | null;
+  readonly movement: number | null;
 };
 
 function sessionIdFromPath(path: string): string {
@@ -91,19 +111,25 @@ function sessionIdFromPath(path: string): string {
   );
 }
 
-// A floor, the same one `lifecycle.ts` reports: it covers one window per exchange and omits the
-// recall candidates the distiller is shown, whose size is known only once the commit runs.
-function estimatePendingTokens(
+/**
+ * The distill calls the pending turns will make and the prompt tokens they will spend. Fewer calls
+ * than turns: a session's opening turns carry too little history to distill. The token figure is a
+ * floor, the same one `lifecycle.ts` reports — it omits the recall candidates each call is shown,
+ * whose size is known only once the commit runs, and whose per-call ceiling the policy sets.
+ */
+function estimatePending(
   exchanges: readonly TranscriptExchange[],
   consumed: number,
   policy: MemoryPolicy,
-): number {
+): { calls: number; tokens: number } {
   const messages: { role: string; content: string }[] = [];
-  let total = 0;
+  let calls = 0;
+  let tokens = 0;
   for (const [index, exchange] of exchanges.entries()) {
     messages.push({ role: "user", content: exchange.prompt });
     if (index >= consumed && messages.length >= policy.messageThreshold) {
-      total += estimateDistillPromptTokens(
+      calls++;
+      tokens += estimateDistillPromptTokens(
         messages.slice(-policy.contextMessageWindow),
         exchange.response,
         exchange.activity,
@@ -111,31 +137,92 @@ function estimatePendingTokens(
     }
     messages.push({ role: "assistant", content: exchange.response });
   }
-  return total;
+  return { calls, tokens };
 }
 
 /** The `owner/repo` a recorded working directory belongs to, which is what keys its project scope. */
 export type ProjectResolver = (workspace: string) => string | null;
 
+/** Commits the checkout accrued after a moment, which is how far it has moved past a session. */
+export type MovementCounter = (sinceIso: string) => Promise<number>;
+
 export type PlanImportOptions = {
   dir: string;
   since: Date;
+  workspace: string;
+  project: string;
   ledger: ImportLedger;
   maxTurns?: number;
+  includeStale?: boolean;
+  stalenessBudget?: number;
   reader?: ImportReader;
   resolveProject?: ProjectResolver;
+  countCommitsSince?: MovementCounter;
   policy?: MemoryPolicy;
 };
 
 export type ImportPlan = {
   readonly sessions: readonly ImportSessionPlan[];
   readonly heldBack: number;
+  readonly stale: readonly StaleSessionRef[];
+  readonly unattributable: number;
+};
+
+type ImportCandidate = {
+  readonly file: TranscriptSourceFile;
+  readonly sourceSessionId: string;
+  readonly workspace: string | null;
+  readonly project: string | null;
+  readonly lastActivityAt: string | null;
+  readonly orderedAt: number;
+  readonly exchanges: readonly TranscriptExchange[];
 };
 
 /**
- * Reads the transcripts in the window and says what a run would distill. Project scope comes from
- * the checkout each session recorded working in, resolved now: the source names a project by a path
- * that may no longer exist, and Acolyte keys one by its repository remote.
+ * When the session happened, which is what the timeline orders by. A file's mtime is only the last
+ * time its bytes were touched — copying or restoring a transcript makes it lie — so it stands in
+ * only for a session whose records carry no timestamp of their own.
+ */
+function orderingKey(lastActivityAt: string | null, file: TranscriptSourceFile): number {
+  const parsed = lastActivityAt ? Date.parse(lastActivityAt) : Number.NaN;
+  return Number.isNaN(parsed) ? file.modifiedAt.getTime() : parsed;
+}
+
+async function readCandidates(
+  options: PlanImportOptions,
+  reader: ImportReader,
+  resolveProject: ProjectResolver,
+): Promise<ImportCandidate[]> {
+  const candidates: ImportCandidate[] = [];
+  for (const file of await reader.listTranscripts(options.dir, options.since)) {
+    const transcript = parseClaudeCodeTranscript(await reader.readTranscript(file.path));
+    if (transcript.exchanges.length === 0) continue;
+    const workspace = transcript.workspace;
+    candidates.push({
+      file,
+      sourceSessionId: transcript.sessionId ?? sessionIdFromPath(file.path),
+      workspace,
+      project: workspace ? resolveProject(workspace) : null,
+      lastActivityAt: transcript.lastActivityAt,
+      orderedAt: orderingKey(transcript.lastActivityAt, file),
+      exchanges: transcript.exchanges,
+    });
+  }
+  return candidates;
+}
+
+/**
+ * Reads the transcripts in the window and says what a run would distill.
+ *
+ * The run imports one project: the one the command stands in. Each session names its project by the
+ * checkout it recorded working in, resolved now rather than trusted as a path — the recorded
+ * directory may be gone, and Acolyte keys a project by its repository remote, so sessions from any
+ * other checkout or worktree of the same repository belong to this run too.
+ *
+ * Sessions then merge onto one timeline, oldest first, and the budget is spent from the old end.
+ * That ordering is forced rather than preferred: the ledger makes a run resumable, so a later run
+ * replays what an earlier one held back, and spending newest-first would let those older turns
+ * arrive after newer facts were already stored and supersede them backward.
  *
  * `maxTurns` bounds the run by cutting each session's tail rather than dropping whole sessions, so
  * the turns that are taken still replay in order and the ledger records exactly how far each got.
@@ -143,36 +230,66 @@ export type ImportPlan = {
 export async function planImport(options: PlanImportOptions): Promise<ImportPlan> {
   const reader = options.reader ?? fileImportReader;
   const resolveProject = options.resolveProject ?? projectLabelFromWorkspace;
+  const countCommitsSince = options.countCommitsSince ?? ((iso) => gitCommitsSince(options.workspace, iso));
   const policy = options.policy ?? defaultMemoryPolicy;
-  const files = await reader.listTranscripts(options.dir, options.since);
+  const budgetLimit = options.stalenessBudget ?? DEFAULT_STALENESS_BUDGET;
+
+  const candidates = await readCandidates(options, reader, resolveProject);
+  const mine = candidates.filter((candidate) => candidate.project === options.project);
+  const unattributable = candidates.filter((candidate) => candidate.project === null).length;
+
+  const movements = new Map<string, number>();
+  const measure = async (lastActivityAt: string | null): Promise<number | null> => {
+    if (!lastActivityAt) return null;
+    const cached = movements.get(lastActivityAt);
+    if (cached !== undefined) return cached;
+    const counted = await countCommitsSince(lastActivityAt);
+    movements.set(lastActivityAt, counted);
+    return counted;
+  };
+
   const sessions: ImportSessionPlan[] = [];
+  const stale: StaleSessionRef[] = [];
   let budget = options.maxTurns ?? Number.POSITIVE_INFINITY;
   let heldBack = 0;
 
-  for (const file of files) {
-    const transcript = parseClaudeCodeTranscript(await reader.readTranscript(file.path));
-    if (transcript.exchanges.length === 0) continue;
-    const sourceSessionId = transcript.sessionId ?? sessionIdFromPath(file.path);
-    const consumed = consumedExchanges(options.ledger, CLAUDE_CODE_SOURCE, sourceSessionId);
-    const workspace = transcript.workspace;
-    const available = Math.max(transcript.exchanges.length - consumed, 0);
+  for (const candidate of mine.sort((a, b) => a.orderedAt - b.orderedAt)) {
+    const movement = await measure(candidate.lastActivityAt);
+    // An unmeasurable session fails the gate closed: the timestamp its records carry is optional,
+    // and without one there is no telling what the project did after it.
+    const isStale = movement === null || movement > budgetLimit;
+    if (isStale && options.includeStale !== true) {
+      stale.push({
+        sourceSessionId: candidate.sourceSessionId,
+        lastActivityAt: candidate.lastActivityAt,
+        movement,
+      });
+      continue;
+    }
+    const consumed = consumedExchanges(options.ledger, CLAUDE_CODE_SOURCE, candidate.sourceSessionId);
+    const available = Math.max(candidate.exchanges.length - consumed, 0);
     const taken = Math.min(available, budget);
     budget -= taken;
     heldBack += available - taken;
-    const exchanges = transcript.exchanges.slice(0, consumed + taken);
+    const exchanges = candidate.exchanges.slice(0, consumed + taken);
+    const estimate = estimatePending(exchanges, consumed, policy);
     sessions.push({
-      sourceSessionId,
-      path: file.path,
-      sessionId: importedSessionId(CLAUDE_CODE_SOURCE, sourceSessionId),
-      workspace,
-      project: workspace ? resolveProject(workspace) : null,
+      sourceSessionId: candidate.sourceSessionId,
+      path: candidate.file.path,
+      sessionId: importedSessionId(CLAUDE_CODE_SOURCE, candidate.sourceSessionId),
+      workspace: candidate.workspace,
+      project: candidate.project,
+      lastActivityAt: candidate.lastActivityAt,
+      movement,
+      stale: isStale,
       exchanges,
       consumed,
       pending: taken,
-      estimatedTokens: estimatePendingTokens(exchanges, consumed, policy),
+      calls: estimate.calls,
+      estimatedTokens: estimate.tokens,
     });
   }
-  return { sessions, heldBack };
+  return { sessions, heldBack, stale, unattributable };
 }
 
 export type ImportSessionResult = {

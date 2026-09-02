@@ -48,6 +48,7 @@ import { exchangeCode } from "./openai-oauth";
 import { startOAuthCallbackServer } from "./openai-oauth-server";
 import { createHandoffState, createPkce } from "./pkce";
 import { normalizeModel } from "./provider-config";
+import { projectLabelFromWorkspace } from "./resource-id";
 import { startServer } from "./server-app";
 import {
   apiUrlForPort,
@@ -354,15 +355,20 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
     hidden: true,
     help: () => ({
       command: "import",
-      usage: "acolyte import [--since <duration>] [--max-turns <n>] [--dry-run] [--reset] [--json]",
+      usage:
+        "acolyte import [--since <duration>] [--max-turns <n>] [--include-stale] [--yes] [--dry-run] [--reset] [--json]",
       description: t("cli.help.desc.import"),
       examples: ["acolyte import --dry-run", "acolyte import --max-turns 10", "acolyte import --reset"],
     }),
     handler: (args) =>
       importMode(args, {
         hasHelpFlag,
+        interactive: process.stdin.isTTY === true,
+        prompt: (message) => prompt(message),
         transcriptDir: claudeCodeTranscriptDir(),
         scratchDir: importScratchDir(),
+        workspace: process.cwd(),
+        project: projectLabelFromWorkspace(process.cwd()),
         planImport,
         runImport,
         createStore: createSqliteMemoryStore,

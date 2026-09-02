@@ -5,7 +5,7 @@ import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output
 import { parseSince } from "./datetime";
 import { t } from "./i18n";
 import type { ImportLedger } from "./import-ledger";
-import type { MemoryDistiller, MemoryStore } from "./memory-contract";
+import { defaultMemoryPolicy, type MemoryDistiller, type MemoryStore } from "./memory-contract";
 import type { ImportPlan, ImportSessionPlan, ImportSessionResult, RunImportOptions } from "./transcript-import";
 
 const DEFAULT_SINCE = "24h";
@@ -15,11 +15,25 @@ const DEFAULT_MAX_TURNS = 25;
 const STORE_FILE = "memory.db";
 const LEDGER_FILE = "ledger.json";
 
+export type PlanImportRequest = {
+  dir: string;
+  since: Date;
+  workspace: string;
+  project: string;
+  ledger: ImportLedger;
+  maxTurns: number;
+  includeStale: boolean;
+};
+
 export type ImportModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
+  interactive: boolean;
+  prompt: (question: string) => string | null;
   transcriptDir: string;
   scratchDir: string;
-  planImport: (options: { dir: string; since: Date; ledger: ImportLedger; maxTurns: number }) => Promise<ImportPlan>;
+  workspace: string;
+  project: string | null;
+  planImport: (request: PlanImportRequest) => Promise<ImportPlan>;
   runImport: (options: RunImportOptions) => Promise<ImportSessionResult[]>;
   createStore: (path: string) => MemoryStore;
   createDistiller: (store: MemoryStore) => MemoryDistiller;
@@ -54,6 +68,7 @@ function planRow(plan: ImportSessionPlan): Record<string, string> {
     session: shortId(plan.sourceSessionId),
     project: plan.project ?? "-",
     turns: String(plan.pending),
+    calls: String(plan.calls),
     tokens: String(plan.estimatedTokens),
   };
 }
@@ -69,15 +84,57 @@ function resultRow(result: ImportSessionResult): Record<string, string> {
   };
 }
 
-function emit(rows: Record<string, string>[], summary: string, json: boolean, deps: ImportModeDeps): void {
+/**
+ * What the run will spend, as the band between the floor each call's own prompt costs and the
+ * ceiling the recall candidates it is shown can add. The floor alone reads as a total and is not
+ * one; the policy caps the candidate block per call, which is what makes the ceiling computable.
+ */
+function tokenBand(sessions: readonly ImportSessionPlan[]): { count: number; low: number; high: number } {
+  const count = sessions.reduce((sum, session) => sum + session.calls, 0);
+  const low = sessions.reduce((sum, session) => sum + session.estimatedTokens, 0);
+  return { count, low, high: low + count * defaultMemoryPolicy.recallCandidateTokenLimit };
+}
+
+/** What the window held but the run will not touch, each line naming how to reach it. */
+function notices(plan: ImportPlan): string[] {
+  const lines: string[] = [];
+  const dated = plan.stale.filter((session) => session.movement !== null);
+  const undated = plan.stale.length - dated.length;
+  if (dated.length > 0) {
+    const behind = Math.max(...dated.map((session) => session.movement ?? 0));
+    lines.push(t("cli.import.stale", { count: dated.length, commits: behind }));
+  }
+  if (undated > 0) lines.push(t("cli.import.undated", { count: undated }));
+  if (plan.unattributable > 0) lines.push(t("cli.import.unattributable", { count: plan.unattributable }));
+  return lines;
+}
+
+function emit(rows: Record<string, string>[], summary: string[], json: boolean, deps: ImportModeDeps): void {
   const out: CliOutput = json ? createJsonOutput() : createTextOutput();
   out.addTable(rows, columnLabels());
   if (!json) {
     out.addSeparator();
-    out.addHeader(summary);
+    for (const line of summary) out.addHeader(line);
   }
   const rendered = out.render();
   if (rendered) (json ? deps.printOutput : deps.printDim)(rendered);
+}
+
+/**
+ * Asks before the first model call. An import is unlike a chat turn in the two ways that decide
+ * this: it can run for hours, and nothing shows a meter while it does. Spend is the user's
+ * authority, so a run that cannot show the plan and read an answer refuses rather than assume one:
+ * a stdin nobody is at, and a `--json` run whose stdout carries the one document it was asked for.
+ */
+function consented(band: { count: number; low: number; high: number }, json: boolean, deps: ImportModeDeps): boolean {
+  if (json || !deps.interactive) {
+    deps.commandError("import", t("cli.import.needs_consent"));
+    return false;
+  }
+  const answer = deps.prompt(t("cli.import.confirm", band))?.trim().toLowerCase();
+  if (answer === "y" || answer === "yes") return true;
+  deps.printDim(t("cli.import.cancelled"));
+  return false;
 }
 
 /**
@@ -89,7 +146,9 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
     deps.commandHelp("import");
     return;
   }
-  const usage = formatUsage("acolyte import [--since <duration>] [--max-turns <n>] [--dry-run] [--reset] [--json]");
+  const usage = formatUsage(
+    "acolyte import [--since <duration>] [--max-turns <n>] [--include-stale] [--yes] [--dry-run] [--reset] [--json]",
+  );
   if (parsePositional(args, ["--since", "--max-turns"]).length > 0) {
     deps.commandError("import", usage);
     return;
@@ -109,6 +168,15 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
   }
   const json = hasBoolFlag(args, "--json");
   const dryRun = hasBoolFlag(args, "--dry-run");
+  const includeStale = hasBoolFlag(args, "--include-stale");
+
+  // A run imports the project it stands in, so a workspace that names none has nothing to import
+  // and no repository to measure a session's staleness against.
+  const project = deps.project;
+  if (!project) {
+    deps.commandError("import", t("cli.import.no_project"));
+    return;
+  }
 
   // Checked before anything is cleared or read: distillation is the only thing that turns a
   // transcript into a fact, so without a model to run it there is no import to attempt. A dry run
@@ -126,23 +194,35 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
 
   const ledgerPath = join(deps.scratchDir, LEDGER_FILE);
   const ledger = await deps.readLedger(ledgerPath);
-  const plan = await deps.planImport({ dir: deps.transcriptDir, since, ledger, maxTurns });
+  const plan = await deps.planImport({
+    dir: deps.transcriptDir,
+    since,
+    workspace: deps.workspace,
+    project,
+    ledger,
+    maxTurns,
+    includeStale,
+  });
   const pending = plan.sessions.filter((session) => session.pending > 0);
-  const heldBack = plan.heldBack > 0 ? ` ${t("cli.import.held_back", { count: plan.heldBack })}` : "";
+  const held = plan.heldBack > 0 ? [t("cli.import.held_back", { count: plan.heldBack })] : [];
+  const skipped = notices(plan);
 
   if (pending.length === 0) {
-    if (!json) deps.printDim(t("cli.import.none", { since: sinceRaw }));
+    if (!json) {
+      deps.printDim(t("cli.import.none", { since: sinceRaw, project }));
+      for (const line of skipped) deps.printDim(line);
+    }
     return;
   }
 
+  const band = tokenBand(pending);
+  const planSummary = [t("cli.import.plan", band), ...held, ...skipped];
   if (dryRun) {
-    const summary = t("cli.import.plan", {
-      count: pending.reduce((sum, session) => sum + session.pending, 0),
-      tokens: pending.reduce((sum, session) => sum + session.estimatedTokens, 0),
-    });
-    emit(pending.map(planRow), summary + heldBack, json, deps);
+    emit(pending.map(planRow), planSummary, json, deps);
     return;
   }
+  if (!json) emit(pending.map(planRow), planSummary, false, deps);
+  if (!hasBoolFlag(args, "--yes") && !consented(band, json, deps)) return;
 
   const store = deps.createStore(join(deps.scratchDir, STORE_FILE));
   try {
@@ -159,7 +239,7 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
       tokens: results.reduce((sum, result) => sum + result.tokens, 0),
       path: deps.scratchDir,
     });
-    emit(results.map(resultRow), summary + heldBack, json, deps);
+    emit(results.map(resultRow), [summary, ...held], json, deps);
   } finally {
     store.close();
   }

@@ -938,23 +938,86 @@
       }
     }
   },
-  "cli.import.none": "No unimported transcripts in the last {since}.",
+  "cli.import.none": "No unimported {project} transcripts in the last {since}.",
   "@cli.import.none": {
-    "description": "Shown by 'import' when the window holds no session the ledger has not already consumed. {since} is the duration the user asked for, such as 24h.",
+    "description": "Shown by 'import' when the window holds no session of this project the ledger has not already consumed. {since} is the duration the user asked for, such as 24h; {project} is an owner/repo label.",
     "placeholders": {
       "since": {
+        "type": "String"
+      },
+      "project": {
         "type": "String"
       }
     }
   },
-  "cli.import.plan": "{count, plural, one {# turn} other {# turns}} to distill, ~{tokens} prompt tokens.",
+  "cli.import.no_project": "This workspace has no project. Import reads the transcripts of the repository it stands in, identified by an owner/repo remote; stand in one and run it again.",
+  "@cli.import.no_project": {
+    "description": "Shown when 'import' runs somewhere that is not a repository, or whose remotes name no owner/repo. There is no flag for naming a project from outside its checkout."
+  },
+  "cli.import.plan": "{count, plural, one {# distill call} other {# distill calls}}, {low}–{high} prompt tokens.",
   "@cli.import.plan": {
-    "description": "Summary line under the 'import --dry-run' table; the table above it lists the sessions. {tokens} is an estimate, hence the tilde.",
+    "description": "Summary line under the 'import' plan table; the table above it lists the sessions. Calls rather than turns, because a session's opening turns carry too little history to distill. The token figure is a band: {low} is what the calls themselves cost and {high} adds the most the recalled facts each call is shown can add. Separated by an en dash.",
+    "placeholders": {
+      "calls": {
+        "type": "number"
+      },
+      "low": {
+        "type": "number"
+      },
+      "high": {
+        "type": "number"
+      }
+    }
+  },
+  "cli.import.confirm": "Distill {count, plural, one {# call} other {# calls}} for {low}–{high} prompt tokens? [y/N]:",
+  "@cli.import.confirm": {
+    "description": "Asked once before an import's first model call, under the plan table it refers to. '[y/N]' shows the accepted answers: the code accepts only 'y' or 'yes', so leave those letters untranslated. Ends with a colon and no trailing space: `prompt()` writes the separating space itself.",
+    "placeholders": {
+      "calls": {
+        "type": "number"
+      },
+      "low": {
+        "type": "number"
+      },
+      "high": {
+        "type": "number"
+      }
+    }
+  },
+  "cli.import.cancelled": "Nothing imported.",
+  "@cli.import.cancelled": {
+    "description": "Shown when the user answers no to the import confirmation."
+  },
+  "cli.import.needs_consent": "An import spends model calls. Run it in a terminal to confirm the plan, or pass --yes to accept it unasked.",
+  "@cli.import.needs_consent": {
+    "description": "Shown when 'import' cannot ask for consent: stdin is not a terminal, or --json was given and its output carries one document. '--yes' and '--json' are literal flag names."
+  },
+  "cli.import.stale": "{count, plural, one {# session} other {# sessions}} skipped, up to {commits} commits behind; --include-stale takes them.",
+  "@cli.import.stale": {
+    "description": "Shown with the import plan for sessions the staleness budget kept out: the project has committed past them, so what they establish is likely already superseded. {commits} is the largest count measured. '--include-stale' is a literal flag name.",
     "placeholders": {
       "count": {
         "type": "number"
       },
-      "tokens": {
+      "commits": {
+        "type": "number"
+      }
+    }
+  },
+  "cli.import.undated": "{count, plural, one {# session} other {# sessions}} skipped for carrying no timestamp; --include-stale takes them.",
+  "@cli.import.undated": {
+    "description": "Shown with the import plan for sessions whose records carry no time, which leaves no way to measure what the project did after them. '--include-stale' is a literal flag name.",
+    "placeholders": {
+      "count": {
+        "type": "number"
+      }
+    }
+  },
+  "cli.import.unattributable": "{count, plural, one {# session} other {# sessions}} in the window name a directory that no longer identifies a project.",
+  "@cli.import.unattributable": {
+    "description": "Shown with the import plan for sessions recorded in a working directory that has since been deleted or lost its remote, so no project can be resolved for them and no run can reach them.",
+    "placeholders": {
+      "count": {
         "type": "number"
       }
     }

@@ -407,9 +407,18 @@ export const EN_MESSAGES = {
     },
   ],
   "cli.import.none": [
-    { kind: "text", value: "No unimported transcripts in the last " },
+    { kind: "text", value: "No unimported " },
+    { kind: "arg", name: "project" },
+    { kind: "text", value: " transcripts in the last " },
     { kind: "arg", name: "since" },
     { kind: "text", value: "." },
+  ],
+  "cli.import.no_project": [
+    {
+      kind: "text",
+      value:
+        "This workspace has no project. Import reads the transcripts of the repository it stands in, identified by an owner/repo remote; stand in one and run it again.",
+    },
   ],
   "cli.import.plan": [
     {
@@ -418,17 +427,102 @@ export const EN_MESSAGES = {
       arms: {
         one: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " turn" },
+          { kind: "text", value: " distill call" },
         ],
         other: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " turns" },
+          { kind: "text", value: " distill calls" },
         ],
       },
     },
-    { kind: "text", value: " to distill, ~" },
-    { kind: "arg", name: "tokens" },
+    { kind: "text", value: ", " },
+    { kind: "arg", name: "low" },
+    { kind: "text", value: "–" },
+    { kind: "arg", name: "high" },
     { kind: "text", value: " prompt tokens." },
+  ],
+  "cli.import.confirm": [
+    { kind: "text", value: "Distill " },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " call" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " calls" },
+        ],
+      },
+    },
+    { kind: "text", value: " for " },
+    { kind: "arg", name: "low" },
+    { kind: "text", value: "–" },
+    { kind: "arg", name: "high" },
+    { kind: "text", value: " prompt tokens? [y/N]:" },
+  ],
+  "cli.import.cancelled": [{ kind: "text", value: "Nothing imported." }],
+  "cli.import.needs_consent": [
+    {
+      kind: "text",
+      value:
+        "An import spends model calls. Run it in a terminal to confirm the plan, or pass --yes to accept it unasked.",
+    },
+  ],
+  "cli.import.stale": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " session" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " sessions" },
+        ],
+      },
+    },
+    { kind: "text", value: " skipped, up to " },
+    { kind: "arg", name: "commits" },
+    { kind: "text", value: " commits behind; --include-stale takes them." },
+  ],
+  "cli.import.undated": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " session" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " sessions" },
+        ],
+      },
+    },
+    { kind: "text", value: " skipped for carrying no timestamp; --include-stale takes them." },
+  ],
+  "cli.import.unattributable": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " session" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " sessions" },
+        ],
+      },
+    },
+    { kind: "text", value: " in the window name a directory that no longer identifies a project." },
   ],
   "cli.import.done": [
     {

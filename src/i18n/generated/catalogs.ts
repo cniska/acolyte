@@ -169,8 +169,15 @@ export type MessageArgs = {
   "cli.import.invalid_max_turns": { value: string | number };
   "cli.import.held_back": { count: number };
   "cli.import.no_model": { model: string | number };
-  "cli.import.none": { since: string | number };
-  "cli.import.plan": { count: number; tokens: number };
+  "cli.import.none": { project: string | number; since: string | number };
+  "cli.import.no_project": never;
+  "cli.import.plan": { count: string | number; high: number; low: number };
+  "cli.import.confirm": { count: string | number; high: number; low: number };
+  "cli.import.cancelled": never;
+  "cli.import.needs_consent": never;
+  "cli.import.stale": { commits: number; count: number };
+  "cli.import.undated": { count: number };
+  "cli.import.unattributable": { count: number };
   "cli.import.done": { count: number; path: string | number; superseded: number; tokens: number };
   "cli.import.reset": { path: string | number };
   "cli.login.opening.browser": never;
