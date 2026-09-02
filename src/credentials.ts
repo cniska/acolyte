@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { chmod, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { z } from "zod";
 import { getDotenvValue, parseDotenv, removeDotenvKey, upsertDotenvValue } from "./dotenv";
 import { PRIVATE_FILE_MODE } from "./file-ops";
 import { configDir, type Env } from "./paths";
@@ -105,12 +106,17 @@ export async function removeProviderApiKey(envKey: ProviderApiEnvKey, env?: Env)
   await chmod(path, PRIVATE_FILE_MODE);
 }
 
+// The subject decides the user memory scope and gates sign-in, so the claim is validated rather than
+// asserted. The signature is not checked: the cloud verifies that, and an expired token still names
+// the same account.
+const tokenClaimsSchema = z.object({ sub: z.string().min(1) });
+
 export function decodeTokenSubject(token: string): string | undefined {
+  const parts = token.split(".");
+  if (parts.length !== 3) return undefined;
   try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return undefined;
-    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as { sub?: string };
-    return payload.sub;
+    const claims = tokenClaimsSchema.safeParse(JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")));
+    return claims.success ? claims.data.sub : undefined;
   } catch {
     return undefined;
   }

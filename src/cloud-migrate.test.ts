@@ -6,6 +6,8 @@ import type { MemoryArchiveRecord, MemoryDisposition, MemoryRecord, MemoryStore 
 import type { Session, SessionId, SessionStore } from "./session-contract";
 import { createSession } from "./test-utils";
 
+const ACCOUNT_KEY = "user_abc123";
+
 function createRecord(overrides: Partial<MemoryRecord> = {}): MemoryRecord {
   return {
     id: overrides.id ?? "mem_aaaaaaa1",
@@ -112,6 +114,7 @@ describe("migrateLocalDataToCloud", () => {
       localSessions: createFakeSessionStore([]),
       cloudMemory: cloud,
       cloudSessions: createFakeSessionStore([]),
+      accountKey: ACCOUNT_KEY,
     });
 
     expect(summary.memories).toBe(2);
@@ -120,11 +123,15 @@ describe("migrateLocalDataToCloud", () => {
     expect(cloud.embeddings).toEqual([{ id: "mem_proj0001", scopeKey: "proj_abc123" }]);
   });
 
-  test("leaves session-scoped and unrecognized records behind", async () => {
+  test("leaves session-scoped, unrecognized, and other-user records behind", async () => {
     const local = createFakeMemoryStore({
       records: [
         createRecord({ id: "mem_sess0001", scopeKey: "sess_abc123" }),
         createRecord({ id: "mem_odd00001", scopeKey: "team_abc123" }),
+        // The local scope is the merge's to move, and another account's key names a scope this
+        // account can never resolve.
+        createRecord({ id: "mem_local001", scopeKey: "user_local" }),
+        createRecord({ id: "mem_other001", scopeKey: "user_deadbeef00" }),
         createRecord({ id: "mem_proj0001" }),
       ],
     });
@@ -135,6 +142,7 @@ describe("migrateLocalDataToCloud", () => {
       localSessions: createFakeSessionStore([]),
       cloudMemory: cloud,
       cloudSessions: createFakeSessionStore([]),
+      accountKey: ACCOUNT_KEY,
     });
 
     expect(summary.memories).toBe(1);
@@ -155,6 +163,7 @@ describe("migrateLocalDataToCloud", () => {
       localSessions: createFakeSessionStore([]),
       cloudMemory: cloud,
       cloudSessions: createFakeSessionStore([]),
+      accountKey: ACCOUNT_KEY,
     });
 
     expect(summary.memories).toBe(0);
@@ -172,6 +181,7 @@ describe("migrateLocalDataToCloud", () => {
       localSessions: createFakeSessionStore(sessions),
       cloudMemory: createFakeMemoryStore({}),
       cloudSessions,
+      accountKey: ACCOUNT_KEY,
     });
 
     expect(summary.sessions).toBe(2);
@@ -189,6 +199,7 @@ describe("migrateLocalDataToCloud", () => {
       localSessions: createFakeSessionStore([createSession({ id: "sess_one" })]),
       cloudMemory: cloud,
       cloudSessions: createFakeSessionStore([], ["sess_one" as SessionId]),
+      accountKey: ACCOUNT_KEY,
     });
 
     expect(summary.failures).toBe(2);
@@ -209,6 +220,7 @@ describe("migrateLocalDataToCloud", () => {
         failEmbeddingFor: ["mem_novec0001"],
       }),
       cloudSessions: createFakeSessionStore([], ["sess_one" as SessionId]),
+      accountKey: ACCOUNT_KEY,
     });
 
     const logged = logLines.join("");
@@ -231,6 +243,7 @@ describe("migrateLocalDataToCloud", () => {
       localSessions: createFakeSessionStore([createSession({ id: "sess_one" })]),
       cloudMemory: cloud,
       cloudSessions: createFakeSessionStore([]),
+      accountKey: ACCOUNT_KEY,
     });
 
     await expect(run).rejects.toBeInstanceOf(CloudApiError);
@@ -249,6 +262,7 @@ describe("migrateLocalDataToCloud", () => {
       localSessions: createFakeSessionStore([]),
       cloudMemory: cloud,
       cloudSessions: createFakeSessionStore([]),
+      accountKey: ACCOUNT_KEY,
     });
 
     expect(summary.memories).toBe(1);

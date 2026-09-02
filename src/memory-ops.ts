@@ -16,9 +16,10 @@ import {
 } from "./memory-contract";
 import { embeddingToBuffer, embedText } from "./memory-embedding";
 import { getMemoryStore } from "./memory-store";
-import { defaultUserResourceId, parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
+import { parseResourceId, projectResourceIdFromWorkspace, type ResourceId } from "./resource-id";
 import { createId } from "./short-id";
 import { estimateTokens } from "./token-estimate";
+import { activeUserResourceId } from "./user-identity";
 
 export interface MemoryOptions {
   scope?: MemoryScope;
@@ -28,10 +29,10 @@ export interface MemoryOptions {
 
 function scopeKeysForScope(scope: MemoryScope | undefined, workspace?: string): string[] {
   const keys: string[] = [];
-  if (!scope || scope === "user") keys.push(defaultUserResourceId());
+  if (!scope || scope === "user") keys.push(activeUserResourceId());
   if (!scope || scope === "project") {
-    const ws = workspace ?? process.cwd();
-    keys.push(projectResourceIdFromWorkspace(ws));
+    const projectKey = projectResourceIdFromWorkspace(workspace ?? process.cwd());
+    if (projectKey) keys.push(projectKey);
   }
   return keys;
 }
@@ -86,8 +87,7 @@ export async function addMemory(content: string, options: AddMemoryOptions = {})
 
   const { scope = "user", workspace, sessionId, resourceId } = options;
   const store = options.store ?? (await getMemoryStore());
-  const scopeKey = resolveScopeKey(scope, { sessionId, workspace, resourceId });
-  if (!scopeKey) throw new Error(`Cannot resolve scope key for scope "${scope}"`);
+  const scopeKey = requireScopeKey(scope, { sessionId, workspace, resourceId });
 
   const record = {
     id: `mem_${createId()}`,
@@ -156,27 +156,33 @@ export type ScopeContext = {
   resourceId?: ResourceId;
 };
 
-export function resolveScopeKey(
-  scope: MemoryScope,
-  ctx: ScopeContext,
-  options: { strict?: boolean } = {},
-): string | null {
+export function resolveScopeKey(scope: MemoryScope, ctx: ScopeContext): string | null {
   if (scope === "session") return ctx.sessionId ?? null;
   if (scope === "project") {
     const fromResource = parseResourceId(ctx.resourceId);
     if (fromResource?.startsWith("proj_")) return fromResource;
-    if (ctx.workspace) return projectResourceIdFromWorkspace(ctx.workspace);
-    return options.strict ? null : projectResourceIdFromWorkspace(process.cwd());
+    return ctx.workspace ? projectResourceIdFromWorkspace(ctx.workspace) : null;
   }
   const fromResource = parseResourceId(ctx.resourceId);
   if (fromResource?.startsWith("user_")) return fromResource;
-  return defaultUserResourceId();
+  return activeUserResourceId();
+}
+
+/** The scope a write lands in, or the reason there is none, so a caller cannot store into nowhere. */
+export function requireScopeKey(scope: MemoryScope, ctx: ScopeContext): string {
+  const scopeKey = resolveScopeKey(scope, ctx);
+  if (scopeKey) return scopeKey;
+  throw new Error(
+    scope === "project"
+      ? "This workspace has no git remote, so it has no project memory"
+      : `Cannot resolve scope key for scope "${scope}"`,
+  );
 }
 
 export function visibleScopeKeys(ctx: ScopeContext): Set<string> {
   const keys = new Set<string>();
   for (const scope of ["session", "project", "user"] as const) {
-    const key = resolveScopeKey(scope, ctx, { strict: true });
+    const key = resolveScopeKey(scope, ctx);
     if (key) keys.add(key);
   }
   return keys;
@@ -256,10 +262,11 @@ export async function restoreMemories(
   return restored.map(toMemoryEntry);
 }
 
+// The CLI runs in the workspace the user is asking about, so its working directory is that workspace.
 export const fileMemoryStore = {
-  list: (scope?: MemoryScope) => listMemories({ scope }),
-  add: (content: string, scope?: MemoryScope) => addMemory(content, { scope }),
-  remove: (id: string, scope?: MemoryScope) => removeMemory(id, { scope }),
-  listArchived: (scope?: MemoryScope) => listArchivedMemories({ scope }),
+  list: (scope?: MemoryScope) => listMemories({ scope, workspace: process.cwd() }),
+  add: (content: string, scope?: MemoryScope) => addMemory(content, { scope, workspace: process.cwd() }),
+  remove: (id: string, scope?: MemoryScope) => removeMemory(id, { scope, workspace: process.cwd() }),
+  listArchived: (scope?: MemoryScope) => listArchivedMemories({ scope, workspace: process.cwd() }),
   restore: (ids: readonly string[]) => restoreMemories(ids),
 };

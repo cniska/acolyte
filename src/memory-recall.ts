@@ -35,7 +35,7 @@ async function embedTopics(records: readonly MemoryRecord[]): Promise<Map<string
 
 function allowedScopeKeys(ctx: ScopeContext, scope?: MemoryScope): Set<string> {
   if (!scope) return visibleScopeKeys(ctx);
-  const key = resolveScopeKey(scope, ctx, { strict: true });
+  const key = resolveScopeKey(scope, ctx);
   return new Set(key ? [key] : []);
 }
 

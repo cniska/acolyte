@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { type MemoryRecord, memoryScopeSchema, scopeFromKey } from "./memory-contract";
-import { addMemory, addObservation, resolveScopeKey, type ScopeContext } from "./memory-ops";
+import { addMemory, addObservation, requireScopeKey, type ScopeContext } from "./memory-ops";
 import { searchMemories } from "./memory-recall";
 import type { ToolkitInput } from "./tool-contract";
 import { createTool } from "./tool-contract";
@@ -20,11 +20,10 @@ function createMemoryObserveTool(input: ToolkitInput) {
     outputSchema: z.object({ kind: z.literal("memory-observe"), id: z.string().nullable() }),
     execute: async (toolInput, toolCallId) => {
       return runTool(input.session, "memory-observe", toolCallId, toolInput, async () => {
-        const scopeKey = resolveScopeKey(toolInput.scope, {
+        const scopeKey = requireScopeKey(toolInput.scope, {
           sessionId: input.sessionId,
           workspace: input.workspace,
         });
-        if (!scopeKey) return { kind: "memory-observe" as const, id: null };
         const record = await addObservation(scopeKey, toolInput.content, { topic: toolInput.topic ?? null });
         return { kind: "memory-observe" as const, id: record?.id ?? null };
       });

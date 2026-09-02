@@ -23,15 +23,21 @@ acolyte config set features.cloudSync true  # enable cloud sync (preview)
 acolyte login                               # store token and cloud URL
 ```
 
-A custom cloud URL must use HTTPS unless it targets localhost; `acolyte login` refuses a plaintext one before storing anything. Credentials are stored in the config directory as `credentials` (mode 0600). See [Paths](paths.md) for platform-specific locations. Environment variables `ACOLYTE_CLOUD_URL` and `ACOLYTE_CLOUD_TOKEN` take precedence over the credentials file.
+A custom cloud URL must use HTTPS unless it targets localhost; `acolyte login` refuses a plaintext one before storing anything. It also refuses a token that names no account, and one the cloud does not accept, so a stored credential always names the account its memory is keyed to. Credentials are stored in the config directory as `credentials` (mode 0600). See [Paths](paths.md) for platform-specific locations. Environment variables `ACOLYTE_CLOUD_URL` and `ACOLYTE_CLOUD_TOKEN` take precedence over the credentials file.
 
 ## Migration
 
-`acolyte login` copies the machine's existing data into the account: project- and user-scoped memories with their embeddings, and every stored session. Session-scoped memories, the retired-memory archive, and the active-session pointer stay local.
+`acolyte login` copies the machine's existing data into the account: project-scoped memories with their embeddings, memories already keyed to this account, and every stored session. Session-scoped memories, the retired-memory archive, and the active-session pointer stay local.
+
+Signing in then moves the local user scope (`user_local`) into the account, reporting how many memories moved and how many were dropped as facts the account already held. A record is written to the account before its local row goes, so an interrupted merge leaves the record in both places and the next sign-in finishes it. Memories keyed to another account are never copied.
 
 Cloud writes upsert on the record id, so signing in again copies only what a previous run left behind. A rejected token ends the copy and exits non-zero; any other failure keeps the credentials and reports the count it could not move.
 
 Migration runs one direction. Disabling `cloudSync` returns the CLI to the local database without the records written while cloud storage was active.
+
+## Scope names
+
+A scope key is a hash of what it names — a repository's `owner/repo`, or the account id — so the cloud cannot read a name out of one. Acolyte publishes the current workspace's project name to the account as it works, and the dashboard shows it in place of the key. A scope nothing has named keeps its key.
 
 ## Authentication
 

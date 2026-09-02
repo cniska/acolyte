@@ -5,7 +5,6 @@ import type { MemoryRecord } from "./memory-contract";
 import type { ScopeContext } from "./memory-ops";
 import { searchMemories } from "./memory-recall";
 import { createSqliteMemoryStore } from "./memory-store";
-import { defaultUserResourceId } from "./resource-id";
 import { pinEmbeddingProviders, tempDb } from "./test-utils";
 
 const NO_EMBEDDING_SUPPORT = "anthropic/claude-opus-4-1";
@@ -25,7 +24,7 @@ const ctx: ScopeContext = { sessionId: "sess_alpha", workspace: "/ws/one" };
 function createRecord(): MemoryRecord {
   return {
     id: "mem_0001",
-    scopeKey: defaultUserResourceId(),
+    scopeKey: "user_local",
     kind: "stored",
     content: "a fact worth recalling",
     createdAt: "2026-01-01T00:00:00.000Z",

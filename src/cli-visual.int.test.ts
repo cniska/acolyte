@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { runCliPlain, withCliTestEnv } from "./int-test-utils";
 import { createSqliteMemoryStore } from "./memory-store";
 import { PROTOCOL_VERSION } from "./protocol";
-import { defaultUserResourceId } from "./resource-id";
 import { dedent } from "./test-utils";
 import { createTraceStore } from "./trace-store";
 
@@ -202,10 +201,10 @@ describe("cli visual regression", () => {
   });
 
   test("memory list renders stored entry rows", async () => {
-    await withCliTestEnv(async ({ run, homeDir, dataDir }) => {
+    await withCliTestEnv(async ({ run, dataDir }) => {
       const dbPath = join(dataDir, "memory.db");
       const store = createSqliteMemoryStore(dbPath);
-      const scopeKey = defaultUserResourceId({ HOME: homeDir });
+      const scopeKey = "user_local";
       await store.write(
         {
           id: "mem_abc123",

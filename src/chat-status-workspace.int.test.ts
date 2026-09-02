@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { basename, join } from "node:path";
+import { gitStatus } from "./chat-layout";
 import { useChatState } from "./chat-state";
 import { createClient, createSession, createSessionState, gitEnv, tempDir } from "./test-utils";
 import { renderHook } from "./tui/test-utils";
@@ -72,6 +73,16 @@ describe("footer git context", () => {
     } finally {
       unmount();
     }
+  });
+
+  test("names the repository its origin remote names, not the directory holding it", async () => {
+    const { root } = await createRepoWithWorktree();
+    await git(root, ["remote", "add", "origin", "git@github.com:owner/renamed.git"]);
+
+    const status = await gitStatus(root);
+
+    expect(basename(root)).not.toBe("renamed");
+    expect(status?.repo).toBe("renamed");
   });
 
   // Bun.spawn without an env option inherits the environment the process started with, so

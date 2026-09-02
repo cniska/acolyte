@@ -8,7 +8,6 @@ import type { MemoryRecord } from "./memory-contract";
 import { embeddingToBuffer } from "./memory-embedding";
 import { restoreMemories, retireMemories } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
-import { defaultUserResourceId } from "./resource-id";
 import { pinEmbeddingProviders } from "./test-utils";
 
 let fake: FakeProviderServer;
@@ -26,7 +25,7 @@ afterAll(() => {
   restoreProviders();
 });
 
-const scopeKey = defaultUserResourceId();
+const scopeKey = "user_local";
 
 function record(id: string, content: string): MemoryRecord {
   return {

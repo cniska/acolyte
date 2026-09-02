@@ -380,6 +380,23 @@ export const EN_MESSAGES = {
   "cli.login.opening.browser": [{ kind: "text", value: "Opening browser to sign in…" }],
   "cli.login.prompt.token": [{ kind: "text", value: "Cloud token: " }],
   "cli.login.prompt.url": [{ kind: "text", value: "Cloud URL (https://app.acolyte.sh):" }],
+  "cli.login.merge.done": [
+    { kind: "text", value: "Merged " },
+    { kind: "arg", name: "merged" },
+    { kind: "text", value: " local memories into your account." },
+  ],
+  "cli.login.merge.duplicates": [
+    { kind: "arg", name: "duplicates" },
+    { kind: "text", value: " were already in your account." },
+  ],
+  "cli.login.merge.failures": [
+    { kind: "arg", name: "failures" },
+    { kind: "text", value: " local memories did not merge and stay on this machine." },
+  ],
+  "cli.login.merge.novectors": [
+    { kind: "arg", name: "embeddingFailures" },
+    { kind: "text", value: " merged without their embedding and are recalled by keyword until it is copied." },
+  ],
   "cli.login.migrate.done": [
     { kind: "text", value: "Copied " },
     { kind: "arg", name: "memories" },
@@ -408,7 +425,17 @@ export const EN_MESSAGES = {
   "cli.login.migrate.start": [{ kind: "text", value: "Copying local memory and sessions to the cloud." }],
   "cli.login.saved": [{ kind: "text", value: "Logged in." }],
   "cli.login.timeout": [{ kind: "text", value: "Authentication timed out. Please try again." }],
+  "cli.login.token.anonymous": [
+    { kind: "text", value: "That token does not name an account, so nothing was stored. Sign in again." },
+  ],
   "cli.login.token.empty": [{ kind: "text", value: "Token cannot be empty." }],
+  "cli.login.token.rejected": [
+    { kind: "text", value: "The cloud refused that token, so nothing was stored. Sign in again." },
+  ],
+  "cli.login.token.unreachable": [
+    { kind: "text", value: "The token could not be checked, so nothing was stored: " },
+    { kind: "arg", name: "reason" },
+  ],
   "cli.login.url.insecure": [{ kind: "text", value: "The cloud URL must use HTTPS unless it targets localhost." }],
   "cli.login.waiting": [{ kind: "text", value: "Waiting for authentication…" }],
   "cli.login.welcome": [

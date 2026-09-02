@@ -1,0 +1,39 @@
+import { appConfig } from "./app-config";
+import { getCloudClient } from "./cloud-client";
+import { log } from "./log";
+import { projectLabelFromWorkspace, projectResourceIdFromWorkspace } from "./resource-id";
+
+// A scope key is a hash, so only the machine that derived it can say what it stands for. Each key's
+// name is published once per process; a repository that is renamed or repointed replaces its entry.
+const published = new Map<string, string>();
+
+/** Test-only: forget what this process has already published. */
+export function clearPublishedScopeLabels(): void {
+  published.clear();
+}
+
+/**
+ * Tells the account what a workspace's project scope is called. A name is cosmetic, so a failure is
+ * logged and dropped rather than surfaced: no turn fails over a label.
+ */
+export async function publishProjectLabel(workspace: string): Promise<void> {
+  if (!appConfig.features.cloudSync || !appConfig.cloudUrl || !appConfig.cloudToken) return;
+
+  const scopeKey = projectResourceIdFromWorkspace(workspace);
+  const label = projectLabelFromWorkspace(workspace);
+  if (!scopeKey || !label) return;
+
+  if (published.get(scopeKey) === label) return;
+  // Claimed before the call so two requests in flight do not both publish, and released on failure
+  // so the next request retries.
+  published.set(scopeKey, label);
+
+  try {
+    const client = await getCloudClient();
+    await client.setScopeLabel(scopeKey, label);
+    log.debug("cloud.scope_label.published", { scopeKey, label });
+  } catch (error) {
+    published.delete(scopeKey);
+    log.warn("cloud.scope_label.failed", { scopeKey, error: String(error) });
+  }
+}

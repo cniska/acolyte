@@ -1,7 +1,6 @@
-import { resolve as resolvePath } from "node:path";
 import { z } from "zod";
+import { projectRepositoryLabel } from "./git-remote";
 import { domainIdSchema } from "./id-contract";
-import { type Env, resolveHomeDir } from "./paths";
 import { resolveProjectRoot } from "./workspace-sandbox";
 
 export const userResourceIdSchema = domainIdSchema("user");
@@ -25,12 +24,34 @@ function hashValue(value: string): string {
   return hasher.digest("hex").slice(0, 12);
 }
 
-export function projectResourceIdFromWorkspace(workspace: string): ProjectResourceId {
-  return projectResourceIdSchema.parse(`proj_${hashValue(resolveProjectRoot(workspace))}`);
+// Read every time rather than cached: the daemon outlives `git remote add`, and a scope key that
+// keeps answering from before the remote existed is worse than the config read it saves.
+/** The `owner/repo` naming a workspace's project, or null when its remotes name none. */
+export function projectLabelFromWorkspace(workspace: string): string | null {
+  return projectRepositoryLabel(resolveProjectRoot(workspace));
 }
 
-export function defaultUserResourceId(env?: Env): UserResourceId {
-  return userResourceIdSchema.parse(`user_${hashValue(resolvePath(resolveHomeDir(env)))}`);
+/** The repository's own name, without its owner, for surfaces that show the project rather than key it. */
+export function projectNameFromWorkspace(workspace: string): string | null {
+  return projectLabelFromWorkspace(workspace)?.split("/").pop() ?? null;
+}
+
+/** The project a workspace belongs to, or null when it has no repository remote to be identified by. */
+export function projectResourceIdFromWorkspace(workspace: string): ProjectResourceId | null {
+  const label = projectLabelFromWorkspace(workspace);
+  return label ? projectResourceIdForLabel(label) : null;
+}
+
+export function projectResourceIdForLabel(label: string): ProjectResourceId {
+  return projectResourceIdSchema.parse(`proj_${hashValue(label)}`);
+}
+
+/** The installation's own user scope, used until an account claims it. A constant cannot fragment. */
+export const LOCAL_USER_RESOURCE_ID = userResourceIdSchema.parse("user_local");
+
+/** The scope of the account a cloud token names, so one person has one user scope across machines. */
+export function userResourceIdForSubject(subject: string): UserResourceId {
+  return userResourceIdSchema.parse(`user_${hashValue(subject)}`);
 }
 
 export function userResourceIdFor(context: string, sessionId: string): UserResourceId {

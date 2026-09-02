@@ -34,6 +34,9 @@ const ROUTES = {
     remove: (id: string) => `/api/v1/memories/embeddings/${encodeURIComponent(id)}`,
     search: "/api/v1/memories/embeddings/search",
   },
+  scopeLabels: {
+    set: "/api/v1/scope-labels",
+  },
   sessions: {
     list: "/api/v1/sessions",
     save: "/api/v1/sessions",
@@ -95,6 +98,19 @@ export class CloudClient {
       searchByEmbedding: (query, opts) => this.searchByEmbedding(query, opts),
       close: () => {},
     };
+  }
+
+  /**
+   * Proves the cloud accepts this token, so nothing is stored under an account it does not name.
+   * The active session is the cheapest authenticated read the API has.
+   */
+  async checkCredential(): Promise<void> {
+    await this.get(ROUTES.sessions.getActive, { schema: activeSessionSchema });
+  }
+
+  /** Names a scope in the account, so the dashboard shows what the key stands for. */
+  async setScopeLabel(scopeKey: string, label: string): Promise<void> {
+    await this.post(ROUTES.scopeLabels.set, { body: { scopeKey, label } });
   }
 
   get session(): SessionStore {

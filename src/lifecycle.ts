@@ -83,8 +83,8 @@ export function scheduleMemoryCommit(
 export function memoryCommitQueueKeys(commitCtx: MemoryCommitContext): string[] {
   const keys = [
     commitCtx.sessionId ?? "session:unknown",
-    resolveScopeKey("project", commitCtx, { strict: true }),
-    resolveScopeKey("user", commitCtx, { strict: true }),
+    resolveScopeKey("project", commitCtx),
+    resolveScopeKey("user", commitCtx),
   ];
   return [...new Set(keys.filter((key): key is string => Boolean(key)))];
 }

@@ -385,7 +385,7 @@ describe("memoryDistiller", () => {
       });
       await source.commit({
         sessionId: "sess_test0001",
-        workspace: "/tmp/acolyte-project",
+        resourceId: "proj_abc123",
         messages: [{ role: "user", content: "hello" }],
         output: "done",
       });
@@ -395,6 +395,23 @@ describe("memoryDistiller", () => {
       expect(keys.some((key) => key.startsWith("proj_"))).toBe(true);
       expect(keys.some((key) => key === "sess_test0001")).toBe(false);
       expect(keys.some((key) => key.startsWith("user_"))).toBe(false);
+    });
+
+    test("commits nothing to project scope in a workspace with no remote", async () => {
+      const store = createMockStore();
+      const source = createMemoryDistiller({
+        store,
+        runner: makeRunner([{ scope: "project", content: "a project fact", topic: null, supersedes: [] }]),
+        policy: testPolicy,
+      });
+      await source.commit({
+        sessionId: "sess_test0001",
+        workspace: "/tmp/acolyte-project",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+
+      expect(store.written).toEqual([]);
     });
 
     test("quality fixtures classify observations into the right scopes", async () => {

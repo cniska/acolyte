@@ -1,11 +1,20 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { addMemory, addObservation, listMemories, removeMemory } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
-import { defaultUserResourceId } from "./resource-id";
-import { tempDb } from "./test-utils";
+import { tempDb, tempDir, writeGitOrigin } from "./test-utils";
 
 const { create: createDb, cleanup } = tempDb("acolyte-memory-", createSqliteMemoryStore);
-afterEach(cleanup);
+const { createDir, cleanupDirs } = tempDir();
+afterEach(() => {
+  cleanup();
+  cleanupDirs();
+});
+
+function createRepoWorkspace(): string {
+  const workspace = createDir("acolyte-memory-workspace-");
+  writeGitOrigin(workspace, "git@github.com:owner/repo.git");
+  return workspace;
+}
 
 describe("sqlite memory store", () => {
   test("adds user memory and retrieves it", async () => {
@@ -19,12 +28,13 @@ describe("sqlite memory store", () => {
 
   test("supports separate project and user memories", async () => {
     const db = createDb();
+    const workspace = createRepoWorkspace();
     await addMemory("Global preference", { scope: "user", store: db });
-    await addMemory("Project convention", { scope: "project", store: db });
+    await addMemory("Project convention", { scope: "project", workspace, store: db });
 
-    const projectOnly = await listMemories({ scope: "project", store: db });
+    const projectOnly = await listMemories({ scope: "project", workspace, store: db });
     const userOnly = await listMemories({ scope: "user", store: db });
-    const all = await listMemories({ store: db });
+    const all = await listMemories({ workspace, store: db });
 
     expect(projectOnly).toHaveLength(1);
     expect(projectOnly[0]?.scope).toBe("project");
@@ -52,10 +62,10 @@ describe("sqlite memory store", () => {
 
   test("removeMemory removes a distilled observation and its embedding", async () => {
     const db = createDb();
-    const record = await addObservation(defaultUserResourceId(), "Prefers tabs over spaces", { store: db });
+    const record = await addObservation("user_local", "Prefers tabs over spaces", { store: db });
     expect(record).not.toBeNull();
     const id = record?.id ?? "";
-    await db.writeEmbedding(id, defaultUserResourceId(), Buffer.from([1, 2, 3, 4]));
+    await db.writeEmbedding(id, "user_local", Buffer.from([1, 2, 3, 4]));
 
     const result = await removeMemory(id, { store: db });
     expect(result.kind).toBe("removed");

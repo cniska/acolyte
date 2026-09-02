@@ -1,5 +1,6 @@
 import { basename } from "node:path";
 import { t } from "./i18n";
+import { projectNameFromWorkspace } from "./resource-id";
 import { envWithoutGitState } from "./tool-utils";
 
 export type ShortcutItem = { key: string; description: string };
@@ -95,5 +96,7 @@ export async function gitStatus(cwd = process.cwd()): Promise<GitStatus | null> 
     branch = (await git(cwd, ["rev-parse", "--short", "HEAD"]))?.trim() || null;
   }
 
-  return { repo: basename(mainRoot), worktree, branch, dirty, ahead, behind };
+  // The remote names the project; the directory is only what this machine happens to call it.
+  const repo = projectNameFromWorkspace(mainRoot) ?? basename(mainRoot);
+  return { repo, worktree, branch, dirty, ahead, behind };
 }

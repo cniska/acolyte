@@ -312,8 +312,13 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       const successorsBySuperseded = new Map<string, string[]>();
 
       for (const obs of filtered) {
-        const factKey = resolveScopeKey(obs.scope, ctx, { strict: true });
-        if (!factKey) continue;
+        const factKey = resolveScopeKey(obs.scope, ctx);
+        if (!factKey) {
+          // A workspace with no project scope has nowhere to put a project fact; the trace is the
+          // only place that shows it, since distillation never speaks in the transcript.
+          log.debug("memory.commit.no_scope", { scope: obs.scope });
+          continue;
+        }
         const clamped = clampToTokenEstimate(normalizeMemoryText(obs.content), policy.maxOutputTokens);
         if (!clamped) continue;
         const record = await commitFact(ds, factKey, clamped, obs.topic);
