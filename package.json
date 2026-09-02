@@ -14,7 +14,6 @@
     "run": "bun run src/cli.ts run",
     "perf:run": "bun run scripts/run-perf.ts",
     "memory-bench:run": "bun run scripts/run-memory-bench.ts",
-    "erosion:run": "bun run scripts/run-erosion.ts",
     "serve": "bun --env-file=.env run src/server.ts",
     "serve:watch": "bun --watch --env-file=.env run src/server.ts",
     "wait:server": "bun run scripts/wait-server.ts",

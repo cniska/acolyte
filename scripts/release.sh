@@ -46,11 +46,6 @@ echo "$old → $new"
 
 bun run verify
 
-# Where complexity sits in the release being cut. Reported, never a gate: the score is a
-# ratio, so removing simple code raises it, and a threshold would fail good releases.
-echo ""
-bun run erosion:run --top 5
-
 # Commit and tag
 git add -A
 git commit -m "chore: release v${new}"
