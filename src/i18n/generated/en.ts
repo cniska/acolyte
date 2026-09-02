@@ -478,17 +478,19 @@ export const EN_MESSAGES = {
       arms: {
         one: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " session" },
+          { kind: "text", value: " session skipped, " },
+          { kind: "arg", name: "commits" },
+          { kind: "text", value: " commits behind" },
         ],
         other: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " sessions" },
+          { kind: "text", value: " sessions skipped, up to " },
+          { kind: "arg", name: "commits" },
+          { kind: "text", value: " commits behind" },
         ],
       },
     },
-    { kind: "text", value: " skipped, up to " },
-    { kind: "arg", name: "commits" },
-    { kind: "text", value: " commits behind; --include-stale takes them." },
+    { kind: "text", value: "; --include-stale takes them." },
   ],
   "cli.import.undated": [
     {
@@ -514,15 +516,15 @@ export const EN_MESSAGES = {
       arms: {
         one: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " session" },
+          { kind: "text", value: " session in the window names a directory" },
         ],
         other: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " sessions" },
+          { kind: "text", value: " sessions in the window name a directory" },
         ],
       },
     },
-    { kind: "text", value: " in the window name a directory that no longer identifies a project." },
+    { kind: "text", value: " that no longer identifies a project." },
   ],
   "cli.import.done": [
     {

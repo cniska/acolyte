@@ -992,7 +992,7 @@
   "@cli.import.needs_consent": {
     "description": "Shown when 'import' cannot ask for consent: stdin is not a terminal, or --json was given and its output carries one document. '--yes' and '--json' are literal flag names."
   },
-  "cli.import.stale": "{count, plural, one {# session} other {# sessions}} skipped, up to {commits} commits behind; --include-stale takes them.",
+  "cli.import.stale": "{count, plural, one {# session skipped, {commits} commits behind} other {# sessions skipped, up to {commits} commits behind}}; --include-stale takes them.",
   "@cli.import.stale": {
     "description": "Shown with the import plan for sessions the staleness budget kept out: the project has committed past them, so what they establish is likely already superseded. {commits} is the largest count measured. '--include-stale' is a literal flag name.",
     "placeholders": {
@@ -1013,7 +1013,7 @@
       }
     }
   },
-  "cli.import.unattributable": "{count, plural, one {# session} other {# sessions}} in the window name a directory that no longer identifies a project.",
+  "cli.import.unattributable": "{count, plural, one {# session in the window names a directory} other {# sessions in the window name a directory}} that no longer identifies a project.",
   "@cli.import.unattributable": {
     "description": "Shown with the import plan for sessions recorded in a working directory that has since been deleted or lost its remote, so no project can be resolved for them and no run can reach them.",
     "placeholders": {

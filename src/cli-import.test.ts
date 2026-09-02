@@ -309,7 +309,7 @@ describe("importMode", () => {
     });
     await importMode(["--dry-run"], h.deps);
 
-    expect(h.dim.join("\n")).toContain("1 session skipped, up to 88 commits behind");
+    expect(h.dim.join("\n")).toContain("1 session skipped, 88 commits behind");
     expect(h.dim.join("\n")).toContain("1 session skipped for carrying no timestamp");
   });
 
