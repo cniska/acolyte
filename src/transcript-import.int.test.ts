@@ -6,7 +6,7 @@ import { createMemoryPolicy, type MemoryStore } from "./memory-contract";
 import { createMemoryDistiller, type DistillObservation } from "./memory-distiller";
 import { createSqliteMemoryStore } from "./memory-store";
 import { pinEmbeddingProviders, tempDb, tempDir, writeGitOrigin } from "./test-utils";
-import { CLAUDE_CODE_SOURCE, planImport, runImport } from "./transcript-import";
+import { CLAUDE_CODE_SOURCE, IMPORT_COMMIT_SCOPES, planImport, runImport } from "./transcript-import";
 
 const { createDir, cleanupDirs } = tempDir();
 const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-import-int-", createSqliteMemoryStore);
@@ -84,6 +84,45 @@ describe("transcript import", () => {
     const ledger = await readImportLedger(ledgerPath);
     const rerun = await planImport({ dir: transcripts, since: new Date(0), ledger, policy });
     expect(rerun.sessions.map((session) => session.pending)).toEqual([0]);
+  });
+
+  test("keeps the durable scopes and drops what dies with a session that is already over", async () => {
+    const transcripts = createDir("acolyte-transcripts-");
+    const workspace = createDir("acolyte-workspace-");
+    writeGitOrigin(workspace, "git@github.com:acme/widgets.git");
+    writeTranscript(transcripts, "aaa", workspace, ["first"]);
+
+    const store = createStore();
+    const distiller = createMemoryDistiller({
+      store,
+      policy,
+      commitScopes: IMPORT_COMMIT_SCOPES,
+      runner: async () => [
+        { scope: "project", content: "widgets builds with Bun", topic: null, supersedes: [] },
+        { scope: "user", content: "prefers dashes in branch names", topic: null, supersedes: [] },
+        { scope: "session", content: "halfway through the refactor", topic: null, supersedes: [] },
+      ],
+    });
+
+    const { sessions } = await planImport({
+      dir: transcripts,
+      since: new Date(0),
+      ledger: emptyImportLedger(),
+      policy,
+    });
+    await runImport({
+      plans: sessions,
+      distiller,
+      ledger: emptyImportLedger(),
+      saveLedger: async () => {},
+    });
+
+    const stored = await store.list();
+    expect(stored.map((record) => record.content).sort()).toEqual([
+      "prefers dashes in branch names",
+      "widgets builds with Bun",
+    ]);
+    expect(stored.some((record) => record.scopeKey.startsWith("sess_"))).toBe(false);
   });
 
   test("a second run over an unchanged window writes nothing and retires nothing", async () => {

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { DistillScope } from "./distill-ops";
 import type { MemoryDisposition, MemoryRecord, MemoryStore } from "./memory-contract";
 import { createMemoryPolicy } from "./memory-contract";
 import type { DistillObservation } from "./memory-distiller";
@@ -23,7 +24,7 @@ function createMemoryDistiller(deps: Parameters<typeof createMemoryDistillerWith
 function createTestDistiller(
   store: MemoryStore & { written: MemoryRecord[]; removed: string[] },
   runner?: (systemPrompt: string, userContent: string) => Promise<DistillObservation[]>,
-  options?: { commitScope?: "session" | "project" | "user" | "none" },
+  options?: { commitScopes?: readonly DistillScope[] },
 ) {
   return createMemoryDistiller({ store, runner, policy: testPolicy, ...options });
 }
@@ -365,7 +366,7 @@ describe("memoryDistiller", () => {
       });
     });
 
-    test("commitScope filters to only commit matching scope", async () => {
+    test("commitScopes drops an observation for a scope it does not name", async () => {
       const store = createMockStore();
       const source = createMemoryDistiller({
         store,
@@ -375,7 +376,7 @@ describe("memoryDistiller", () => {
           { scope: "user", content: "a user fact", topic: null, supersedes: [] },
         ]),
         policy: testPolicy,
-        commitScope: "project",
+        commitScopes: ["project"],
       });
       await source.commit({
         sessionId: "sess_test0001",

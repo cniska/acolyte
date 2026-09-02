@@ -1,5 +1,6 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
+import type { DistillScope } from "./distill-ops";
 import { consumedExchanges, type ImportLedger, markConsumed } from "./import-ledger";
 import { defaultMemoryPolicy, type MemoryDistiller, type MemoryPolicy } from "./memory-contract";
 import { estimateDistillPromptTokens } from "./memory-distiller";
@@ -8,6 +9,13 @@ import { projectLabelFromWorkspace } from "./resource-id";
 import { parseClaudeCodeTranscript, type TranscriptExchange } from "./transcript-claude-code";
 
 export const CLAUDE_CODE_SOURCE = "claude-code";
+
+/**
+ * A session-scoped observation is one the distiller judged true only while that work is open, and
+ * the work an import reads is already over: nothing will resume the source session, so such a
+ * record could never be recalled. An import keeps what the distiller marked as outliving a session.
+ */
+export const IMPORT_COMMIT_SCOPES: readonly DistillScope[] = ["project", "user"];
 
 export function claudeCodeTranscriptDir(env: Env = process.env): string {
   return join(resolveHomeDir(env), ".claude", "projects");

@@ -253,14 +253,15 @@ export type DistillerDeps = {
   store: MemoryStore;
   runner: DistillRunner;
   policy: MemoryPolicy;
-  commitScope: DistillScope | "none";
+  /** The scopes an observation may be committed to; one the distiller writes to none of is dropped. */
+  commitScopes: readonly DistillScope[];
   embed: typeof embedText;
 };
 
 export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): MemoryDistiller {
   const runner = deps.runner ?? defaultRunner;
   const policy = deps.policy ?? defaultMemoryPolicy;
-  const commitScope = deps.commitScope ?? "session";
+  const commitScopes = new Set<DistillScope>(deps.commitScopes ?? memoryScopeSchema.options);
   // In-memory: a mark lost on restart costs one redundant distill, whose facts are then mostly
   // absorbed by scope dedup. Persisting it would buy little and outlive the history it indexes.
   const distilledThrough = new Map<string, number>();
@@ -269,8 +270,8 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
   };
   return {
     async commit(ctx): Promise<MemoryCommitMetrics | undefined> {
-      if (commitScope === "none") return;
-      if (commitScope === "session" && !ctx.sessionId) return;
+      if (commitScopes.size === 0) return;
+      if (commitScopes.has("session") && !ctx.sessionId) return;
       if (ctx.messages.length < policy.messageThreshold) return;
 
       const ds = deps.store ?? (await getCachedStore());
@@ -290,8 +291,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       const known = renderKnownFacts(candidates);
       const observations = await runner(DISTILLER_PROMPT, known ? `${known}\n\n${distillInput}` : distillInput);
 
-      const filtered =
-        commitScope === "session" ? observations : observations.filter((obs) => obs.scope === commitScope);
+      const filtered = observations.filter((obs) => commitScopes.has(obs.scope));
       const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output, ctx.activity, candidates);
       if (filtered.length === 0) {
         markDistilled(ctx.sessionId, ctx.messages.length);

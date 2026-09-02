@@ -60,7 +60,13 @@ import { createSession, getSessionStore } from "./session-store";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skill-ops";
 import { formatStatus } from "./status-format";
 import { openTraceStore } from "./trace-store";
-import { claudeCodeTranscriptDir, importScratchDir, planImport, runImport } from "./transcript-import";
+import {
+  claudeCodeTranscriptDir,
+  IMPORT_COMMIT_SCOPES,
+  importScratchDir,
+  planImport,
+  runImport,
+} from "./transcript-import";
 import { formatCliBanner, printDim, printError, printOutput } from "./ui";
 
 export function commandHelpDoc(name: string): CliCommandHelp | undefined {
@@ -358,7 +364,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         planImport,
         runImport,
         createStore: createSqliteMemoryStore,
-        createDistiller: (store) => createMemoryDistiller({ store }),
+        createDistiller: (store) => createMemoryDistiller({ store, commitScopes: IMPORT_COMMIT_SCOPES }),
         readLedger: readImportLedger,
         writeLedger: writeImportLedger,
         removeDir: (path) => rm(path, { recursive: true, force: true }),
