@@ -26,17 +26,26 @@ import { renderTaskActivity, type TaskActivity } from "./task-activity";
 import { estimateTokens } from "./token-estimate";
 import { toFunctionTool } from "./tool-contract";
 
-const MEMORY_OBSERVE_INPUT_SCHEMA = z.object({
+const DISTILL_OUTPUT_SCHEMA = z.object({
   scope: memoryScopeSchema,
   content: z.string().trim().min(1),
+  // Absent and blank both mean "no topic", and `.optional()` alone accepts only absent. A rejected
+  // field fails the whole call, so without this an observation is lost over an optional label.
   topic: memoryTopicSchema.or(z.string().regex(/^\s*$/)).optional(),
   supersedes: z.array(z.string()).default([]),
 });
 
-const MEMORY_OBSERVE_TOOL = toFunctionTool({
-  id: "memory-observe",
+const OBSERVE_FUNCTION_NAME = "memory-observe";
+
+/**
+ * The only tool offered to the distiller's own model call, and the shape its observations come back
+ * in. Nothing executes the call — reading it is the whole handling — and returning none is how a turn
+ * says it established nothing.
+ */
+const DISTILL_OUTPUT_TOOL = toFunctionTool({
+  id: OBSERVE_FUNCTION_NAME,
   description: "Record one fact established by this turn's work into memory.",
-  inputSchema: z.toJSONSchema(MEMORY_OBSERVE_INPUT_SCHEMA) as Record<string, unknown>,
+  inputSchema: z.toJSONSchema(DISTILL_OUTPUT_SCHEMA) as Record<string, unknown>,
 });
 
 export const DISTILLER_PROMPT = `This turn is over, and I am deciding what survives it.
@@ -163,9 +172,9 @@ async function getCachedStore(): Promise<MemoryStore> {
 
 export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<DistillObservation[]>;
 
-export function parseToolCall(call: Pick<LanguageModelV4ToolCall, "input">): DistillObservation | null {
+export function parseObservationToolCall(call: Pick<LanguageModelV4ToolCall, "input">): DistillObservation | null {
   try {
-    const parsed = MEMORY_OBSERVE_INPUT_SCHEMA.safeParse(JSON.parse(call.input));
+    const parsed = DISTILL_OUTPUT_SCHEMA.safeParse(JSON.parse(call.input));
     if (!parsed.success) return null;
     const { scope, content, topic, supersedes } = parsed.data;
     return {
@@ -188,7 +197,7 @@ async function defaultRunner(systemPrompt: string, userContent: string): Promise
       { role: "system", content: systemPrompt },
       { role: "user", content: [{ type: "text", text: userContent }] },
     ],
-    tools: [MEMORY_OBSERVE_TOOL],
+    tools: [DISTILL_OUTPUT_TOOL],
     toolChoice: { type: "auto" },
   });
   const observations: DistillObservation[] = [];
@@ -197,8 +206,8 @@ async function defaultRunner(systemPrompt: string, userContent: string): Promise
     const { done, value } = await reader.read();
     if (done) break;
     if (value.type === "error") throw value.error instanceof Error ? value.error : new Error(String(value.error));
-    if (value.type !== "tool-call" || value.toolName !== "memory-observe") continue;
-    const obs = parseToolCall(value);
+    if (value.type !== "tool-call" || value.toolName !== OBSERVE_FUNCTION_NAME) continue;
+    const obs = parseObservationToolCall(value);
     if (obs) observations.push(obs);
   }
   return observations;

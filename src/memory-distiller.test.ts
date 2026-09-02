@@ -6,7 +6,7 @@ import {
   createDistillInput,
   createMemoryDistiller as createMemoryDistillerWithDeps,
   DISTILLER_PROMPT,
-  parseToolCall,
+  parseObservationToolCall,
   renderKnownFacts,
   selectKnownFactsWithinBudget,
   selectSupersessionCandidates,
@@ -754,8 +754,8 @@ describe("supersession", () => {
   });
 });
 
-describe("parseToolCall", () => {
-  const call = (input: unknown) => parseToolCall({ input: JSON.stringify(input) });
+describe("parseObservationToolCall", () => {
+  const call = (input: unknown) => parseObservationToolCall({ input: JSON.stringify(input) });
 
   test("a well-formed call becomes an observation", () => {
     expect(call({ scope: "project", content: "the loader owns retries", topic: "Loader" })).toEqual({
@@ -766,8 +766,17 @@ describe("parseToolCall", () => {
     });
   });
 
+  test("a blank topic is kept as an observation with no topic", () => {
+    expect(call({ scope: "project", content: "the loader owns retries", topic: "" })).toEqual({
+      scope: "project",
+      content: "the loader owns retries",
+      topic: null,
+      supersedes: [],
+    });
+  });
+
   test("malformed input yields no observation", () => {
-    expect(parseToolCall({ input: "not json" })).toBeNull();
+    expect(parseObservationToolCall({ input: "not json" })).toBeNull();
     expect(call({ content: "no scope given" })).toBeNull();
     expect(call({ scope: "elsewhere", content: "an unknown scope" })).toBeNull();
     expect(call({ scope: "project", content: "   " })).toBeNull();
