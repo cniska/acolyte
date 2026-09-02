@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, utimes, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { formatVersionWithCommit, resolveCliCommitShort, resolveCliVersion } from "./cli-version";
 import { clearStaleStartupLock, daemonsDir, isProcessAlive, serverLockPath, startupLockPath } from "./daemon-ops";
 import type { Env } from "./paths";
 import { PROTOCOL_VERSION } from "./protocol";
@@ -17,8 +18,10 @@ import { startTestServer, tempDir } from "./test-utils";
 const dirs = tempDir();
 afterEach(dirs.cleanupDirs);
 
+const LOCAL_BUILD = formatVersionWithCommit(resolveCliVersion(), resolveCliCommitShort());
+
 function compatibleStatusResponse(): Response {
-  return Response.json({ ok: true, protocol_version: PROTOCOL_VERSION });
+  return Response.json({ ok: true, protocol_version: PROTOCOL_VERSION, build: LOCAL_BUILD });
 }
 
 function testEnv(homeDir: string): Env {
@@ -169,6 +172,80 @@ describe("server daemon", () => {
     }
   });
 
+  test("ensureLocalServer stops a daemon from another build instead of serving through it", async () => {
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
+    let shutdownAsked = false;
+    const server = startTestServer((req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/v1/status")
+        return Response.json({ ok: true, protocol_version: PROTOCOL_VERSION, build: "0.0.1 (deadbee)" });
+      if (url.pathname === "/v1/admin/shutdown") {
+        shutdownAsked = true;
+        setTimeout(() => server.stop(), 10);
+        return Response.json({ ok: true });
+      }
+      return new Response("ok");
+    });
+    const lockPath = serverLockPath(server.port, env);
+    await mkdir(join(lockPath, ".."), { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({ pid: process.pid, port: server.port, startedAt: "2026-02-28T00:00:00.000Z" }),
+      "utf8",
+    );
+
+    try {
+      await expect(
+        ensureLocalServer({
+          port: server.port,
+          apiKey: undefined,
+          spawnCommand: [process.execPath, "-e", "process.exit(0)"],
+          env,
+          timeoutMs: 1_000,
+        }),
+      ).rejects.toThrow();
+      expect(shutdownAsked).toBe(true);
+    } finally {
+      server.stop();
+    }
+  });
+
+  test("ensureLocalServer serves through another build's daemon while a turn is live", async () => {
+    const env = testEnv(dirs.createDir("acolyte-daemon-home-"));
+    const proc = Bun.spawn(["sleep", "60"], { detached: true });
+    const server = startTestServer((req) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/v1/status")
+        return Response.json({ ok: true, protocol_version: PROTOCOL_VERSION, build: "0.0.1 (deadbee)" });
+      if (url.pathname === "/v1/admin/shutdown")
+        return Response.json({ ok: false, live: [{ taskId: "task_abc", sessionId: null }] }, { status: 409 });
+      return new Response("ok");
+    });
+    const lockPath = serverLockPath(server.port, env);
+    await mkdir(join(lockPath, ".."), { recursive: true });
+    await writeFile(
+      lockPath,
+      JSON.stringify({ pid: proc.pid, port: server.port, startedAt: "2026-02-28T00:00:00.000Z" }),
+      "utf8",
+    );
+
+    try {
+      await expect(
+        ensureLocalServer({
+          port: server.port,
+          apiKey: undefined,
+          spawnCommand: serverSpawnCommand(),
+          env,
+        }),
+      ).resolves.toEqual({ port: server.port, pid: proc.pid, started: false });
+      expect(isProcessAlive(proc.pid)).toBe(true);
+    } finally {
+      server.stop();
+      proc.kill();
+      await proc.exited.catch(() => {});
+    }
+  });
+
   test("ensureLocalServer recovers from a stale startup lock with a live owner pid", async () => {
     const home = dirs.createDir("acolyte-daemon-home-");
     const env = testEnv(home);
@@ -189,7 +266,7 @@ describe("server daemon", () => {
         "  port: Number(process.env.PORT),",
         "  fetch(request) {",
         '    if (new URL(request.url).pathname === "/v1/status") {',
-        `      return Response.json({ ok: true, protocol_version: ${JSON.stringify(PROTOCOL_VERSION)} });`,
+        `      return Response.json({ ok: true, protocol_version: ${JSON.stringify(PROTOCOL_VERSION)}, build: ${JSON.stringify(LOCAL_BUILD)} });`,
         "    }",
         '    return new Response("ok");',
         "  },",

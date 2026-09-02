@@ -2,6 +2,25 @@ import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { field } from "./field";
 
+/** What a build reports when no manifest or compile-time stamp can name its version. */
+export const UNVERSIONED_CLI_VERSION = "dev";
+
+/** Orders dotted versions numerically; a leading `v` is ignored and a non-numeric field counts as zero. */
+export function compareVersions(a: string, b: string): number {
+  const parse = (value: string): number[] =>
+    value
+      .replace(/^v/, "")
+      .split(".")
+      .map((part) => Number.parseInt(part, 10) || 0);
+  const left = parse(a);
+  const right = parse(b);
+  for (let index = 0; index < 3; index++) {
+    const diff = (left[index] ?? 0) - (right[index] ?? 0);
+    if (diff !== 0) return diff < 0 ? -1 : 1;
+  }
+  return 0;
+}
+
 export function extractVersionFromPackageJsonText(text: string): string | null {
   try {
     const version = field(JSON.parse(text), "version");
@@ -22,7 +41,7 @@ export function resolveCliVersion(): string {
   } catch {
     // Fall through to the unknown-version marker.
   }
-  return "dev";
+  return UNVERSIONED_CLI_VERSION;
 }
 
 function shortCommit(value: string): string | null {

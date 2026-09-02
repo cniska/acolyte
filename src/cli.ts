@@ -3,7 +3,7 @@ import { appConfig } from "./app-config";
 import { parseGlobalArgsAndCommand } from "./cli-args";
 import { chatModeWithOptions } from "./cli-chat";
 import { commands, usage } from "./cli-command-registry";
-import { checkAndUpdateOnStartup, updateMode } from "./cli-update";
+import { stageUpdateOnStartup, updateMode } from "./cli-update";
 import { formatVersionWithCommit, resolveCliCommitShort, resolveCliVersion } from "./cli-version";
 import { setLocale } from "./i18n";
 import { setLogSink } from "./log";
@@ -31,10 +31,7 @@ async function main(): Promise<void> {
 
   if (!command) {
     if (update === "force") await updateMode();
-    else {
-      const updated = await checkAndUpdateOnStartup({ skip: update === "skip" });
-      if (updated) return;
-    }
+    else void stageUpdateOnStartup({ skip: update === "skip" });
     await chatModeWithOptions({ resumeLatest: false });
     return;
   }

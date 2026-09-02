@@ -611,19 +611,6 @@ export const FI_MESSAGES = {
     { kind: "text", value: "Tuntematon alikomento: " },
     { kind: "arg", name: "subcommand" },
   ],
-  "cli.update.daemon_busy": [
-    {
-      kind: "text",
-      value: "Palvelin jäi käyntiin vanhalla versiolla: vuoro on kesken. Suorita acolyte restart, kun se on valmis.",
-    },
-  ],
-  "cli.update.daemon_left_running": [
-    {
-      kind: "text",
-      value:
-        "Palvelin jäi käyntiin vanhalla versiolla: se ei pysähtynyt. Etsi se komennolla acolyte ps, pysäytä kyseinen prosessi ja suorita acolyte start",
-    },
-  ],
   "error.connection.generic": [
     { kind: "text", value: "Palvelimeen ei saada yhteyttä osoitteessa " },
     { kind: "arg", name: "url" },
@@ -739,6 +726,7 @@ export const FI_MESSAGES = {
     { kind: "arg", name: "filePath" },
   ],
   "status.header": [{ kind: "text", value: "Tila" }],
+  "status.label.build": [{ kind: "text", value: "Koontiversio" }],
   "status.label.capabilities": [{ kind: "text", value: "Ominaisuudet" }],
   "status.label.cloud_url": [{ kind: "text", value: "Pilven URL" }],
   "status.label.cloud_user": [{ kind: "text", value: "Käyttäjä" }],
@@ -763,6 +751,7 @@ export const FI_MESSAGES = {
   "status.label.service": [{ kind: "text", value: "Palvelu" }],
   "status.label.tasks_running": [{ kind: "text", value: "Tehtäviä käynnissä" }],
   "status.label.tasks_total": [{ kind: "text", value: "Tehtäviä yhteensä" }],
+  "status.label.update_staged": [{ kind: "text", value: "Päivitys valmiina" }],
   "status.memory.summary": [
     { kind: "arg", name: "storage" },
     { kind: "text", value: " (" },

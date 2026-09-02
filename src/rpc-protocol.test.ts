@@ -61,6 +61,7 @@ describe("rpc protocol schema", () => {
         provider_auth: ["openai (api key)"],
         model: "gpt-5-mini",
         protocol_version: "v1",
+        build: "1.2.3 (abc1234)",
         capabilities: "chat",
         service: "http://localhost:6767",
         "resources.skills.invalid": 2,

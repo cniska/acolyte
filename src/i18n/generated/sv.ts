@@ -612,19 +612,6 @@ export const SV_MESSAGES = {
     { kind: "text", value: "Okänt underkommando: " },
     { kind: "arg", name: "subcommand" },
   ],
-  "cli.update.daemon_busy": [
-    {
-      kind: "text",
-      value: "Servern lämnades igång på den gamla versionen: en körning pågår. Kör acolyte restart när den är klar.",
-    },
-  ],
-  "cli.update.daemon_left_running": [
-    {
-      kind: "text",
-      value:
-        "Servern lämnades igång på den gamla versionen: den stoppade inte. Hitta den med acolyte ps, stoppa den processen och kör acolyte start",
-    },
-  ],
   "error.connection.generic": [
     { kind: "text", value: "Kan inte nå servern på " },
     { kind: "arg", name: "url" },
@@ -738,6 +725,7 @@ export const SV_MESSAGES = {
     { kind: "arg", name: "filePath" },
   ],
   "status.header": [{ kind: "text", value: "Status" }],
+  "status.label.build": [{ kind: "text", value: "Byggversion" }],
   "status.label.capabilities": [{ kind: "text", value: "Funktioner" }],
   "status.label.cloud_url": [{ kind: "text", value: "Moln-URL" }],
   "status.label.cloud_user": [{ kind: "text", value: "Användare" }],
@@ -762,6 +750,7 @@ export const SV_MESSAGES = {
   "status.label.service": [{ kind: "text", value: "Tjänst" }],
   "status.label.tasks_running": [{ kind: "text", value: "Uppgifter som körs" }],
   "status.label.tasks_total": [{ kind: "text", value: "Uppgifter totalt" }],
+  "status.label.update_staged": [{ kind: "text", value: "Uppdatering redo" }],
   "status.memory.summary": [
     { kind: "arg", name: "storage" },
     { kind: "text", value: " (" },

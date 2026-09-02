@@ -7,12 +7,13 @@ Acolyte uses one XDG-style global layout on macOS and Linux. Environment variabl
 | Config | `~/.config/acolyte/` | `$XDG_CONFIG_HOME/acolyte/` |
 | Data | `~/.local/share/acolyte/` | `$XDG_DATA_HOME/acolyte/` |
 | State | `~/.local/state/acolyte/` | `$XDG_STATE_HOME/acolyte/` |
-| Binary | `~/.local/bin/acolyte` | — |
+| Launcher | `~/.local/bin/acolyte` | — |
+| Installed binary | `~/.local/lib/acolyte/acolyte` | — |
 
 ## What goes where
 
 - **Config** — user-edited settings and credentials: `config.toml`, `credentials`, `oauth.json`
-- **Data** — persistent application data: `memory.db`, `sessions.json`, `trace.db`, `projects/`
+- **Data** — persistent application data: `memory.db`, `sessions.json`, `trace.db`, `projects/`, `bin/<version>/acolyte` (staged updates)
 - **State** — runtime state that can be regenerated: `daemons/`, `locks/`, `client.log`, `update-check.json`
 
 ## Project scope
@@ -31,3 +32,4 @@ Plugins load from `<cwd>/.agents/plugins` and `~/.agents/plugins`, beside skills
 
 - `src/paths.ts` — path resolution logic
 - `scripts/install.sh` — binary installation
+- `scripts/launcher.sh` — the launcher template the installer fills in

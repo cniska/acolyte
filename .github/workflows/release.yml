@@ -82,8 +82,13 @@ jobs:
           git archive --format=tar.gz --output=artifacts/acolyte-source-${GITHUB_REF_NAME}.tar.gz HEAD
           git archive --format=zip --output=artifacts/acolyte-source-${GITHUB_REF_NAME}.zip HEAD
 
+      - name: Add launcher
+        run: |
+          cp scripts/launcher.sh artifacts/launcher.sh
+          cd artifacts && sha256sum launcher.sh > launcher.sha256
+
       - name: Generate checksums
-        run: cd artifacts && sha256sum *.tar.gz *.zip > SHA256SUMS.txt
+        run: cd artifacts && sha256sum *.tar.gz *.zip launcher.sh > SHA256SUMS.txt
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2

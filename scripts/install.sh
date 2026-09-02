@@ -3,7 +3,47 @@ set -eu
 
 REPO="cniska/acolyte"
 
+sha256_of() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | cut -d ' ' -f 1
+  else
+    sha256sum "$1" | cut -d ' ' -f 1
+  fi
+}
+
+# `|` delimits the substitution below and `&` and `\` are replacement metacharacters, so a home
+# directory holding any of them would corrupt the path written into the launcher rather than fail.
+escape_replacement() {
+  printf '%s' "$1" | sed -e 's/[\\|&]/\\&/g'
+}
+
+fetch_verified() {
+  url="$1"
+  sha_url="$2"
+  dest="$3"
+
+  curl -fsSL "$url" -o "$dest"
+  curl -fsSL "$sha_url" -o "${dest}.sha256"
+
+  expected="$(cut -d ' ' -f 1 "${dest}.sha256")"
+  actual="$(sha256_of "$dest")"
+  if [ "$expected" != "$actual" ]; then
+    echo "Checksum mismatch for ${url}: expected ${expected}, got ${actual}" >&2
+    exit 1
+  fi
+}
+
 main() {
+  if [ -z "${HOME:-}" ]; then
+    echo "HOME is not set; cannot choose an install directory." >&2
+    exit 1
+  fi
+
+  if ! command -v shasum >/dev/null 2>&1 && ! command -v sha256sum >/dev/null 2>&1; then
+    echo "Neither shasum nor sha256sum is available; cannot verify the download." >&2
+    exit 1
+  fi
+
   platform="$(uname -s | tr '[:upper:]' '[:lower:]')"
   arch="$(uname -m)"
 
@@ -25,6 +65,7 @@ main() {
   esac
 
   INSTALL_DIR="${HOME}/.local/bin"
+  LIB_DIR="${HOME}/.local/lib/acolyte"
 
   asset="acolyte-${platform}-${arch}.tar.gz"
 
@@ -36,35 +77,28 @@ main() {
     exit 1
   fi
 
-  url="https://github.com/${REPO}/releases/download/${tag}/${asset}"
+  version="${tag#v}"
+  base_url="https://github.com/${REPO}/releases/download/${tag}"
   echo "Downloading ${tag} for ${platform}/${arch}..."
 
   tmpdir="$(mktemp -d)"
   trap 'rm -rf "$tmpdir"' EXIT
 
-  curl -fsSL "$url" -o "${tmpdir}/${asset}"
-
-  sha_url="https://github.com/${REPO}/releases/download/${tag}/${asset%.tar.gz}.sha256"
-  if curl -fsSL "$sha_url" -o "${tmpdir}/checksum.sha256" 2>/dev/null; then
-    expected="$(cut -d ' ' -f 1 "${tmpdir}/checksum.sha256")"
-    if command -v shasum >/dev/null 2>&1; then
-      actual="$(shasum -a 256 "${tmpdir}/${asset}" | cut -d ' ' -f 1)"
-    elif command -v sha256sum >/dev/null 2>&1; then
-      actual="$(sha256sum "${tmpdir}/${asset}" | cut -d ' ' -f 1)"
-    else
-      actual=""
-    fi
-    if [ -n "$actual" ] && [ "$expected" != "$actual" ]; then
-      echo "Checksum mismatch: expected ${expected}, got ${actual}" >&2
-      exit 1
-    fi
-  fi
+  fetch_verified "${base_url}/${asset}" "${base_url}/${asset%.tar.gz}.sha256" "${tmpdir}/${asset}"
+  fetch_verified "${base_url}/launcher.sh" "${base_url}/launcher.sha256" "${tmpdir}/launcher.sh"
 
   tar xzf "${tmpdir}/${asset}" -C "$tmpdir"
 
+  mkdir -p "$LIB_DIR"
+  mv "${tmpdir}/acolyte" "${LIB_DIR}/acolyte"
+  chmod +x "${LIB_DIR}/acolyte"
+
+  sed -e "s|__BASELINE_BIN__|$(escape_replacement "${LIB_DIR}/acolyte")|" \
+    -e "s|__BASELINE_VERSION__|$(escape_replacement "${version}")|" \
+    "${tmpdir}/launcher.sh" > "${tmpdir}/launcher"
   mkdir -p "$INSTALL_DIR"
-  mv "${tmpdir}/acolyte" "${INSTALL_DIR}/acolyte"
-  chmod +x "${INSTALL_DIR}/acolyte"
+  chmod +x "${tmpdir}/launcher"
+  mv "${tmpdir}/launcher" "${INSTALL_DIR}/acolyte"
 
   if ! echo "$PATH" | tr ':' '\n' | grep -qx "$INSTALL_DIR"; then
     shell_config=""
@@ -90,7 +124,7 @@ main() {
   fi
 
   echo ""
-  echo "Acolyte ${tag} installed to ${INSTALL_DIR}/acolyte"
+  echo "Acolyte ${tag} installed to ${LIB_DIR}/acolyte, launched from ${INSTALL_DIR}/acolyte"
   echo ""
   echo "Run 'acolyte auth' to get started."
 }

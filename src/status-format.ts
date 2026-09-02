@@ -4,6 +4,7 @@ import { type TranslationKey, t } from "./i18n";
 import type { StatusFields } from "./status-contract";
 
 const STATUS_KEY_LABELS = {
+  build: "status.label.build",
   capabilities: "status.label.capabilities",
   cloud_url: "status.label.cloud_url",
   cloud_user: "status.label.cloud_user",
@@ -15,6 +16,7 @@ const STATUS_KEY_LABELS = {
   service: "status.label.service",
   tasks_running: "status.label.tasks_running",
   tasks_total: "status.label.tasks_total",
+  update_staged: "status.label.update_staged",
   "resources.config.collisions": "status.label.resources.config.collisions",
   "resources.prompt.agents": "status.label.resources.prompt.agents",
   "resources.skills.invalid": "status.label.resources.skills.invalid",
