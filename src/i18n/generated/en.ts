@@ -330,7 +330,7 @@ export const EN_MESSAGES = {
   "cli.help.desc.auth": [{ kind: "text", value: "authenticate a provider (API key or subscription)" }],
   "cli.help.desc.config": [{ kind: "text", value: "manage config" }],
   "cli.help.desc.history": [{ kind: "text", value: "show recent sessions" }],
-  "cli.help.desc.import": [{ kind: "text", value: "distill another agent's transcripts" }],
+  "cli.help.desc.import": [{ kind: "text", value: "learn from another agent's transcripts" }],
   "cli.help.desc.login": [{ kind: "text", value: "authenticate with the cloud" }],
   "cli.help.desc.logout": [{ kind: "text", value: "remove cloud credentials" }],
   "cli.help.desc.logs": [{ kind: "text", value: "view server logs" }],
@@ -371,10 +371,9 @@ export const EN_MESSAGES = {
   ],
   "cli.import.col.session": [{ kind: "text", value: "Session" }],
   "cli.import.col.project": [{ kind: "text", value: "Project" }],
-  "cli.import.col.calls": [{ kind: "text", value: "Calls" }],
   "cli.import.col.turns": [{ kind: "text", value: "Turns" }],
-  "cli.import.col.facts": [{ kind: "text", value: "Facts" }],
-  "cli.import.col.superseded": [{ kind: "text", value: "Superseded" }],
+  "cli.import.col.memories": [{ kind: "text", value: "Memories" }],
+  "cli.import.col.replaced": [{ kind: "text", value: "Replaced" }],
   "cli.import.col.tokens": [{ kind: "text", value: "Tokens" }],
   "cli.import.invalid_max_turns": [
     { kind: "text", value: "Invalid --max-turns value: " },
@@ -382,6 +381,45 @@ export const EN_MESSAGES = {
     { kind: "text", value: ". Use a whole number of turns, 1 or more." },
   ],
   "cli.import.held_back": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turn is" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turns are" },
+        ],
+      },
+    },
+    { kind: "text", value: " left; run it again for the next batch." },
+  ],
+  "cli.import.no_model": [
+    { kind: "text", value: "No model available: " },
+    { kind: "arg", name: "model" },
+    {
+      kind: "text",
+      value: ". Run acolyte auth to connect a provider, or use --dry-run to see what would be imported.",
+    },
+  ],
+  "cli.import.none": [
+    { kind: "text", value: "Nothing new to read for " },
+    { kind: "arg", name: "project" },
+    { kind: "text", value: " in the last " },
+    { kind: "arg", name: "since" },
+    { kind: "text", value: "." },
+  ],
+  "cli.import.no_project": [
+    {
+      kind: "text",
+      value:
+        "This folder has no project. Import reads the transcripts of the repository you are standing in and identifies it by an owner/repo remote, so run it from inside one.",
+    },
+  ],
+  "cli.import.plan": [
     {
       kind: "plural",
       name: "count",
@@ -396,79 +434,40 @@ export const EN_MESSAGES = {
         ],
       },
     },
-    { kind: "text", value: " still waiting; run it again to take the next batch." },
-  ],
-  "cli.import.no_model": [
-    { kind: "text", value: "No model available: " },
-    { kind: "arg", name: "model" },
-    {
-      kind: "text",
-      value: ". Run acolyte auth to connect a provider, or use --dry-run to see what would be imported.",
-    },
-  ],
-  "cli.import.none": [
-    { kind: "text", value: "No unimported " },
-    { kind: "arg", name: "project" },
-    { kind: "text", value: " transcripts in the last " },
-    { kind: "arg", name: "since" },
-    { kind: "text", value: "." },
-  ],
-  "cli.import.no_project": [
-    {
-      kind: "text",
-      value:
-        "This workspace has no project. Import reads the transcripts of the repository it stands in, identified by an owner/repo remote; stand in one and run it again.",
-    },
-  ],
-  "cli.import.plan": [
-    {
-      kind: "plural",
-      name: "count",
-      arms: {
-        one: [
-          { kind: "arg", name: "count" },
-          { kind: "text", value: " distill call" },
-        ],
-        other: [
-          { kind: "arg", name: "count" },
-          { kind: "text", value: " distill calls" },
-        ],
-      },
-    },
-    { kind: "text", value: ", " },
+    { kind: "text", value: " to read, roughly " },
     { kind: "arg", name: "low" },
     { kind: "text", value: "–" },
     { kind: "arg", name: "high" },
-    { kind: "text", value: " prompt tokens." },
+    { kind: "text", value: " tokens." },
   ],
   "cli.import.confirm": [
-    { kind: "text", value: "Distill " },
+    { kind: "text", value: "Read " },
     {
       kind: "plural",
       name: "count",
       arms: {
         one: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " call" },
+          { kind: "text", value: " turn" },
         ],
         other: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " calls" },
+          { kind: "text", value: " turns" },
         ],
       },
     },
-    { kind: "text", value: " for " },
+    { kind: "text", value: " for roughly " },
     { kind: "arg", name: "low" },
     { kind: "text", value: "–" },
     { kind: "arg", name: "high" },
-    { kind: "text", value: " prompt tokens? [y/N]:" },
+    { kind: "text", value: " tokens? [y/N]:" },
   ],
   "cli.import.cancelled": [{ kind: "text", value: "Nothing imported." }],
   "cli.import.needs_consent": [
     {
       kind: "text",
       value:
-        "An import spends model calls. Run it in a terminal to confirm the plan, or pass --yes to accept it unasked.",
+        "Reading transcripts costs tokens. Run it in a terminal to confirm, or pass --yes to accept without being asked.",
     },
   ],
   "cli.import.stale": [
@@ -477,20 +476,22 @@ export const EN_MESSAGES = {
       name: "count",
       arms: {
         one: [
+          { kind: "text", value: "Skipped " },
           { kind: "arg", name: "count" },
-          { kind: "text", value: " session skipped, " },
+          { kind: "text", value: " session: the project has " },
           { kind: "arg", name: "commits" },
-          { kind: "text", value: " commits behind" },
+          { kind: "text", value: " commits since it ended" },
         ],
         other: [
+          { kind: "text", value: "Skipped " },
           { kind: "arg", name: "count" },
-          { kind: "text", value: " sessions skipped, up to " },
+          { kind: "text", value: " sessions: the project has up to " },
           { kind: "arg", name: "commits" },
-          { kind: "text", value: " commits behind" },
+          { kind: "text", value: " commits since they ended" },
         ],
       },
     },
-    { kind: "text", value: "; --include-stale takes them." },
+    { kind: "text", value: ". Add --include-stale to read them anyway." },
   ],
   "cli.import.undated": [
     {
@@ -498,16 +499,18 @@ export const EN_MESSAGES = {
       name: "count",
       arms: {
         one: [
+          { kind: "text", value: "Skipped " },
           { kind: "arg", name: "count" },
-          { kind: "text", value: " session" },
+          { kind: "text", value: " session: it carries no time, so its age cannot be checked" },
         ],
         other: [
+          { kind: "text", value: "Skipped " },
           { kind: "arg", name: "count" },
-          { kind: "text", value: " sessions" },
+          { kind: "text", value: " sessions: they carry no time, so their age cannot be checked" },
         ],
       },
     },
-    { kind: "text", value: " skipped for carrying no timestamp; --include-stale takes them." },
+    { kind: "text", value: ". Add --include-stale to read them anyway." },
   ],
   "cli.import.unattributable": [
     {
@@ -516,15 +519,15 @@ export const EN_MESSAGES = {
       arms: {
         one: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " session in the window names a directory" },
+          { kind: "text", value: " session has no project: the folder it recorded no longer names a repository" },
         ],
         other: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " sessions in the window name a directory" },
+          { kind: "text", value: " sessions have no project: the folders they recorded no longer name a repository" },
         ],
       },
     },
-    { kind: "text", value: " that no longer identifies a project." },
+    { kind: "text", value: "." },
   ],
   "cli.import.done": [
     {
@@ -533,17 +536,17 @@ export const EN_MESSAGES = {
       arms: {
         one: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " fact" },
+          { kind: "text", value: " memory" },
         ],
         other: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " facts" },
+          { kind: "text", value: " memories" },
         ],
       },
     },
-    { kind: "text", value: " kept, " },
+    { kind: "text", value: " saved, " },
     { kind: "arg", name: "superseded" },
-    { kind: "text", value: " superseded, ~" },
+    { kind: "text", value: " replaced, " },
     { kind: "arg", name: "tokens" },
     { kind: "text", value: " tokens. Written to " },
     { kind: "arg", name: "path" },

@@ -1,4 +1,5 @@
 import type { LanguageModelV4FunctionTool, LanguageModelV4Message } from "@ai-sdk/provider";
+import { formatCompactNumber } from "./number-format";
 import { estimateTokens } from "./token-estimate";
 
 export type PromptSize = {
@@ -27,5 +28,7 @@ export function estimatePromptSize(
 
 export function promptBudgetError(size: PromptSize, limit: number): string | undefined {
   if (size.total <= limit) return undefined;
-  return `Prompt exceeds per-call input budget (${size.total} tokens, limit ${limit}; system=${size.system} tools=${size.tools} messages=${size.messages}).`;
+  const part = (label: string, tokens: number) => `${label}=${formatCompactNumber(tokens)}`;
+  const breakdown = [part("system", size.system), part("tools", size.tools), part("messages", size.messages)];
+  return `Prompt exceeds per-call input budget (${formatCompactNumber(size.total)} tokens, limit ${formatCompactNumber(limit)}; ${breakdown.join(" ")}).`;
 }

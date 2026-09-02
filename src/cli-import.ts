@@ -6,6 +6,7 @@ import { parseSince } from "./datetime";
 import { t } from "./i18n";
 import type { ImportLedger } from "./import-ledger";
 import { defaultMemoryPolicy, type MemoryDistiller, type MemoryStore } from "./memory-contract";
+import { formatCompactNumber } from "./number-format";
 import type { ImportPlan, ImportSessionPlan, ImportSessionResult, RunImportOptions } from "./transcript-import";
 
 const DEFAULT_SINCE = "24h";
@@ -56,9 +57,8 @@ function columnLabels(): Record<string, string> {
     session: t("cli.import.col.session"),
     project: t("cli.import.col.project"),
     turns: t("cli.import.col.turns"),
-    calls: t("cli.import.col.calls"),
-    facts: t("cli.import.col.facts"),
-    superseded: t("cli.import.col.superseded"),
+    memories: t("cli.import.col.memories"),
+    replaced: t("cli.import.col.replaced"),
     tokens: t("cli.import.col.tokens"),
   };
 }
@@ -68,8 +68,7 @@ function planRow(plan: ImportSessionPlan): Record<string, string> {
     session: shortId(plan.sourceSessionId),
     project: plan.project ?? "-",
     turns: String(plan.pending),
-    calls: String(plan.calls),
-    tokens: String(plan.estimatedTokens),
+    tokens: formatCompactNumber(plan.estimatedTokens),
   };
 }
 
@@ -77,22 +76,25 @@ function resultRow(result: ImportSessionResult): Record<string, string> {
   return {
     session: shortId(result.plan.sourceSessionId),
     project: result.plan.project ?? "-",
-    calls: String(result.distilled),
-    facts: String(result.facts),
-    superseded: String(result.superseded),
-    tokens: String(result.tokens),
+    memories: String(result.facts),
+    replaced: String(result.superseded),
+    tokens: formatCompactNumber(result.tokens),
   };
 }
 
 /**
- * What the run will spend, as the band between the floor each call's own prompt costs and the
- * ceiling the recall candidates it is shown can add. The floor alone reads as a total and is not
- * one; the policy caps the candidate block per call, which is what makes the ceiling computable.
+ * What the run will spend, as the band between the floor each reading's own prompt costs and the
+ * ceiling the memories it is shown for replacement can add. The floor alone reads as a total and is
+ * not one; the policy caps that block per reading, which is what makes the ceiling computable.
  */
-function tokenBand(sessions: readonly ImportSessionPlan[]): { count: number; low: number; high: number } {
-  const count = sessions.reduce((sum, session) => sum + session.calls, 0);
+function tokenBand(sessions: readonly ImportSessionPlan[]): { count: number; low: string; high: string } {
+  const calls = sessions.reduce((sum, session) => sum + session.calls, 0);
   const low = sessions.reduce((sum, session) => sum + session.estimatedTokens, 0);
-  return { count, low, high: low + count * defaultMemoryPolicy.recallCandidateTokenLimit };
+  return {
+    count: sessions.reduce((sum, session) => sum + session.pending, 0),
+    low: formatCompactNumber(low),
+    high: formatCompactNumber(low + calls * defaultMemoryPolicy.recallCandidateTokenLimit),
+  };
 }
 
 /** What the window held but the run will not touch, each line naming how to reach it. */
@@ -126,7 +128,7 @@ function emit(rows: Record<string, string>[], summary: string[], json: boolean, 
  * authority, so a run that cannot show the plan and read an answer refuses rather than assume one:
  * a stdin nobody is at, and a `--json` run whose stdout carries the one document it was asked for.
  */
-function consented(band: { count: number; low: number; high: number }, json: boolean, deps: ImportModeDeps): boolean {
+function consented(band: { count: number; low: string; high: string }, json: boolean, deps: ImportModeDeps): boolean {
   if (json || !deps.interactive) {
     deps.commandError("import", t("cli.import.needs_consent"));
     return false;
@@ -236,7 +238,7 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
     const summary = t("cli.import.done", {
       count: results.reduce((sum, result) => sum + result.facts, 0),
       superseded: results.reduce((sum, result) => sum + result.superseded, 0),
-      tokens: results.reduce((sum, result) => sum + result.tokens, 0),
+      tokens: formatCompactNumber(results.reduce((sum, result) => sum + result.tokens, 0)),
       path: deps.scratchDir,
     });
     emit(results.map(resultRow), [summary, ...held], json, deps);

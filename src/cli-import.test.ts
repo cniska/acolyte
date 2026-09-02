@@ -150,14 +150,14 @@ describe("importMode", () => {
     await importMode(["--max-turns", "4"], h.deps);
 
     expect(h.runs[0].plans.map((plan) => plan.pending)).toEqual([4]);
-    expect(h.dim.join("\n")).toContain("6 turns still waiting");
+    expect(h.dim.join("\n")).toContain("6 turns are left");
   });
 
   test("says nothing about held-back turns when the budget covered the window", async () => {
     const h = harness([samplePlan({ pending: 2 })]);
     await importMode(["--max-turns", "4"], h.deps);
 
-    expect(h.dim.join("\n")).not.toContain("still waiting");
+    expect(h.dim.join("\n")).not.toContain("are left");
   });
 
   test("refuses to run without a usable model, naming what to connect", async () => {
@@ -193,7 +193,7 @@ describe("importMode", () => {
     expect(h.runs).toEqual([]);
     expect(h.dim.join("\n")).toContain("abcdef01");
     expect(h.dim.join("\n")).toContain("acme/widgets");
-    expect(h.dim.join("\n")).toContain("1200");
+    expect(h.dim.join("\n")).toContain("1.2k");
   });
 
   test("imports the pending sessions and names where they went", async () => {
@@ -220,9 +220,9 @@ describe("importMode", () => {
     expect(h.dim).toEqual([]);
     expect(JSON.parse(h.out.join("\n"))).toMatchObject({
       session: "abcdef01",
-      calls: "2",
-      facts: "3",
-      superseded: "1",
+      memories: "3",
+      replaced: "1",
+      tokens: "500",
     });
   });
 
@@ -239,10 +239,10 @@ describe("importMode", () => {
     const h = harness([samplePlan()]);
     await importMode([], h.deps);
 
-    expect(h.dim.join("\n")).toContain("2 distill calls");
-    expect(h.dim.join("\n")).toContain("1200–41200");
+    expect(h.dim.join("\n")).toContain("4 turns to read");
+    expect(h.dim.join("\n")).toContain("1.2k–41.2k");
     expect(h.asked).toHaveLength(1);
-    expect(h.asked[0]).toContain("1200–41200");
+    expect(h.asked[0]).toContain("1.2k–41.2k");
     expect(h.runs).toHaveLength(1);
   });
 
@@ -296,7 +296,7 @@ describe("importMode", () => {
     });
     await importMode(["--dry-run"], h.deps);
 
-    expect(h.dim.join("\n")).toContain("2 sessions skipped, up to 240 commits behind");
+    expect(h.dim.join("\n")).toContain("Skipped 2 sessions: the project has up to 240 commits since they ended");
     expect(h.dim.join("\n")).toContain("--include-stale");
   });
 
@@ -309,15 +309,15 @@ describe("importMode", () => {
     });
     await importMode(["--dry-run"], h.deps);
 
-    expect(h.dim.join("\n")).toContain("1 session skipped, 88 commits behind");
-    expect(h.dim.join("\n")).toContain("1 session skipped for carrying no timestamp");
+    expect(h.dim.join("\n")).toContain("Skipped 1 session: the project has 88 commits since it ended");
+    expect(h.dim.join("\n")).toContain("Skipped 1 session: it carries no time");
   });
 
   test("reports the in-window sessions no project can be resolved for", async () => {
     const h = harness([samplePlan()], { unattributable: 3 });
     await importMode(["--dry-run"], h.deps);
 
-    expect(h.dim.join("\n")).toContain("3 sessions in the window");
+    expect(h.dim.join("\n")).toContain("3 sessions have no project");
   });
 
   test("says why a window that held only stale sessions imported nothing", async () => {
@@ -327,7 +327,7 @@ describe("importMode", () => {
     await importMode([], h.deps);
 
     expect(h.dim.join("\n")).toContain("acme/widgets");
-    expect(h.dim.join("\n")).toContain("88 commits behind");
+    expect(h.dim.join("\n")).toContain("88 commits since it ended");
     expect(h.runs).toEqual([]);
   });
 });

@@ -341,7 +341,7 @@ export const SV_MESSAGES = {
   "cli.help.desc.auth": [{ kind: "text", value: "autentisera en leverantör (API-nyckel eller prenumeration)" }],
   "cli.help.desc.config": [{ kind: "text", value: "hantera inställningar" }],
   "cli.help.desc.history": [{ kind: "text", value: "visa senaste sessionerna" }],
-  "cli.help.desc.import": [{ kind: "text", value: "destillera en annan agents transkript" }],
+  "cli.help.desc.import": [{ kind: "text", value: "lär av en annan agents transkript" }],
   "cli.help.desc.login": [{ kind: "text", value: "logga in mot molnet" }],
   "cli.help.desc.logout": [{ kind: "text", value: "ta bort molnuppgifterna" }],
   "cli.help.desc.logs": [{ kind: "text", value: "visa serverloggarna" }],
@@ -382,10 +382,9 @@ export const SV_MESSAGES = {
   ],
   "cli.import.col.session": [{ kind: "text", value: "Session" }],
   "cli.import.col.project": [{ kind: "text", value: "Projekt" }],
-  "cli.import.col.calls": [{ kind: "text", value: "Anrop" }],
   "cli.import.col.turns": [{ kind: "text", value: "Turer" }],
-  "cli.import.col.facts": [{ kind: "text", value: "Fakta" }],
-  "cli.import.col.superseded": [{ kind: "text", value: "Ersatta" }],
+  "cli.import.col.memories": [{ kind: "text", value: "Minnen" }],
+  "cli.import.col.replaced": [{ kind: "text", value: "Ersatta" }],
   "cli.import.col.tokens": [{ kind: "text", value: "Tokens" }],
   "cli.import.invalid_max_turns": [
     { kind: "text", value: "Ogiltigt --max-turns-värde: " },
@@ -407,7 +406,7 @@ export const SV_MESSAGES = {
         ],
       },
     },
-    { kind: "text", value: " väntar fortfarande; kör kommandot igen för nästa omgång." },
+    { kind: "text", value: " återstår; kör kommandot igen för nästa omgång." },
   ],
   "cli.import.no_model": [
     { kind: "text", value: "Ingen modell tillgänglig: " },
@@ -418,7 +417,7 @@ export const SV_MESSAGES = {
     },
   ],
   "cli.import.none": [
-    { kind: "text", value: "Inga oimporterade transkript för " },
+    { kind: "text", value: "Inget nytt att läsa för " },
     { kind: "arg", name: "project" },
     { kind: "text", value: " de senaste " },
     { kind: "arg", name: "since" },
@@ -428,7 +427,7 @@ export const SV_MESSAGES = {
     {
       kind: "text",
       value:
-        "Den här arbetsytan har inget projekt. Import läser transkripten för det repository kommandot körs i, identifierat av en owner/repo-fjärr; ställ dig i ett sådant och kör igen.",
+        "Den här mappen har inget projekt. Import läser transkripten för det repository du står i och identifierar det med en owner/repo-fjärr, så kör kommandot inifrån ett sådant.",
     },
   ],
   "cli.import.plan": [
@@ -438,48 +437,48 @@ export const SV_MESSAGES = {
       arms: {
         one: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " destilleringsanrop" },
+          { kind: "text", value: " tur" },
         ],
         other: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " destilleringsanrop" },
+          { kind: "text", value: " turer" },
         ],
       },
     },
-    { kind: "text", value: ", " },
+    { kind: "text", value: " att läsa, ungefär " },
     { kind: "arg", name: "low" },
     { kind: "text", value: "–" },
     { kind: "arg", name: "high" },
-    { kind: "text", value: " prompt-tokens." },
+    { kind: "text", value: " tokens." },
   ],
   "cli.import.confirm": [
-    { kind: "text", value: "Destillera " },
+    { kind: "text", value: "Läs " },
     {
       kind: "plural",
       name: "count",
       arms: {
         one: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " anrop" },
+          { kind: "text", value: " tur" },
         ],
         other: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " anrop" },
+          { kind: "text", value: " turer" },
         ],
       },
     },
-    { kind: "text", value: " för " },
+    { kind: "text", value: " för ungefär " },
     { kind: "arg", name: "low" },
     { kind: "text", value: "–" },
     { kind: "arg", name: "high" },
-    { kind: "text", value: " prompt-tokens? [y/N]:" },
+    { kind: "text", value: " tokens? [y/N]:" },
   ],
   "cli.import.cancelled": [{ kind: "text", value: "Inget importerat." }],
   "cli.import.needs_consent": [
     {
       kind: "text",
       value:
-        "En import kostar modellanrop. Kör den i en terminal för att bekräfta planen, eller ange --yes för att godta den utan fråga.",
+        "Att läsa transkript kostar tokens. Kör det i en terminal för att bekräfta, eller ange --yes för att godta utan fråga.",
     },
   ],
   "cli.import.stale": [
@@ -488,18 +487,22 @@ export const SV_MESSAGES = {
       name: "count",
       arms: {
         one: [
+          { kind: "text", value: "Hoppade över " },
           { kind: "arg", name: "count" },
-          { kind: "text", value: " session" },
+          { kind: "text", value: " session: projektet har " },
+          { kind: "arg", name: "commits" },
+          { kind: "text", value: " commits sedan den avslutades" },
         ],
         other: [
+          { kind: "text", value: "Hoppade över " },
           { kind: "arg", name: "count" },
-          { kind: "text", value: " sessioner" },
+          { kind: "text", value: " sessioner: projektet har upp till " },
+          { kind: "arg", name: "commits" },
+          { kind: "text", value: " commits sedan de avslutades" },
         ],
       },
     },
-    { kind: "text", value: " hoppades över, upp till " },
-    { kind: "arg", name: "commits" },
-    { kind: "text", value: " commits efter; --include-stale tar med dem." },
+    { kind: "text", value: ". Lägg till --include-stale för att läsa dem ändå." },
   ],
   "cli.import.undated": [
     {
@@ -507,16 +510,18 @@ export const SV_MESSAGES = {
       name: "count",
       arms: {
         one: [
+          { kind: "text", value: "Hoppade över " },
           { kind: "arg", name: "count" },
-          { kind: "text", value: " session" },
+          { kind: "text", value: " session: den saknar tid, så åldern kan inte kontrolleras" },
         ],
         other: [
+          { kind: "text", value: "Hoppade över " },
           { kind: "arg", name: "count" },
-          { kind: "text", value: " sessioner" },
+          { kind: "text", value: " sessioner: de saknar tid, så åldern kan inte kontrolleras" },
         ],
       },
     },
-    { kind: "text", value: " hoppades över eftersom tidsstämpel saknas; --include-stale tar med dem." },
+    { kind: "text", value: ". Lägg till --include-stale för att läsa dem ändå." },
   ],
   "cli.import.unattributable": [
     {
@@ -525,15 +530,21 @@ export const SV_MESSAGES = {
       arms: {
         one: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " session" },
+          {
+            kind: "text",
+            value: " session har inget projekt: mappen den spelade in namnger inte längre ett repository",
+          },
         ],
         other: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " sessioner" },
+          {
+            kind: "text",
+            value: " sessioner har inget projekt: mapparna de spelade in namnger inte längre ett repository",
+          },
         ],
       },
     },
-    { kind: "text", value: " i fönstret pekar på en katalog som inte längre identifierar ett projekt." },
+    { kind: "text", value: "." },
   ],
   "cli.import.done": [
     {
@@ -542,17 +553,17 @@ export const SV_MESSAGES = {
       arms: {
         one: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " faktum" },
+          { kind: "text", value: " minne" },
         ],
         other: [
           { kind: "arg", name: "count" },
-          { kind: "text", value: " fakta" },
+          { kind: "text", value: " minnen" },
         ],
       },
     },
     { kind: "text", value: " sparade, " },
     { kind: "arg", name: "superseded" },
-    { kind: "text", value: " ersatta, ~" },
+    { kind: "text", value: " ersatta, " },
     { kind: "arg", name: "tokens" },
     { kind: "text", value: " tokens. Skrivet till " },
     { kind: "arg", name: "path" },
