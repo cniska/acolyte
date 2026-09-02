@@ -37,7 +37,7 @@ A workspace whose repository has no remote naming an `owner/repo` has no project
 
 After a completed request, the distiller examines the new conversation content and a task-activity digest. The digest records files changed, commands run and whether they failed, and other tool failures, so durable work facts can survive when the final response omits them.
 
-The distiller writes observations through `memory-observe(scope, content, topic?)`. A useful observation is one self-contained claim about the work that cannot be recovered by reading the code: a decision and its reason, a discovered constraint, a project convention, or a user preference. Volatile details such as line numbers, file listings, and unrealized intentions do not belong in memory.
+The distiller writes observations through `memory-observe(scope, content, topic?)`. A useful observation is one self-contained present-tense claim about the codebase, the project, or the person that cannot be recovered by reading the code: a decision and its reason, a discovered constraint, a project convention, or a user preference. Volatile details such as line numbers and file listings do not belong in memory, and neither does the work that produced the fact — a commit, a plan or a request is how a fact was found, not the fact.
 
 Observations are deduplicated within their scope and receive an embedding. A `topic` is an optional single-word label, such as `testing`, `auth`, or `config`.
 

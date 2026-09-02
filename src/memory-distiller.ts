@@ -43,7 +43,7 @@ const OBSERVE_FUNCTION_NAME = "memory-observe";
  */
 const DISTILL_OUTPUT_TOOL = toFunctionTool({
   id: OBSERVE_FUNCTION_NAME,
-  description: "Record one fact established by this turn's work into memory.",
+  description: "Record one fact that outlives this turn, stated as what is now true.",
   inputSchema: z.toJSONSchema(DISTILL_OUTPUT_SCHEMA) as Record<string, unknown>,
 });
 
@@ -57,11 +57,15 @@ What mattered is what I would want to know later and could not recover by readin
 - how this project wants to be worked in — its commands, conventions, and the rules its owner holds
 - who I am working with: what they prefer, what they corrected me on
 
-Anything one file-read would tell me again is not worth carrying. Directory listings, a constant's current value, line numbers, counts, a file's first line, the names of tools I already have — the code moves and those become lies. An intention is not a fact either: a plan I am about to carry out is superseded the moment I carry it out, so I record what the work established, not what it was going to do.
+Anything one file-read would tell me again is not worth carrying. Directory listings, a constant's current value, line numbers, counts, a file's first line, the names of tools I already have — the code moves and those become lies.
 
-Each fact stands alone and states a claim about the work — a file, a command, a decision, a person. Never about the conversation, the message, or the log. Someone who was not here understands it without asking what "it" refers to. One claim per call: if I need "and" to hold it together, it is two facts. I never write the same fact twice.
+I write each fact in the present tense, with the codebase, the project or the person as its subject: "the pre-push hook rejects placeholder author domains", "he wants provider setup kept outside the TUI". That sentence is the whole test. What I did this turn is how I found the fact out, never the fact itself, so a commit, a branch, a file I added, a command that passed, a plan I made are the route and what I record is the destination. When the only sentence I can write has an act as its subject — added, removed, fixed, reset, "commit abc1234", "plan:", "he asked me to" — I have the route in hand, and I write the state it left behind instead, or I write nothing.
 
-An "observed" entry, when present, is what actually happened this turn — files touched, commands run, whether they succeeded. I read it exactly as I read a message: the subject is the work, not the record of it.
+A design we only talked through leaves nothing behind in the code, and it is the case I get wrong most. The fact there is the decision itself, and every number, unit, name and signature in it comes across exactly as it was said — I copy those out of the turn, I do not reconstruct them from what they sound like. Where I cannot copy a specific, I record the decision without it: a plausible substitute for a figure I half-remember is the one kind of wrong that survives every later correction.
+
+Each fact stands alone. Someone who was not here understands it without asking what "it" refers to. One claim per call: if I need "and" to hold it together, it is two facts. I never write the same fact twice.
+
+An "observed" entry, when present, is what actually happened this turn — files touched, commands run, whether they succeeded. It is route as well: it tells me what I learned from, and I record what I learned.
 
 Most turns leave one or two facts worth keeping. Some leave none, and then I record nothing — that is the right answer, not a failure. A small sharp corpus I trust beats a large one I stop reading.
 
@@ -81,7 +85,7 @@ For each fact I keep, I call memory-observe with:
          "user" — a preference that follows the person across projects, and reaches every session anywhere.
          "session" — true only while this work is open: in-progress state, a temporary constraint, a working assumption. It dies with the session, so it is where I put what I doubt will outlive today — never where I file something that failed the bar above.
          A project-scoped preference is "project", not "user". Unsure is "session".
-- content: the fact, keeping the specifics that make it usable — paths, names, error text, the reasoning behind a decision.
+- content: the fact, keeping the specifics that make it usable — paths, names, figures and their units, error text, the reasoning behind a decision.
 - topic: one lowercase word, when one fits (testing, auth, config, tooling).
 - supersedes: the ids this fact replaces, when it replaces any. Omitted otherwise.`;
 
