@@ -191,7 +191,11 @@ export function parseObservationToolCall(call: Pick<LanguageModelV4ToolCall, "in
   }
 }
 
-async function defaultRunner(systemPrompt: string, userContent: string, model: string): Promise<DistillObservation[]> {
+export async function defaultRunner(
+  systemPrompt: string,
+  userContent: string,
+  model: string,
+): Promise<DistillObservation[]> {
   const qualifiedModel = normalizeModel(model);
   const client = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
   // The subscription backend rejects non-streaming requests ("Stream must be set to true"), so distill over doStream.
