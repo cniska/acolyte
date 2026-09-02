@@ -44,7 +44,7 @@ for candidate in "$staged_dir"/*/acolyte; do
 done
 
 if [ ! -x "$target" ]; then
-  echo "acolyte: no runnable binary at ${target}. Reinstall with the install script." >&2
+  echo "acolyte: no runnable binary at ${target}. Reinstall Acolyte." >&2
   exit 1
 fi
 
