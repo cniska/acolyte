@@ -6,9 +6,9 @@
 [![Bun](https://img.shields.io/badge/runtime-bun-f9f1e1?style=flat)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/typescript-strict-3178c6?style=flat)](https://www.typescriptlang.org)
 
-A coding agent you can inspect.
+The agent that knows you.
 
-Acolyte is an open-source, terminal-first AI coding agent with an opinionated runtime and explicit extension seams. Its single-pass lifecycle, on-demand memory, and transparent execution make decisions visible and boundaries explicit.
+Acolyte is an open-source AI coding agent for the terminal. It remembers what it learns about you and your projects from the work itself, so you don't have to explain yourself twice.
 
 ![Opening Acolyte, submitting a prompt, receiving a response with tool calls, exiting, and inspecting the task trace](docs/assets/demo.gif)
 
