@@ -7,7 +7,7 @@ description: Create and update AGENTS.md project rules. Use when authoring or am
 
 `AGENTS.md` holds the cross-tool project rules — the conventions any coding agent must follow in this repo. Two modes, detected by whether one already exists at the target: **Create** (none exists) infers rules from evidence; **Update** (one exists) merges a new rule into the right section and trims what it duplicates. Updating is the harder half: never blind-append.
 
-Acolyte injects `AGENTS.md` as project rules on every task and syncs it to a project-scoped memory record (`mem_agentsmd`); edits take effect on the next turn. Every line has a recurring token cost — keep it lean.
+Acolyte injects `AGENTS.md` as project rules on every task; edits take effect on the next turn. Every line has a recurring token cost — keep it lean.
 
 ## Conventions this file must follow (and enforce)
 
