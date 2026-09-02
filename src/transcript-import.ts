@@ -191,6 +191,7 @@ export async function importSession(
   plan: ImportSessionPlan,
   distiller: MemoryDistiller,
   model: string,
+  onTurn?: (consumedThrough: number) => Promise<void>,
 ): Promise<ImportSessionResult> {
   const messages: { role: string; content: string }[] = [];
   let distilled = 0;
@@ -218,6 +219,7 @@ export async function importSession(
       }
     }
     messages.push({ role: "assistant", content: exchange.response });
+    if (index >= plan.consumed) await onTurn?.(index + 1);
   }
 
   return { plan, distilled, facts, superseded, tokens };
@@ -233,8 +235,9 @@ export type RunImportOptions = {
 };
 
 /**
- * Imports each planned session and records it consumed before moving on, so an interrupted run
- * resumes where it stopped instead of re-distilling what it already wrote.
+ * Imports each planned session, recording progress after every turn. The unit is the turn rather
+ * than the session because a run is interrupted mid-session in practice, and a turn whose facts are
+ * already stored must never be paid for twice.
  */
 export async function runImport(options: RunImportOptions): Promise<ImportSessionResult[]> {
   const results: ImportSessionResult[] = [];
@@ -242,9 +245,10 @@ export async function runImport(options: RunImportOptions): Promise<ImportSessio
 
   for (const plan of options.plans) {
     if (plan.pending === 0) continue;
-    const result = await importSession(plan, options.distiller, options.model);
-    ledger = markConsumed(ledger, CLAUDE_CODE_SOURCE, plan.sourceSessionId, plan.exchanges.length);
-    await options.saveLedger(ledger);
+    const result = await importSession(plan, options.distiller, options.model, async (through) => {
+      ledger = markConsumed(ledger, CLAUDE_CODE_SOURCE, plan.sourceSessionId, through);
+      await options.saveLedger(ledger);
+    });
     options.onSession?.(result);
     results.push(result);
   }

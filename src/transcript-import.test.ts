@@ -189,7 +189,7 @@ describe("importSession", () => {
 });
 
 describe("runImport", () => {
-  test("records a session consumed before moving to the next", async () => {
+  test("records every turn it consumed, in order, across sessions", async () => {
     const plans = await plan({
       "/transcripts/a.jsonl": sessionFile("s1", "/repo", 3),
       "/transcripts/b.jsonl": sessionFile("s2", "/repo", 3),
@@ -207,10 +207,38 @@ describe("runImport", () => {
       },
     });
 
-    expect(saved).toHaveLength(2);
-    expect(consumedExchanges(saved[0], CLAUDE_CODE_SOURCE, "s1")).toBe(3);
-    expect(consumedExchanges(saved[0], CLAUDE_CODE_SOURCE, "s2")).toBe(0);
-    expect(consumedExchanges(saved[1], CLAUDE_CODE_SOURCE, "s2")).toBe(3);
+    // One save per turn, and a session is fully recorded before the next one starts.
+    expect(saved).toHaveLength(6);
+    expect(saved.map((l) => consumedExchanges(l, CLAUDE_CODE_SOURCE, "s1"))).toEqual([1, 2, 3, 3, 3, 3]);
+    expect(saved.map((l) => consumedExchanges(l, CLAUDE_CODE_SOURCE, "s2"))).toEqual([0, 0, 0, 1, 2, 3]);
+  });
+
+  test("an interrupted session keeps the turns it already paid for", async () => {
+    const plans = await plan({ "/transcripts/a.jsonl": sessionFile("s1", "/repo", 6) });
+    const saved: ImportLedger[] = [];
+    let commits = 0;
+    const distiller: MemoryDistiller = {
+      async commit(): Promise<MemoryCommitMetrics | undefined> {
+        commits++;
+        if (commits === 4) throw new Error("interrupted");
+        return { projectPromotedFacts: 1 };
+      },
+    };
+
+    await expect(
+      runImport({
+        plans,
+        distiller,
+        model: "openai/gpt-5-mini",
+        ledger: emptyImportLedger(),
+        saveLedger: async (next) => {
+          saved.push(next);
+        },
+      }),
+    ).rejects.toThrow("interrupted");
+
+    // Three turns were distilled before the failure, so a re-run must start at the fourth.
+    expect(consumedExchanges(saved.at(-1) as ImportLedger, CLAUDE_CODE_SOURCE, "s1")).toBe(3);
   });
 
   test("a window with nothing pending distills nothing and writes no ledger", async () => {
