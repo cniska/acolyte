@@ -18,7 +18,13 @@ Acolyte is an open-source AI coding agent for the terminal. It remembers what it
 curl -fsSL https://acolyte.sh/install | sh
 ```
 
-Installs the latest released binary for macOS and Linux, behind a launcher that keeps it up to date automatically — see [Updates](docs/updates.md). To run from source instead, see [Local development](#local-development).
+Or with [Homebrew](https://brew.sh):
+
+```bash
+brew install cniska/tap/acolyte
+```
+
+Both install the latest released binary for macOS and Linux, behind a launcher that keeps it up to date automatically — see [Updates](docs/updates.md). Pick one: two installs shadow each other on `PATH`. To run from source instead, see [Local development](#local-development).
 
 Requires Git 2.14 or newer on `PATH`: Acolyte reports every file edit as a Git diff, and `/workspaces` manages Git worktrees.
 

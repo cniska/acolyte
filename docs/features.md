@@ -24,6 +24,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - update flags to force or skip auto-update (`--update`, `--no-update`)
 - XDG-style global directories
 - one-line install script
+- Homebrew tap (`brew install cniska/tap/acolyte`)
 
 ## Agent execution
 
