@@ -70,6 +70,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **FR-34a** — Errors and warnings are written to stderr, so a command's stdout carries only what the command was asked to produce.
 - **FR-34b** — An error that reaches the top of the CLI, from a command or from the chat renderer, prints one line saying what the user can do about it and exits non-zero. The thrown message, any response body it carried, and the stack are shown only when `ACOLYTE_DEBUG=cli` asks for them.
 - **FR-35** — `acolyte <command> help` (or `-h`/`--help`) prints detailed usage for that command.
+- **FR-52** — `acolyte import` distills a rolling window of another agent's session transcripts, defaulting to the last 24 hours and settable with `--since`; `--dry-run` reports what a run would distill and its estimated prompt cost, and `--reset` discards what earlier runs wrote. The command is hidden from the command table while its target is a throwaway corpus.
 - **FR-51** — Human-facing CLI output carries color only when its destination is a terminal and `NO_COLOR` is unset; redirected or piped output is plain text.
 
 ### 2.5 Options / configuration
@@ -115,6 +116,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 - **MEM-18** — A remote addressing a filesystem path names no repository other checkouts can share, so it yields no project identity.
 - **MEM-19** — A workspace whose repository has no remote naming an `owner/repo`, and a workspace that is not in a repository, has no project scope: session and user memory still work there, an explicit project-scoped write fails saying the workspace has no remote, and a background project-scoped commit is skipped and recorded in the trace.
 - **MEM-20** — Every memory record originates in distillation: no tool the model can call, no command, no typed phrase, and no host projection of a file creates one, so a "remember this" message is answered the way any other message is. Restoring from the archive and moving a scope into an account relocate records that distillation already wrote.
+- **MEM-21** — An import of another agent's transcripts hands distillation the turns it finds and nothing else, so an imported fact is one Acolyte observed. A source session's project scope comes from the repository remote of the checkout it recorded working in, resolved at import time. A ledger records which source sessions have been consumed and how far, so re-importing an unchanged window writes nothing and retires nothing. Until a redaction policy exists, an import writes to a throwaway corpus rather than the one recall reads.
 
 ## 4. Lifecycle & completion requirements (LC)
 

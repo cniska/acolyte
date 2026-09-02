@@ -130,6 +130,7 @@ export type MessageArgs = {
   "cli.help.desc.auth": never;
   "cli.help.desc.config": never;
   "cli.help.desc.history": never;
+  "cli.help.desc.import": never;
   "cli.help.desc.login": never;
   "cli.help.desc.logout": never;
   "cli.help.desc.logs": never;
@@ -157,6 +158,17 @@ export type MessageArgs = {
   "cli.help.section.options": never;
   "cli.help.section.usage": never;
   "cli.history.none": never;
+  "cli.args.invalid_since": { value: string | number };
+  "cli.import.col.session": never;
+  "cli.import.col.project": never;
+  "cli.import.col.turns": never;
+  "cli.import.col.facts": never;
+  "cli.import.col.superseded": never;
+  "cli.import.col.tokens": never;
+  "cli.import.none": { since: string | number };
+  "cli.import.plan": { exchanges: number; sessions: number; tokens: number };
+  "cli.import.done": { facts: number; path: string | number; sessions: number; superseded: number; tokens: number };
+  "cli.import.reset": { path: string | number };
   "cli.login.opening.browser": never;
   "cli.login.open.manually": { url: string | number };
   "cli.login.prompt.token": never;
@@ -186,7 +198,6 @@ export type MessageArgs = {
   "cli.login.welcome": { email: string | number };
   "cli.logout.done": never;
   "cli.logs.invalid_level": { level: string | number };
-  "cli.logs.invalid_since": { value: string | number };
   "cli.logs.no_file": never;
   "cli.logs.no_lines": never;
   "cli.memory.archive.none": never;

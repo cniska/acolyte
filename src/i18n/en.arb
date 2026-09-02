@@ -752,6 +752,10 @@
   "@cli.help.desc.history": {
     "description": "Description of the 'history' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
+  "cli.help.desc.import": "distill another agent's transcripts",
+  "@cli.help.desc.import": {
+    "description": "Description of the hidden 'import' command in the CLI command table. Lowercase verb phrase, no trailing period."
+  },
   "cli.help.desc.login": "authenticate with the cloud",
   "@cli.help.desc.login": {
     "description": "Description of the 'login' command, which signs in to the hosted cloud service. Lowercase verb phrase, no trailing period."
@@ -869,6 +873,93 @@
   "cli.history.none": "No saved sessions.",
   "@cli.history.none": {
     "description": "Shown by the 'history' command when no sessions are stored (cli-history.ts:30). Separate from the picker's equivalent because the two surfaces may word it differently."
+  },
+  "cli.args.invalid_since": "Invalid --since value: {value}. Use format like 5m, 2h, 1d.",
+  "@cli.args.invalid_since": {
+    "description": "Shown when --since is given an unparseable value. '--since' is a literal flag name; {value} is what the user typed; the example durations are literal syntax and must not be translated.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.import.col.session": "session",
+  "@cli.import.col.session": {
+    "description": "Column header in the 'import' table: the source agent's session, shown by the first characters of its id. Lowercase, no trailing period."
+  },
+  "cli.import.col.project": "project",
+  "@cli.import.col.project": {
+    "description": "Column header in the 'import' table: the owner/repo the session's working directory belongs to. Lowercase, no trailing period."
+  },
+  "cli.import.col.turns": "turns",
+  "@cli.import.col.turns": {
+    "description": "Column header in the 'import' table: turns handed to distillation. Lowercase, no trailing period."
+  },
+  "cli.import.col.facts": "facts",
+  "@cli.import.col.facts": {
+    "description": "Column header in the 'import' table: records distillation stored. Lowercase, no trailing period."
+  },
+  "cli.import.col.superseded": "superseded",
+  "@cli.import.col.superseded": {
+    "description": "Column header in the 'import' table: records retired in favor of a newer one. Lowercase, no trailing period."
+  },
+  "cli.import.col.tokens": "tokens",
+  "@cli.import.col.tokens": {
+    "description": "Column header in the 'import' table: prompt tokens the distill calls used or are estimated to use. Lowercase, no trailing period."
+  },
+  "cli.import.none": "No unimported transcripts in the last {since}.",
+  "@cli.import.none": {
+    "description": "Shown by 'import' when the window holds no session the ledger has not already consumed. {since} is the duration the user asked for, such as 24h.",
+    "placeholders": {
+      "since": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.import.plan": "{sessions} sessions, {exchanges} turns to distill, ~{tokens} prompt tokens.",
+  "@cli.import.plan": {
+    "description": "Summary line under the 'import --dry-run' table. {tokens} is an estimate, hence the tilde.",
+    "placeholders": {
+      "sessions": {
+        "type": "number"
+      },
+      "exchanges": {
+        "type": "number"
+      },
+      "tokens": {
+        "type": "number"
+      }
+    }
+  },
+  "cli.import.done": "{sessions} sessions, {facts} facts, {superseded} superseded, ~{tokens} tokens. Written to {path}",
+  "@cli.import.done": {
+    "description": "Summary line under the 'import' table once the run finishes. {path} is the throwaway directory the import wrote to, not the real corpus.",
+    "placeholders": {
+      "sessions": {
+        "type": "number"
+      },
+      "facts": {
+        "type": "number"
+      },
+      "superseded": {
+        "type": "number"
+      },
+      "tokens": {
+        "type": "number"
+      },
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.import.reset": "Cleared {path}",
+  "@cli.import.reset": {
+    "description": "Shown by 'import --reset' after deleting the throwaway corpus and its ledger. {path} is the directory removed.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
   },
   "cli.login.opening.browser": "Opening browser to sign in…",
   "@cli.login.opening.browser": {
@@ -1042,15 +1133,6 @@
     "description": "Shown when --level is given an unrecognized value. {level} is what the user typed; the four names after it are literal flag values and must not be translated.",
     "placeholders": {
       "level": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.logs.invalid_since": "Invalid --since value: {value}. Use format like 5m, 2h, 1d.",
-  "@cli.logs.invalid_since": {
-    "description": "Shown when --since is given an unparseable value. '--since' is a literal flag name; {value} is what the user typed; the example durations are literal syntax and must not be translated.",
-    "placeholders": {
-      "value": {
         "type": "String"
       }
     }

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { appConfig } from "./app-config";
 import { hasHelpFlag, parseFlag } from "./cli-args";
 import { authMode } from "./cli-auth";
@@ -9,6 +9,7 @@ import type { CliCommand, CliCommandHandler, CliCommandHelp } from "./cli-contra
 import { psMode, restartMode, startMode, stopMode } from "./cli-daemon";
 import { commandError as commandErrorFromHelp, commandHelp as commandHelpFromHelp, printUsage } from "./cli-help";
 import { historyMode } from "./cli-history";
+import { importMode } from "./cli-import";
 import { loginMode, logoutMode } from "./cli-login";
 import { logsMode } from "./cli-logs";
 import { memoryMode } from "./cli-memory";
@@ -36,7 +37,10 @@ import {
 } from "./credentials";
 import { serverLogPath } from "./daemon-ops";
 import { t } from "./i18n";
+import { readImportLedger, writeImportLedger } from "./import-ledger";
+import { createMemoryDistiller } from "./memory-distiller";
 import { fileMemoryStore } from "./memory-ops";
+import { createSqliteMemoryStore } from "./memory-store";
 import { readOAuthTokensSync, removeOAuthTokens, writeOAuthTokens } from "./oauth-store";
 import { openBrowser } from "./open-browser";
 import { exchangeCode } from "./openai-oauth";
@@ -56,6 +60,7 @@ import { createSession, getSessionStore } from "./session-store";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skill-ops";
 import { formatStatus } from "./status-format";
 import { openTraceStore } from "./trace-store";
+import { claudeCodeTranscriptDir, importScratchDir, planImport, runImport } from "./transcript-import";
 import { formatCliBanner, printDim, printError, printOutput } from "./ui";
 
 export function commandHelpDoc(name: string): CliCommandHelp | undefined {
@@ -333,6 +338,32 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         printError,
         serverApiKey: appConfig.server.apiKey,
         serverPort: appConfig.server.port,
+        commandError,
+        commandHelp,
+      }),
+  },
+  import: {
+    hidden: true,
+    help: () => ({
+      command: "import",
+      usage: "acolyte import [--since <duration>] [--dry-run] [--reset] [--json]",
+      description: t("cli.help.desc.import"),
+      examples: ["acolyte import --dry-run", "acolyte import --since 3d", "acolyte import --reset"],
+    }),
+    handler: (args) =>
+      importMode(args, {
+        hasHelpFlag,
+        transcriptDir: claudeCodeTranscriptDir(),
+        scratchDir: importScratchDir(),
+        planImport,
+        runImport,
+        createStore: createSqliteMemoryStore,
+        createDistiller: (store) => createMemoryDistiller({ store }),
+        readLedger: readImportLedger,
+        writeLedger: writeImportLedger,
+        removeDir: (path) => rm(path, { recursive: true, force: true }),
+        printDim,
+        printOutput,
         commandError,
         commandHelp,
       }),
