@@ -137,8 +137,14 @@ describe("high-water mark", () => {
       runner: captureRunner(seen),
       policy: testPolicy,
     });
-    await distiller.commit({ sessionId: "sess_test0001", messages: turnOne, output: "done one" });
     await distiller.commit({
+      model: "openai/gpt-5-mini",
+      sessionId: "sess_test0001",
+      messages: turnOne,
+      output: "done one",
+    });
+    await distiller.commit({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_test0001",
       messages: [...turnOne, { role: "user", content: "turn two" }],
       output: "done two",
@@ -164,10 +170,16 @@ describe("high-water mark", () => {
       policy: testPolicy,
     });
     await expect(
-      distiller.commit({ sessionId: "sess_test0001", messages: turnOne, output: "done one" }),
+      distiller.commit({
+        model: "openai/gpt-5-mini",
+        sessionId: "sess_test0001",
+        messages: turnOne,
+        output: "done one",
+      }),
     ).rejects.toThrow();
     failWrite = false;
     await distiller.commit({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_test0001",
       messages: [...turnOne, { role: "user", content: "turn two" }],
       output: "done two",
@@ -182,8 +194,18 @@ describe("high-water mark", () => {
       runner: captureRunner(seen),
       policy: testPolicy,
     });
-    await distiller.commit({ sessionId: "sess_test0001", messages: turnOne, output: "done" });
-    await distiller.commit({ sessionId: "sess_test0002", messages: turnOne, output: "done" });
+    await distiller.commit({
+      model: "openai/gpt-5-mini",
+      sessionId: "sess_test0001",
+      messages: turnOne,
+      output: "done",
+    });
+    await distiller.commit({
+      model: "openai/gpt-5-mini",
+      sessionId: "sess_test0002",
+      messages: turnOne,
+      output: "done",
+    });
     expect(seen[1]).toContain("turn one");
   });
 
@@ -195,6 +217,7 @@ describe("high-water mark", () => {
       policy: createMemoryPolicy({ messageThreshold: 1, contextMessageWindow: 2 }),
     });
     await distiller.commit({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_test0001",
       messages: [
         { role: "user", content: "oldest" },
@@ -217,6 +240,7 @@ describe("memoryDistiller", () => {
         makeRunner([{ scope: "session", content: "a fact", topic: null, supersedes: [] }]),
       );
       await source.commit({
+        model: "openai/gpt-5-mini",
         messages: Array.from({ length: 25 }, (_, i) => ({ role: "user", content: `msg ${i}` })),
         output: "response",
       });
@@ -231,6 +255,7 @@ describe("memoryDistiller", () => {
         policy: createMemoryPolicy({ messageThreshold: 5 }),
       });
       await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         messages: [{ role: "user", content: "hello" }],
         output: "hi",
@@ -260,6 +285,7 @@ describe("memoryDistiller", () => {
         makeRunner([{ scope: "session", content: "prefers short answers", topic: null, supersedes: [] }]),
       );
       await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         messages: [{ role: "user", content: "hello" }],
         output: "done",
@@ -279,6 +305,7 @@ describe("memoryDistiller", () => {
       ]);
       const source = createTestDistiller(store, makeRunner([]));
       const metrics = await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         resourceId: "proj_abc123",
         messages: [{ role: "user", content: "hello" }],
@@ -305,6 +332,7 @@ describe("memoryDistiller", () => {
         ]),
       );
       await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         resourceId: "proj_abc123",
         messages: [{ role: "user", content: "hello" }],
@@ -327,6 +355,7 @@ describe("memoryDistiller", () => {
         ]),
       );
       await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         resourceId: "proj_abc123",
         messages: [{ role: "user", content: "hello" }],
@@ -354,6 +383,7 @@ describe("memoryDistiller", () => {
         ]),
       );
       const metrics = await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         resourceId: "proj_abc123",
         messages: [{ role: "user", content: "hello" }],
@@ -379,6 +409,7 @@ describe("memoryDistiller", () => {
         commitScopes: ["project"],
       });
       await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         resourceId: "proj_abc123",
         messages: [{ role: "user", content: "hello" }],
@@ -400,6 +431,7 @@ describe("memoryDistiller", () => {
         policy: testPolicy,
       });
       await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         workspace: "/tmp/acolyte-project",
         messages: [{ role: "user", content: "hello" }],
@@ -448,6 +480,7 @@ describe("memoryDistiller", () => {
           policy: fixturePolicy,
         });
         const metrics = await source.commit({
+          model: "openai/gpt-5-mini",
           sessionId: "sess_test0001",
           resourceId: "proj_abc123",
           messages: [{ role: "user", content: "hello" }],
@@ -546,11 +579,29 @@ describe("supersession", () => {
     tokenEstimate: 8,
   };
   const commitCtx = {
+    model: "openai/gpt-5-mini",
     sessionId: "sess_test0001",
     resourceId: "proj_abc123" as const,
     messages: [{ role: "user", content: "hello" }],
     output: "done",
   };
+
+  test("distills with the model the turn ran with, not a configured one", async () => {
+    const store = createMockStore();
+    let seenModel = "";
+    const distiller = createMemoryDistiller({
+      store,
+      policy: testPolicy,
+      runner: async (_prompt, _content, model) => {
+        seenModel = model;
+        return [];
+      },
+    });
+
+    await distiller.commit({ ...commitCtx, model: "anthropic/claude-sonnet-4" });
+
+    expect(seenModel).toBe("anthropic/claude-sonnet-4");
+  });
 
   test("shows existing facts to the distiller with their ids", async () => {
     const store = createMockStore([{ ...existing }]);

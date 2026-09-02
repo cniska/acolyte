@@ -133,7 +133,6 @@ function serializeToml(config: Config): string {
   if (typeof config.port === "number") lines.push(`port = ${config.port}`);
   if (config.locale) lines.push(`locale = ${JSON.stringify(config.locale)}`);
   if (config.model) lines.push(`model = ${JSON.stringify(config.model)}`);
-  if (config.distillModel) lines.push(`distillModel = ${JSON.stringify(config.distillModel)}`);
   if (config.openaiBaseUrl) lines.push(`openaiBaseUrl = ${JSON.stringify(config.openaiBaseUrl)}`);
   if (config.anthropicBaseUrl) lines.push(`anthropicBaseUrl = ${JSON.stringify(config.anthropicBaseUrl)}`);
   if (config.googleBaseUrl) lines.push(`googleBaseUrl = ${JSON.stringify(config.googleBaseUrl)}`);
@@ -165,7 +164,6 @@ function resolveConfig(config: Config): ResolvedConfig {
     port,
     locale: config.locale ?? defaults.locale,
     model,
-    distillModel: config.distillModel ?? model,
     openaiBaseUrl: config.openaiBaseUrl ?? defaults.openaiBaseUrl,
     anthropicBaseUrl: config.anthropicBaseUrl ?? defaults.anthropicBaseUrl,
     googleBaseUrl: config.googleBaseUrl ?? defaults.googleBaseUrl,

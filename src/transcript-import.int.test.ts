@@ -72,6 +72,7 @@ describe("transcript import", () => {
     const results = await runImport({
       plans: sessions,
       distiller,
+      model: "openai/gpt-5-mini",
       ledger: emptyImportLedger(),
       saveLedger: (next) => writeImportLedger(ledgerPath, next),
     });
@@ -113,6 +114,7 @@ describe("transcript import", () => {
     await runImport({
       plans: sessions,
       distiller,
+      model: "openai/gpt-5-mini",
       ledger: emptyImportLedger(),
       saveLedger: async () => {},
     });
@@ -148,6 +150,7 @@ describe("transcript import", () => {
     await runImport({
       plans: first.sessions,
       distiller,
+      model: "openai/gpt-5-mini",
       ledger: emptyImportLedger(),
       saveLedger: (next) => writeImportLedger(ledgerPath, next),
     });
@@ -159,6 +162,7 @@ describe("transcript import", () => {
     await runImport({
       plans: second.sessions,
       distiller,
+      model: "openai/gpt-5-mini",
       ledger,
       saveLedger: (next) => writeImportLedger(ledgerPath, next),
     });

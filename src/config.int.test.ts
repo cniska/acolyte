@@ -215,7 +215,6 @@ describe("config store", () => {
     expect(resolved.port).toBe(6767);
     expect(resolved.locale).toBe("en");
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
-    expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.anthropicBaseUrl).toBe("https://api.anthropic.com/v1");
 
     expect(resolved.logFormat).toBe("logfmt");

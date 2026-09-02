@@ -187,7 +187,11 @@ export type ImportSessionResult = {
  * Replays one session as the sequence of turns that produced it, so the distiller sees the same
  * growing history a live session gives it and decides for itself what survives each turn.
  */
-export async function importSession(plan: ImportSessionPlan, distiller: MemoryDistiller): Promise<ImportSessionResult> {
+export async function importSession(
+  plan: ImportSessionPlan,
+  distiller: MemoryDistiller,
+  model: string,
+): Promise<ImportSessionResult> {
   const messages: { role: string; content: string }[] = [];
   let distilled = 0;
   let facts = 0;
@@ -198,6 +202,7 @@ export async function importSession(plan: ImportSessionPlan, distiller: MemoryDi
     messages.push({ role: "user", content: exchange.prompt });
     if (index >= plan.consumed) {
       const metrics = await distiller.commit({
+        model,
         sessionId: plan.sessionId,
         workspace: plan.workspace ?? undefined,
         messages: [...messages],
@@ -221,6 +226,7 @@ export async function importSession(plan: ImportSessionPlan, distiller: MemoryDi
 export type RunImportOptions = {
   plans: readonly ImportSessionPlan[];
   distiller: MemoryDistiller;
+  model: string;
   ledger: ImportLedger;
   saveLedger: (ledger: ImportLedger) => Promise<void>;
   onSession?: (result: ImportSessionResult) => void;
@@ -236,7 +242,7 @@ export async function runImport(options: RunImportOptions): Promise<ImportSessio
 
   for (const plan of options.plans) {
     if (plan.pending === 0) continue;
-    const result = await importSession(plan, options.distiller);
+    const result = await importSession(plan, options.distiller, options.model);
     ledger = markConsumed(ledger, CLAUDE_CODE_SOURCE, plan.sourceSessionId, plan.exchanges.length);
     await options.saveLedger(ledger);
     options.onSession?.(result);

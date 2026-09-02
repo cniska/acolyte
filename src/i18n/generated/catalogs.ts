@@ -168,6 +168,7 @@ export type MessageArgs = {
   "cli.import.col.tokens": never;
   "cli.import.invalid_max_turns": { value: string | number };
   "cli.import.held_back": { count: number };
+  "cli.import.no_model": { model: string | number };
   "cli.import.none": { since: string | number };
   "cli.import.plan": { count: number; tokens: number };
   "cli.import.done": { count: number; path: string | number; superseded: number; tokens: number };

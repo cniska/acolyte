@@ -32,7 +32,6 @@ export const appConfig = {
   },
   model: fileConfig.model,
   reasoning: fileConfig.reasoning,
-  distillModel: fileConfig.distillModel,
   embedding: {
     model: fileConfig.embeddingModel,
     baseUrl: fileConfig.embeddingBaseUrl,

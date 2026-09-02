@@ -30,7 +30,11 @@ type Harness = {
   runs: RunImportOptions[];
 };
 
-function harness(plans: ImportSessionPlan[], ledger: ImportLedger = emptyImportLedger()): Harness {
+function harness(
+  plans: ImportSessionPlan[],
+  ledger: ImportLedger = emptyImportLedger(),
+  distillAvailable = true,
+): Harness {
   const dim: string[] = [];
   const out: string[] = [];
   const errors: { name: string; message?: string }[] = [];
@@ -62,6 +66,7 @@ function harness(plans: ImportSessionPlan[], ledger: ImportLedger = emptyImportL
     },
     createStore: () => store,
     createDistiller: () => ({ commit: async () => undefined }),
+    resolveModel: () => ({ model: "openai/gpt-5-mini", available: distillAvailable }),
     readLedger: async () => ledger,
     writeLedger: async (_path, next) => {
       saved.push(next);
@@ -130,6 +135,24 @@ describe("importMode", () => {
     await importMode(["--max-turns", "4"], h.deps);
 
     expect(h.dim.join("\n")).not.toContain("still waiting");
+  });
+
+  test("refuses to run without a usable model, naming what to connect", async () => {
+    const h = harness([samplePlan()], emptyImportLedger(), false);
+    await importMode([], h.deps);
+
+    expect(h.errors[0].message).toContain("openai/gpt-5-mini");
+    expect(h.errors[0].message).toContain("acolyte auth");
+    expect(h.runs).toEqual([]);
+    expect(h.removed).toEqual([]);
+  });
+
+  test("--dry-run still works with no usable model, since it makes no model call", async () => {
+    const h = harness([samplePlan()], emptyImportLedger(), false);
+    await importMode(["--dry-run"], h.deps);
+
+    expect(h.errors).toEqual([]);
+    expect(h.dim.join("\n")).toContain("abcdef01");
   });
 
   test("says so when the window holds nothing to import", async () => {

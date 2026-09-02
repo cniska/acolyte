@@ -37,7 +37,6 @@ export interface Config {
   port?: number;
   locale?: TranslationLocale;
   model?: string;
-  distillModel?: string;
   openaiBaseUrl?: string;
   anthropicBaseUrl?: string;
   googleBaseUrl?: string;
@@ -54,7 +53,6 @@ export interface ResolvedConfig {
   port: number;
   locale: TranslationLocale;
   model: string;
-  distillModel: string;
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
   googleBaseUrl: string;
@@ -79,7 +77,6 @@ export const CONFIG_SET_SCHEMAS: Partial<Record<keyof Config, z.ZodTypeAny>> = {
   reasoning: reasoningLevelSchema,
   embeddingModel: nonEmptyStringSchema,
   embeddingBaseUrl: embeddingBaseUrlSchema,
-  distillModel: nonEmptyStringSchema,
   replyTimeoutMs: parseIntegerSchema(1_000, MAX_RUN_REPLY_TIMEOUT_MS),
   features: featureFlagsSchema,
 };
@@ -94,7 +91,6 @@ export function toConfig(input: Record<string, unknown>): Config {
     port: parseField(parseIntegerSchema(1, 65535), input.port),
     locale: parseField(translationLocaleSchema, input.locale),
     model: parseField(nonEmptyStringSchema, input.model),
-    distillModel: parseField(nonEmptyStringSchema, input.distillModel),
     openaiBaseUrl: parseField(nonEmptyStringSchema, input.openaiBaseUrl),
     anthropicBaseUrl: parseField(nonEmptyStringSchema, input.anthropicBaseUrl),
     googleBaseUrl: parseField(nonEmptyStringSchema, input.googleBaseUrl),

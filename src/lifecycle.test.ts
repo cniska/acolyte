@@ -168,6 +168,7 @@ describe("scheduleMemoryCommit", () => {
     const calls: Array<{ sessionId?: string }> = [];
     scheduleMemoryCommit(
       {
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         messages: [],
         output: "done",
@@ -190,6 +191,7 @@ describe("scheduleMemoryCommit", () => {
     const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
     scheduleMemoryCommit(
       {
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         messages: [{ role: "user", content: "hello" }],
         output: "done",
@@ -219,6 +221,7 @@ describe("scheduleMemoryCommit", () => {
     const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
     scheduleMemoryCommit(
       {
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         messages: [{ role: "user", content: "hello" }],
         output: "done",
@@ -250,6 +253,7 @@ describe("scheduleMemoryCommit", () => {
     const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
     scheduleMemoryCommit(
       {
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         messages: [{ role: "user", content: "hello" }],
         output: "done",
@@ -286,6 +290,7 @@ describe("scheduleMemoryCommit", () => {
     const events: Array<{ event: string; fields?: Record<string, unknown> }> = [];
     scheduleMemoryCommit(
       {
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         messages: [{ role: "user", content: "hello" }],
         output: "done",
@@ -320,12 +325,14 @@ describe("scheduleMemoryCommit", () => {
 
   test("uses shared project and user queue keys across sessions", () => {
     const first = memoryCommitQueueKeys({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_first0001",
       resourceId: "proj_shared0001",
       messages: [],
       output: "done",
     });
     const second = memoryCommitQueueKeys({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_second001",
       resourceId: "proj_shared0001",
       messages: [],

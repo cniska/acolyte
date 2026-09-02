@@ -18,13 +18,13 @@ const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-distille
 let fake: FakeProviderServer;
 let savedBaseUrl: string;
 let savedApiKey: string | undefined;
-let savedDistillModel: string;
+let savedModel: string;
 let lastRequestBody: Record<string, unknown> | undefined;
 
 beforeAll(() => {
   savedBaseUrl = appConfig.openai.baseUrl;
   savedApiKey = appConfig.openai.apiKey;
-  savedDistillModel = appConfig.distillModel;
+  savedModel = appConfig.model;
   fake = startFakeProviderServer({
     handleRequest: (ctx) => {
       lastRequestBody = ctx.body as Record<string, unknown>;
@@ -52,14 +52,14 @@ beforeAll(() => {
   });
   (appConfig.openai as { baseUrl: string }).baseUrl = fake.baseUrl;
   (appConfig.openai as { apiKey: string | undefined }).apiKey = "fake-key";
-  (appConfig as { distillModel: string }).distillModel = "gpt-4o-mini";
+  (appConfig as { model: string }).model = "gpt-4o-mini";
 });
 
 afterAll(() => {
   fake.stop();
   (appConfig.openai as { baseUrl: string }).baseUrl = savedBaseUrl;
   (appConfig.openai as { apiKey: string | undefined }).apiKey = savedApiKey;
-  (appConfig as { distillModel: string }).distillModel = savedDistillModel;
+  (appConfig as { model: string }).model = savedModel;
 });
 
 afterEach(cleanupStores);
@@ -70,6 +70,7 @@ describe("memoryDistiller integration", () => {
     const distiller = createMemoryDistiller({ store, policy: testPolicy });
 
     const metrics = await distiller.commit({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_inttest001",
       resourceId: "proj_inttest001",
       messages: [
@@ -101,6 +102,7 @@ describe("memoryDistiller integration", () => {
     const distiller = createMemoryDistiller({ store, policy: testPolicy });
 
     await distiller.commit({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_inttest002",
       resourceId: "proj_inttest002",
       messages: [
@@ -122,6 +124,7 @@ describe("memoryDistiller integration", () => {
     const distiller = createMemoryDistiller({ store, policy: testPolicy });
 
     await distiller.commit({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_inttest003",
       resourceId: "proj_inttest003",
       messages: [{ role: "user", content: "hello" }],

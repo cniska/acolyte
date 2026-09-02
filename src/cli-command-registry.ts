@@ -1,4 +1,5 @@
 import { readFile, rm } from "node:fs/promises";
+import { resolveModelProviderState } from "./agent-model";
 import { appConfig } from "./app-config";
 import { hasHelpFlag, parseFlag } from "./cli-args";
 import { authMode } from "./cli-auth";
@@ -46,6 +47,7 @@ import { openBrowser } from "./open-browser";
 import { exchangeCode } from "./openai-oauth";
 import { startOAuthCallbackServer } from "./openai-oauth-server";
 import { createHandoffState, createPkce } from "./pkce";
+import { normalizeModel } from "./provider-config";
 import { startServer } from "./server-app";
 import {
   apiUrlForPort,
@@ -365,6 +367,10 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         runImport,
         createStore: createSqliteMemoryStore,
         createDistiller: (store) => createMemoryDistiller({ store, commitScopes: IMPORT_COMMIT_SCOPES }),
+        resolveModel: () => {
+          const model = normalizeModel(appConfig.model);
+          return { model, available: resolveModelProviderState(model).available };
+        },
         readLedger: readImportLedger,
         writeLedger: writeImportLedger,
         removeDir: (path) => rm(path, { recursive: true, force: true }),

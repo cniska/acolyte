@@ -1,6 +1,5 @@
 import type { LanguageModelV4ToolCall } from "@ai-sdk/provider";
 import { z } from "zod";
-import { appConfig } from "./app-config";
 import { clampToTokenEstimate, type DistillScope, normalizeMemoryText } from "./distill-ops";
 import { log } from "./log";
 import {
@@ -170,7 +169,7 @@ async function getCachedStore(): Promise<MemoryStore> {
   return cachedStore;
 }
 
-export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<DistillObservation[]>;
+export type DistillRunner = (systemPrompt: string, userContent: string, model: string) => Promise<DistillObservation[]>;
 
 export function parseObservationToolCall(call: Pick<LanguageModelV4ToolCall, "input">): DistillObservation | null {
   try {
@@ -188,11 +187,11 @@ export function parseObservationToolCall(call: Pick<LanguageModelV4ToolCall, "in
   }
 }
 
-async function defaultRunner(systemPrompt: string, userContent: string): Promise<DistillObservation[]> {
-  const qualifiedModel = normalizeModel(appConfig.distillModel);
-  const model = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
+async function defaultRunner(systemPrompt: string, userContent: string, model: string): Promise<DistillObservation[]> {
+  const qualifiedModel = normalizeModel(model);
+  const client = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
   // The subscription backend rejects non-streaming requests ("Stream must be set to true"), so distill over doStream.
-  const { stream } = await model.doStream({
+  const { stream } = await client.doStream({
     prompt: [
       { role: "system", content: systemPrompt },
       { role: "user", content: [{ type: "text", text: userContent }] },
@@ -289,7 +288,11 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       });
       const candidates = selectKnownFactsWithinBudget(foundCandidates, policy.recallCandidateTokenLimit);
       const known = renderKnownFacts(candidates);
-      const observations = await runner(DISTILLER_PROMPT, known ? `${known}\n\n${distillInput}` : distillInput);
+      const observations = await runner(
+        DISTILLER_PROMPT,
+        known ? `${known}\n\n${distillInput}` : distillInput,
+        ctx.model,
+      );
 
       const filtered = observations.filter((obs) => commitScopes.has(obs.scope));
       const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output, ctx.activity, candidates);

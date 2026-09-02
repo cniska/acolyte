@@ -883,33 +883,33 @@
       }
     }
   },
-  "cli.import.col.session": "session",
+  "cli.import.col.session": "Session",
   "@cli.import.col.session": {
-    "description": "Column header in the 'import' table: the source agent's session, shown by the first characters of its id. Lowercase, no trailing period."
+    "description": "Column header in the 'import' table: the source agent's session, shown by the first characters of its id. Title case, no trailing period."
   },
-  "cli.import.col.project": "project",
+  "cli.import.col.project": "Project",
   "@cli.import.col.project": {
-    "description": "Column header in the 'import' table: the owner/repo the session's working directory belongs to. Lowercase, no trailing period."
+    "description": "Column header in the 'import' table: the owner/repo the session's working directory belongs to. Title case, no trailing period."
   },
-  "cli.import.col.calls": "calls",
+  "cli.import.col.calls": "Calls",
   "@cli.import.col.calls": {
-    "description": "Column header in the 'import' table: distill calls the run actually made, which is fewer than the turns it took when a session's opening turns are too short to distill. Lowercase, no trailing period."
+    "description": "Column header in the 'import' table: distill calls the run actually made, which is fewer than the turns it took when a session's opening turns are too short to distill. Title case, no trailing period."
   },
-  "cli.import.col.turns": "turns",
+  "cli.import.col.turns": "Turns",
   "@cli.import.col.turns": {
-    "description": "Column header in the 'import' table: turns handed to distillation. Lowercase, no trailing period."
+    "description": "Column header in the 'import' table: turns handed to distillation. Title case, no trailing period."
   },
-  "cli.import.col.facts": "facts",
+  "cli.import.col.facts": "Facts",
   "@cli.import.col.facts": {
-    "description": "Column header in the 'import' table: records distillation stored. Lowercase, no trailing period."
+    "description": "Column header in the 'import' table: records distillation stored. Title case, no trailing period."
   },
-  "cli.import.col.superseded": "superseded",
+  "cli.import.col.superseded": "Superseded",
   "@cli.import.col.superseded": {
-    "description": "Column header in the 'import' table: records retired in favor of a newer one. Lowercase, no trailing period."
+    "description": "Column header in the 'import' table: records retired in favor of a newer one. Title case, no trailing period."
   },
-  "cli.import.col.tokens": "tokens",
+  "cli.import.col.tokens": "Tokens",
   "@cli.import.col.tokens": {
-    "description": "Column header in the 'import' table: prompt tokens the distill calls used or are estimated to use. Lowercase, no trailing period."
+    "description": "Column header in the 'import' table: prompt tokens the distill calls used or are estimated to use. Title case, no trailing period."
   },
   "cli.import.invalid_max_turns": "Invalid --max-turns value: {value}. Use a whole number of turns, 1 or more.",
   "@cli.import.invalid_max_turns": {
@@ -926,6 +926,15 @@
     "placeholders": {
       "count": {
         "type": "number"
+      }
+    }
+  },
+  "cli.import.no_model": "No model available: {model}. Run acolyte auth to connect a provider, or use --dry-run to see what would be imported.",
+  "@cli.import.no_model": {
+    "description": "Shown when 'import' is asked to run but the configured model has no usable credential. {model} is the qualified model id; 'acolyte auth' and '--dry-run' are literals the user types.",
+    "placeholders": {
+      "model": {
+        "type": "String"
       }
     }
   },

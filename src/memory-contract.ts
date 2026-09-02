@@ -28,6 +28,8 @@ export interface MemoryArchiveEntry extends MemoryEntry {
 export type RemoveMemoryResult = { kind: "removed"; entry: MemoryEntry } | { kind: "not_found"; id: string };
 
 export type MemoryCommitContext = {
+  /** The model the work ran with, so distillation uses it rather than a boot-time snapshot. */
+  readonly model: string;
   readonly sessionId?: string;
   readonly resourceId?: ResourceId;
   readonly workspace?: string;

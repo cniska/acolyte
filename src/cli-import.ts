@@ -23,6 +23,7 @@ export type ImportModeDeps = {
   runImport: (options: RunImportOptions) => Promise<ImportSessionResult[]>;
   createStore: (path: string) => MemoryStore;
   createDistiller: (store: MemoryStore) => MemoryDistiller;
+  resolveModel: () => { model: string; available: boolean };
   readLedger: (path: string) => Promise<ImportLedger>;
   writeLedger: (path: string, ledger: ImportLedger) => Promise<void>;
   removeDir: (path: string) => Promise<void>;
@@ -109,6 +110,15 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
   const json = hasBoolFlag(args, "--json");
   const dryRun = hasBoolFlag(args, "--dry-run");
 
+  // Checked before anything is cleared or read: distillation is the only thing that turns a
+  // transcript into a fact, so without a model to run it there is no import to attempt. A dry run
+  // makes no model call, which is what makes it the thing to run before a provider is connected.
+  const chosen = deps.resolveModel();
+  if (!dryRun && !chosen.available) {
+    deps.commandError("import", t("cli.import.no_model", { model: chosen.model }));
+    return;
+  }
+
   if (hasBoolFlag(args, "--reset")) {
     await deps.removeDir(deps.scratchDir);
     if (!json) deps.printDim(t("cli.import.reset", { path: deps.scratchDir }));
@@ -139,6 +149,7 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
     const results = await deps.runImport({
       plans: pending,
       distiller: deps.createDistiller(store),
+      model: chosen.model,
       ledger,
       saveLedger: (next) => deps.writeLedger(ledgerPath, next),
     });

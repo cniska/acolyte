@@ -198,7 +198,6 @@ acolyte config set features.undoCheckpoints true
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |
 | `embeddingBaseUrl` | explicit OpenAI-compatible embedding API base URL |
-| `distillModel` | model used for memory distillation |
 | `replyTimeoutMs` | max reply wait time in ms (min 1000, default 180000) |
 | `features.undoCheckpoints` | opt-in: capture write-tool undo checkpoints |
 | `features.workspaces` | opt-in: enable `/workspaces` chat commands |

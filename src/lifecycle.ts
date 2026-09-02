@@ -187,6 +187,7 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
   ctx.promptUsage.memoryTokens += distillTokens;
   scheduleMemoryCommit(
     {
+      model: ctx.model,
       sessionId: ctx.request.sessionId,
       resourceId: ctx.request.resourceId,
       workspace: ctx.workspace,

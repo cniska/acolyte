@@ -167,7 +167,7 @@ describe("importSession", () => {
     const [planned] = await plan({ "/transcripts/a.jsonl": sessionFile("s1", "/repo", 3) });
     const { distiller, calls } = recordingDistiller();
 
-    const result = await importSession(planned, distiller);
+    const result = await importSession(planned, distiller, "openai/gpt-5-mini");
 
     expect(calls.map((c) => c.messages.length)).toEqual([1, 3, 5]);
     expect(calls.map((c) => c.output)).toEqual(["answer 0", "answer 1", "answer 2"]);
@@ -180,7 +180,7 @@ describe("importSession", () => {
     const [planned] = await plan({ "/transcripts/a.jsonl": sessionFile("s1", "/repo", 3) }, ledger);
     const { distiller, calls } = recordingDistiller();
 
-    await importSession(planned, distiller);
+    await importSession(planned, distiller, "openai/gpt-5-mini");
 
     expect(calls).toHaveLength(1);
     expect(calls[0].output).toBe("answer 2");
@@ -200,6 +200,7 @@ describe("runImport", () => {
     await runImport({
       plans,
       distiller,
+      model: "openai/gpt-5-mini",
       ledger: emptyImportLedger(),
       saveLedger: async (next) => {
         saved.push(next);
@@ -222,6 +223,7 @@ describe("runImport", () => {
     const results = await runImport({
       plans,
       distiller,
+      model: "openai/gpt-5-mini",
       ledger,
       saveLedger: async (next) => {
         saved.push(next);
