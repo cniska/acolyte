@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.27.0 (2026-09-02)
+
+- feat(trace): record result size and model usage (#407) (`a9e6e176`)
+- fix(errors): derive tool error kind from code (#408) (`b27d83e6`)
+- feat(effects): make effect runs visible and async (#409) (`baab3bbd`)
+- fix(tools): gate the tool surface on feature flags (#410) (`440ec245`)
+- fix(git-show): read a file at a ref (#411) (`d267119d`)
+- docs(pr): drop the motivation section (`97fc2fcc`)
+- docs(rules): decide pr vs direct push by risk (`a727ed5c`)
+- docs(rules): align pr body with the template (`e700ae7c`)
+- fix(config): set feature flags from the cli (#412) (`9340964f`)
+- feat(cloud): copy local data on login (#413) (`85f1c48e`)
+- fix(login): land on the cloud root after signing in (`b2961ecc`)
+- refactor(login): copy to the cloud eight at a time (`ff5b9f2c`)
+- fix(sessions): keep the locale out of a stored title (`c451320a`)
+- feat(cli): pipeable json output and trace filters (#414) (`1a0be04a`)
+- feat(memory): identify scopes by repo and account (#415) (`246eaeb8`)
+- feat(update): stage updates and exec via launcher (#416) (`b752a20a`)
+- docs(memory): correct kinds and scope wording (`77145c32`)
+- chore(toolchain): pin bun through mise (`4472d35c`)
+- feat(memory): make distillation the only writer (#417) (`6d9dd16a`)
+
+
 ## 0.26.0 (2026-08-28)
 
 - fix(cli): start the daemon from a compiled binary (`52adef01`)
