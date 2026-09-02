@@ -18,7 +18,7 @@ When earlier history cannot fit, the model receives an explicit gap notice and c
 
 The running window carries the current conversation. It does not inject all prior session history or durable memory into every prompt. When the model needs older conversation context, it uses `session-search`. When it needs durable context across sessions, projects, or user preferences, it uses the memory toolkit's `memory-search` tool.
 
-Rather than compacting the live conversation into a summary, Acolyte keeps the running window bounded and retrieves earlier or durable context on demand. The same toolkit provides `memory-add` for durable findings.
+Rather than compacting the live conversation into a summary, Acolyte keeps the running window bounded and retrieves earlier or durable context on demand.
 
 ## Usage reporting
 

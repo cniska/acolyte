@@ -80,19 +80,6 @@ export const SV_MESSAGES = {
     { kind: "text", value: "." },
   ],
   "chat.model.failed": [{ kind: "text", value: "Kunde inte ställa in modellen." }],
-  "chat.remember.failed": [{ kind: "text", value: "Kunde inte spara minnet." }],
-  "chat.remember.saved.project": [
-    { kind: "text", value: "Projektminne sparat: " },
-    { kind: "arg", name: "content" },
-  ],
-  "chat.remember.saved.session": [
-    { kind: "text", value: "Sessionsminne sparat: " },
-    { kind: "arg", name: "content" },
-  ],
-  "chat.remember.saved.user": [
-    { kind: "text", value: "Användarminne sparat: " },
-    { kind: "arg", name: "content" },
-  ],
   "chat.resume.ambiguous": [
     { kind: "text", value: "Tvetydigt prefix: " },
     { kind: "arg", name: "prefix" },
@@ -135,7 +122,6 @@ export const SV_MESSAGES = {
   "chat.slash.help.clear": [{ kind: "text", value: "rensa transkriptet" }],
   "chat.slash.help.exit": [{ kind: "text", value: "avsluta chatten" }],
   "chat.slash.help.memory": [{ kind: "text", value: "hantera minne" }],
-  "chat.slash.help.memory.add": [{ kind: "text", value: "lägg till minnesanteckning" }],
   "chat.slash.help.memory.list": [{ kind: "text", value: "visa minnesanteckningar" }],
   "chat.slash.help.memory.rm": [{ kind: "text", value: "ta bort minnesanteckning" }],
   "chat.slash.help.model": [{ kind: "text", value: "byt modell" }],
@@ -491,16 +477,6 @@ export const SV_MESSAGES = {
     { kind: "text", value: ": " },
     { kind: "arg", name: "ids" },
     { kind: "text", value: "." },
-  ],
-  "cli.memory.saved.project": [
-    { kind: "text", value: "Projektminne " },
-    { kind: "arg", name: "id" },
-    { kind: "text", value: " sparat." },
-  ],
-  "cli.memory.saved.user": [
-    { kind: "text", value: "Användarminne " },
-    { kind: "arg", name: "id" },
-    { kind: "text", value: " sparat." },
   ],
   "cli.auth.method.required": [{ kind: "text", value: "Metod krävs. Använd --key eller --subscription." }],
   "cli.server.already_running": [

@@ -15,12 +15,7 @@ Turn and task activity
 
 ## Records and scopes
 
-Memory has two record kinds:
-
-- **Stored** — A fact explicitly added by a user or the `memory-add` tool.
-- **Observation** — A fact extracted from completed work by the distiller.
-
-Each record belongs to one scope:
+A memory record is one observation the distiller extracted from completed work, and belongs to one scope:
 
 | Scope | Holds | Visible to |
 |---|---|---|
@@ -36,7 +31,7 @@ With cloud sync on, Acolyte tells the account what the current workspace's proje
 
 The user scope is the account, not the machine: signed in it is keyed by the subject of the cloud token, so every machine signed into one account reaches one user scope; signed out every machine uses `user_local`. Signing in moves `user_local` into the account and reports what moved — see [Cloud](cloud.md). While signed out, what the account holds is out of reach.
 
-A workspace whose repository has no remote naming an `owner/repo` has no project scope, and a remote addressing a filesystem path names none. Session and user memory work there as usual. An explicit project-scoped write reports that the workspace has no remote; distillation and the `AGENTS.md` sync have nowhere to commit, so they record the skip in the trace and the rules travel in the prompt instead.
+A workspace whose repository has no remote naming an `owner/repo` has no project scope, and a remote addressing a filesystem path names none. Session and user memory work there as usual. An explicit project-scoped write reports that the workspace has no remote; distillation has nowhere to commit, so it records the skip in the trace.
 
 ## Writing memory
 
@@ -50,7 +45,7 @@ Before writing, the distiller can inspect relevant existing records without mark
 
 ## Recalling memory
 
-The model calls `memory-search` when prior context is useful. Durable memory is never injected wholesale into the system prompt. `memory-add` lets the model explicitly save a user- or project-scoped fact.
+The model calls `memory-search` when prior context is useful. Durable memory is never injected wholesale into the system prompt.
 
 Recall first limits records to scopes the caller could write. It then ranks them with cosine similarity and TF-IDF weighted token overlap. Topic embedding matches narrow the candidate set when enough matching records exist; otherwise recall uses the full visible corpus. A missing query embedding returns a classified error rather than a partially ranked result.
 

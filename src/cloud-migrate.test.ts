@@ -12,7 +12,6 @@ function createRecord(overrides: Partial<MemoryRecord> = {}): MemoryRecord {
   return {
     id: overrides.id ?? "mem_aaaaaaa1",
     scopeKey: overrides.scopeKey ?? "proj_abc123",
-    kind: overrides.kind ?? "observation",
     content: overrides.content ?? "A durable fact.",
     createdAt: overrides.createdAt ?? "2026-08-01T10:00:00.000Z",
     tokenEstimate: overrides.tokenEstimate ?? 5,

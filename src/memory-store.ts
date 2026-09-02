@@ -62,13 +62,19 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_archive_disposition ON memory_archive(disposition);
     `,
   },
+  {
+    version: 4,
+    up: `
+      ALTER TABLE memories DROP COLUMN kind;
+      ALTER TABLE memory_archive DROP COLUMN kind;
+    `,
+  },
 ];
 
 type MemoryRow = {
   id: string;
   scope: string;
   scope_key: string;
-  kind: string;
   content: string;
   created_at: string;
   token_estimate: number;
@@ -102,7 +108,6 @@ function rowToRecord(row: MemoryRow): MemoryRecord {
   return {
     id: row.id,
     scopeKey: row.scope_key,
-    kind: row.kind as MemoryRecord["kind"],
     content: row.content,
     createdAt: row.created_at,
     tokenEstimate: row.token_estimate,
@@ -121,16 +126,10 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
   const listByScopeStmt = db.prepare<MemoryRow, [string]>(
     "SELECT * FROM memories WHERE scope_key = ? ORDER BY created_at ASC",
   );
-  const listByKindStmt = db.prepare<MemoryRow, [string]>(
-    "SELECT * FROM memories WHERE kind = ? ORDER BY created_at ASC",
-  );
-  const listByScopeAndKindStmt = db.prepare<MemoryRow, [string, string]>(
-    "SELECT * FROM memories WHERE scope_key = ? AND kind = ? ORDER BY created_at ASC",
-  );
   const listAllStmt = db.prepare<MemoryRow, []>("SELECT * FROM memories ORDER BY created_at ASC");
-  const writeStmt = db.prepare<void, [string, string, string, string, string, string, number, string | null]>(
-    `INSERT OR REPLACE INTO memories (id, scope, scope_key, kind, content, created_at, token_estimate, topic)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  const writeStmt = db.prepare<void, [string, string, string, string, string, number, string | null]>(
+    `INSERT OR REPLACE INTO memories (id, scope, scope_key, content, created_at, token_estimate, topic)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
   const removeStmt = db.prepare<void, [string]>("DELETE FROM memories WHERE id = ?");
   const writeEmbStmt = db.prepare<void, [string, string, Buffer]>(
@@ -144,16 +143,11 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
   return {
     storage: "sqlite",
     async list(options) {
-      const { scopeKey, kind } = options ?? {};
-      if (scopeKey && kind) {
-        if (!safeScopeKey(scopeKey)) return [];
-        return listByScopeAndKindStmt.all(scopeKey, kind).map(rowToRecord);
-      }
+      const { scopeKey } = options ?? {};
       if (scopeKey) {
         if (!safeScopeKey(scopeKey)) return [];
         return listByScopeStmt.all(scopeKey).map(rowToRecord);
       }
-      if (kind) return listByKindStmt.all(kind).map(rowToRecord);
       return listAllStmt.all().map(rowToRecord);
     },
     async write(record, scope) {
@@ -163,7 +157,6 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
         record.id,
         scopeType,
         record.scopeKey,
-        record.kind,
         record.content,
         record.createdAt,
         record.tokenEstimate,
@@ -195,9 +188,9 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
       db.transaction(() => {
         db.run(
           `INSERT INTO memory_archive
-             (id, scope, scope_key, kind, content, created_at, token_estimate, last_recalled_at, topic,
+             (id, scope, scope_key, content, created_at, token_estimate, last_recalled_at, topic,
               retired_at, disposition, superseded_by)
-           SELECT id, scope, scope_key, kind, content, created_at, token_estimate, last_recalled_at, topic, ?, ?, ?
+           SELECT id, scope, scope_key, content, created_at, token_estimate, last_recalled_at, topic, ?, ?, ?
              FROM memories WHERE id IN (${placeholders})`,
           [retiredAt, disposition.kind, by, ...found],
         );
@@ -207,17 +200,13 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
       return found;
     },
     async listArchive(options) {
-      const { scopeKey, kind, disposition } = options ?? {};
+      const { scopeKey, disposition } = options ?? {};
       if (scopeKey && !safeScopeKey(scopeKey)) return [];
       const clauses: string[] = [];
       const params: string[] = [];
       if (scopeKey) {
         clauses.push("scope_key = ?");
         params.push(scopeKey);
-      }
-      if (kind) {
-        clauses.push("kind = ?");
-        params.push(kind);
       }
       if (disposition) {
         clauses.push("disposition = ?");
@@ -241,8 +230,8 @@ export function createSqliteMemoryStore(dbPath?: string): MemoryStore {
       db.transaction(() => {
         db.run(
           `INSERT INTO memories
-             (id, scope, scope_key, kind, content, created_at, token_estimate, last_recalled_at, topic)
-           SELECT id, scope, scope_key, kind, content, created_at, token_estimate, last_recalled_at, topic
+             (id, scope, scope_key, content, created_at, token_estimate, last_recalled_at, topic)
+           SELECT id, scope, scope_key, content, created_at, token_estimate, last_recalled_at, topic
              FROM memory_archive WHERE id IN (${foundPlaceholders})`,
           found,
         );

@@ -5,31 +5,17 @@ import { dispatchSlashCommand } from "./chat-commands";
 import { isCommandOutput } from "./chat-contract";
 import { formatUsage } from "./cli-help";
 import type { ConfigScope } from "./config-contract";
-import type { MemoryArchiveEntry, MemoryEntry, MemoryScope, RemoveMemoryResult } from "./memory-contract";
+import type { MemoryArchiveEntry, MemoryEntry, RemoveMemoryResult } from "./memory-contract";
 import type { MemoryOptions } from "./memory-ops";
 import { createCommandContext, createMessage, createSession, createSessionState } from "./test-utils";
 
 function createMemoryApi(overrides?: {
   listMemories?: (options?: MemoryOptions) => Promise<MemoryEntry[]>;
-  addMemory?: (
-    content: string,
-    options?: Omit<MemoryOptions, "scope"> & { scope?: MemoryScope },
-  ) => Promise<MemoryEntry>;
   removeMemory?: (id: string, options?: MemoryOptions) => Promise<RemoveMemoryResult>;
   listArchivedMemories?: (options?: MemoryOptions) => Promise<MemoryArchiveEntry[]>;
 }) {
   return {
     listMemories: overrides?.listMemories ?? (async () => []),
-    addMemory:
-      overrides?.addMemory ??
-      (async () => ({
-        id: "mem_unused",
-        kind: "stored" as const,
-        scope: "user" as const,
-        content: "unused",
-        createdAt: "2026-02-21T00:00:00.000Z",
-        lastRecalledAt: null,
-      })),
     removeMemory: overrides?.removeMemory ?? (async () => ({ kind: "not_found" as const, id: "" })),
     listArchivedMemories: overrides?.listArchivedMemories ?? (async () => []),
   };
@@ -140,7 +126,7 @@ describe("chat-commands", () => {
     expect(content).toContain("Unknown subcommand: bogus");
     // The list subcommand carries the grammar the default handler accepts, so it is pinned
     // literally here rather than derived from the spec the implementation also reads.
-    expect(content).toContain("Usage: /memory [add|rm|list]");
+    expect(content).toContain("Usage: /memory [rm|list]");
     expect(content).toContain("Usage: /memory list [all|user|project] [--archived]");
     for (const usage of fullUsage(MEMORY_SPEC)) {
       expect(content).toContain(formatUsage(usage));
@@ -417,31 +403,11 @@ describe("chat-commands", () => {
     expect(rows.some((row) => row.content === "memory unavailable")).toBe(true);
   });
 
-  test("dispatchSlashCommand handles /memory add and saves selected scope", async () => {
-    let savedContent = "";
-    let savedScope = "";
-    const memoryApi = createMemoryApi({
-      addMemory: async (content, options) => {
-        const scope = options?.scope ?? "user";
-        savedContent = content;
-        savedScope = scope;
-        return {
-          id: "mem_3",
-          kind: "stored" as const,
-          scope,
-          content,
-          createdAt: "2026-02-21T00:00:02.000Z",
-          lastRecalledAt: null,
-        };
-      },
-    });
+  test("/memory add is not a subcommand", async () => {
+    const memoryApi = createMemoryApi();
     const { rows, stop } = await runCommand("/memory add --project use bun verify", { memoryApi });
     expect(stop).toBe(true);
-    expect(savedContent).toBe("use bun verify");
-    expect(savedScope).toBe("project");
-    expect(rows.some((row) => row.kind === "system" && row.content === "Saved project memory: use bun verify")).toBe(
-      true,
-    );
+    expect(rows.some((row) => row.content === "Unknown subcommand: add")).toBe(true);
   });
 
   test("dispatchSlashCommand updates model via /model <id>", async () => {

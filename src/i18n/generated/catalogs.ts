@@ -34,10 +34,6 @@ export type MessageArgs = {
   "chat.memory.rm.removed.user": { id: string | number };
   "chat.model.changed": { model: string | number };
   "chat.model.failed": never;
-  "chat.remember.failed": never;
-  "chat.remember.saved.project": { content: string | number };
-  "chat.remember.saved.session": { content: string | number };
-  "chat.remember.saved.user": { content: string | number };
   "chat.resume.ambiguous": { matches: string | number; prefix: string | number };
   "chat.resume.matches": { matches: string | number };
   "chat.resume.not_found": { prefix: string | number };
@@ -53,7 +49,6 @@ export type MessageArgs = {
   "chat.slash.help.clear": never;
   "chat.slash.help.exit": never;
   "chat.slash.help.memory": never;
-  "chat.slash.help.memory.add": never;
   "chat.slash.help.memory.list": never;
   "chat.slash.help.memory.rm": never;
   "chat.slash.help.model": never;
@@ -193,8 +188,6 @@ export type MessageArgs = {
   "cli.memory.none": never;
   "cli.memory.restore.none": { ids: string | number };
   "cli.memory.restored": { count: number; ids: string | number };
-  "cli.memory.saved.project": { id: string | number };
-  "cli.memory.saved.user": { id: string | number };
   "cli.auth.method.required": never;
   "cli.server.already_running": { pid: number; port: number };
   "cli.server.col.pid": never;

@@ -6,7 +6,6 @@ import {
   type MemoryDisposition,
   type MemoryDispositionKind,
   type MemoryEntry,
-  type MemoryKind,
   type MemoryRecord,
   type MemoryScope,
   type MemoryStore,
@@ -39,7 +38,6 @@ function scopeKeysForScope(scope: MemoryScope | undefined, workspace?: string): 
 
 function toMemoryEntry(record: {
   id: string;
-  kind: MemoryKind;
   scopeKey: string;
   content: string;
   createdAt: string;
@@ -47,7 +45,6 @@ function toMemoryEntry(record: {
 }): MemoryEntry {
   return {
     id: record.id,
-    kind: record.kind,
     content: record.content,
     createdAt: record.createdAt,
     lastRecalledAt: record.lastRecalledAt ?? null,
@@ -65,49 +62,11 @@ export async function listMemories(options: MemoryOptions = {}): Promise<MemoryE
   const keys = scopeKeysForScope(scope, workspace);
   const entries = [];
   for (const key of keys) {
-    // List all kinds so distilled observations appear, not only stored memories.
     const records = await store.list({ scopeKey: key });
     entries.push(...records.map(toMemoryEntry));
   }
   entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   return entries;
-}
-
-export interface AddMemoryOptions {
-  scope?: MemoryScope;
-  workspace?: string;
-  sessionId?: string;
-  resourceId?: ResourceId;
-  store?: MemoryStore;
-}
-
-export async function addMemory(content: string, options: AddMemoryOptions = {}): Promise<MemoryEntry> {
-  const trimmed = content.trim();
-  if (!trimmed) throw new Error("Memory content cannot be empty");
-
-  const { scope = "user", workspace, sessionId, resourceId } = options;
-  const store = options.store ?? (await getMemoryStore());
-  const scopeKey = requireScopeKey(scope, { sessionId, workspace, resourceId });
-
-  const record = {
-    id: `mem_${createId()}`,
-    scopeKey,
-    kind: "stored" as const,
-    content: trimmed,
-    createdAt: new Date().toISOString(),
-    tokenEstimate: estimateTokens(trimmed),
-  };
-  await store.write(record, scope);
-  log.debug("memory.stored.added", { id: record.id, scope, tokens: record.tokenEstimate });
-
-  try {
-    const vec = await embedText(trimmed);
-    if (vec) await store.writeEmbedding(record.id, scopeKey, embeddingToBuffer(vec));
-  } catch (error) {
-    log.warn("memory.stored.embed_failed", { id: record.id, error: String(error) });
-  }
-
-  return toMemoryEntry(record);
 }
 
 export interface AddObservationOptions {
@@ -126,13 +85,12 @@ export async function addObservation(
   const store = options.store ?? (await getMemoryStore());
   const existing = await store.list({ scopeKey });
   const normalized = normalizeMemoryText(trimmed);
-  const duplicate = existing.some((e) => e.kind === "observation" && normalizeMemoryText(e.content) === normalized);
+  const duplicate = existing.some((e) => normalizeMemoryText(e.content) === normalized);
   if (duplicate) return null;
 
   const record: MemoryRecord = {
     id: `mem_${createId()}`,
     scopeKey,
-    kind: "observation",
     content: trimmed,
     createdAt: new Date().toISOString(),
     tokenEstimate: estimateTokens(trimmed),
@@ -196,13 +154,12 @@ export async function removeMemory(id: string, options: MemoryOptions = {}): Pro
   const store = options.store ?? (await getMemoryStore());
   const keys = scopeKeysForScope(scope, workspace);
   for (const key of keys) {
-    // Match all kinds so distilled observations are removable, not only stored memories.
     const records = await store.list({ scopeKey: key });
     const record = records.find((r) => r.id === trimmed);
     if (record) {
       const entry = toMemoryEntry(record);
       await store.remove(entry.id);
-      log.debug("memory.removed", { id: entry.id, kind: entry.kind, scope: entry.scope });
+      log.debug("memory.removed", { id: entry.id, scope: entry.scope });
       return { kind: "removed", entry };
     }
   }
@@ -265,7 +222,6 @@ export async function restoreMemories(
 // The CLI runs in the workspace the user is asking about, so its working directory is that workspace.
 export const fileMemoryStore = {
   list: (scope?: MemoryScope) => listMemories({ scope, workspace: process.cwd() }),
-  add: (content: string, scope?: MemoryScope) => addMemory(content, { scope, workspace: process.cwd() }),
   remove: (id: string, scope?: MemoryScope) => removeMemory(id, { scope, workspace: process.cwd() }),
   listArchived: (scope?: MemoryScope) => listArchivedMemories({ scope, workspace: process.cwd() }),
   restore: (ids: readonly string[]) => restoreMemories(ids),

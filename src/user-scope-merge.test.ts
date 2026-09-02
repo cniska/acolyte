@@ -10,7 +10,6 @@ function record(overrides: Partial<MemoryRecord> = {}): MemoryRecord {
   return {
     id: overrides.id ?? "mem_local0001",
     scopeKey: overrides.scopeKey ?? "user_local",
-    kind: overrides.kind ?? "observation",
     content: overrides.content ?? "Prefers concise output.",
     createdAt: overrides.createdAt ?? "2026-08-01T10:00:00.000Z",
     tokenEstimate: overrides.tokenEstimate ?? 5,
@@ -103,15 +102,6 @@ describe("mergeLocalUserScope", () => {
     expect(summary).toMatchObject({ merged: 1, duplicates: 1 });
     expect(cloud.written.map((row) => row.id)).toEqual(["mem_local0001"]);
     expect(local.rows).toEqual([]);
-  });
-
-  test("never content-dedupes a stored record, which the store does not either", async () => {
-    const local = createStore({ rows: [record({ id: "mem_local0001", kind: "stored" })] });
-    const cloud = createStore({ rows: [record({ id: "mem_cloud0001", scopeKey: ACCOUNT_KEY })] });
-
-    const summary = await mergeLocalUserScope({ localMemory: local, cloudMemory: cloud, accountKey: ACCOUNT_KEY });
-
-    expect(summary).toMatchObject({ merged: 1, duplicates: 0 });
   });
 
   test("keeps a local record whose write failed, so the next login retries it", async () => {

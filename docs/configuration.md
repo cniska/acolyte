@@ -164,20 +164,19 @@ Enable via TOML:
 
 ```toml
 [features]
-syncAgents = true
+undoCheckpoints = true
 ```
 
 Enable via CLI:
 
 ```bash
-acolyte config set features.syncAgents true
+acolyte config set features.undoCheckpoints true
 ```
 
 ### Available flags
 
 | Flag | Description |
 |------|-------------|
-| `syncAgents` | Sync `AGENTS.md` into a deterministic project memory record (`mem_agentsmd`). The model recalls it via `memory-search` instead of prompt injection. |
 | `undoCheckpoints` | Write tools create undo checkpoints under `.acolyte/undo/<sessionId>/`. The model can list and restore via `undo-list` and `undo-restore`. |
 | `workspaces` | Enable `/workspaces` chat commands for managing git worktrees and workspace-scoped sessions. |
 | `cloudSync` | Use the cloud API for memory and session storage. Requires `acolyte login`. |
@@ -201,7 +200,6 @@ acolyte config set features.syncAgents true
 | `embeddingBaseUrl` | explicit OpenAI-compatible embedding API base URL |
 | `distillModel` | model used for memory distillation |
 | `replyTimeoutMs` | max reply wait time in ms (min 1000, default 180000) |
-| `features.syncAgents` | opt-in: sync `AGENTS.md` to project memory and omit it from prompt |
 | `features.undoCheckpoints` | opt-in: capture write-tool undo checkpoints |
 | `features.workspaces` | opt-in: enable `/workspaces` chat commands |
 | `features.cloudSync` | opt-in: use cloud API for memory and session storage |

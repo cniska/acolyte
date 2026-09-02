@@ -50,13 +50,11 @@ See [Configuration](./configuration.md) for how a subscription interacts with an
 
 ## Memory commands
 
-Manage saved memory notes scoped to user or project.
+Read memory the distiller wrote, scoped to user or project.
 
 ```bash
 acolyte memory list [all|user|project]
 acolyte memory list --json
-acolyte memory add --user "<text>"
-acolyte memory add --project "<text>"
 acolyte memory restore <id>...
 ```
 

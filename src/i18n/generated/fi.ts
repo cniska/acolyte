@@ -80,19 +80,6 @@ export const FI_MESSAGES = {
     { kind: "text", value: "." },
   ],
   "chat.model.failed": [{ kind: "text", value: "Mallin asettaminen epäonnistui." }],
-  "chat.remember.failed": [{ kind: "text", value: "Muistin tallentaminen epäonnistui." }],
-  "chat.remember.saved.project": [
-    { kind: "text", value: "Projektimuisti tallennettu: " },
-    { kind: "arg", name: "content" },
-  ],
-  "chat.remember.saved.session": [
-    { kind: "text", value: "Istuntomuisti tallennettu: " },
-    { kind: "arg", name: "content" },
-  ],
-  "chat.remember.saved.user": [
-    { kind: "text", value: "Käyttäjämuisti tallennettu: " },
-    { kind: "arg", name: "content" },
-  ],
   "chat.resume.ambiguous": [
     { kind: "text", value: "Monitulkintainen etuliite: " },
     { kind: "arg", name: "prefix" },
@@ -135,7 +122,6 @@ export const FI_MESSAGES = {
   "chat.slash.help.clear": [{ kind: "text", value: "tyhjennä keskustelu" }],
   "chat.slash.help.exit": [{ kind: "text", value: "poistu keskustelusta" }],
   "chat.slash.help.memory": [{ kind: "text", value: "hallitse muistia" }],
-  "chat.slash.help.memory.add": [{ kind: "text", value: "lisää muistiinpano" }],
   "chat.slash.help.memory.list": [{ kind: "text", value: "näytä muistiinpanot" }],
   "chat.slash.help.memory.rm": [{ kind: "text", value: "poista muistiinpano" }],
   "chat.slash.help.model": [{ kind: "text", value: "vaihda mallia" }],
@@ -490,16 +476,6 @@ export const FI_MESSAGES = {
     { kind: "text", value: ": " },
     { kind: "arg", name: "ids" },
     { kind: "text", value: "." },
-  ],
-  "cli.memory.saved.project": [
-    { kind: "text", value: "Projektimuisti " },
-    { kind: "arg", name: "id" },
-    { kind: "text", value: " tallennettu." },
-  ],
-  "cli.memory.saved.user": [
-    { kind: "text", value: "Käyttäjämuisti " },
-    { kind: "arg", name: "id" },
-    { kind: "text", value: " tallennettu." },
   ],
   "cli.auth.method.required": [{ kind: "text", value: "Metodi vaaditaan. Käytä --key tai --subscription." }],
   "cli.server.already_running": [

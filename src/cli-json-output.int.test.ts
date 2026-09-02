@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { createSqliteMemoryStore } from "./memory-store";
 import { dataDir } from "./paths";
+import { LOCAL_USER_RESOURCE_ID } from "./resource-id";
 import { gitEnv, startTestServer, tempDir } from "./test-utils";
 import { createTraceStore } from "./trace-store";
 
@@ -17,6 +19,24 @@ function createIsolatedEnv(home: string): Record<string, string> {
     XDG_DATA_HOME: join(home, ".local", "share"),
     XDG_STATE_HOME: join(home, ".local", "state"),
   });
+}
+
+/** The distiller is the only writer, so a listing test seeds the store the way it does. */
+async function seedMemory(home: string): Promise<void> {
+  const dir = dataDir({ HOME: home });
+  mkdirSync(dir, { recursive: true });
+  const store = createSqliteMemoryStore(join(dir, "memory.db"));
+  await store.write(
+    {
+      id: "mem_jsonseed",
+      scopeKey: LOCAL_USER_RESOURCE_ID,
+      content: "json output stays parseable",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      tokenEstimate: 5,
+    },
+    "user",
+  );
+  store.close();
 }
 
 function runCli(
@@ -96,12 +116,11 @@ describe("cli json output", () => {
     expectJsonStdout(result.stdout);
   });
 
-  test("memory list --json writes only JSON to stdout", () => {
+  test("memory list --json writes only JSON to stdout", async () => {
     const home = createDir("acolyte-cli-json-home-");
     const workspace = createDir("acolyte-cli-json-workspace-");
     const env = createIsolatedEnv(home);
-    const addResult = runCli(["memory", "add", "remember", "json", "output", "--no-update"], env, workspace);
-    expect(addResult.exitCode).toBe(0);
+    await seedMemory(home);
 
     const result = runCli(["memory", "list", "--json"], env, workspace);
 
@@ -109,12 +128,11 @@ describe("cli json output", () => {
     expectJsonStdout(result.stdout);
   });
 
-  test("memory list --json stays parseable through command substitution", () => {
+  test("memory list --json stays parseable through command substitution", async () => {
     const home = createDir("acolyte-cli-json-home-");
     const workspace = createDir("acolyte-cli-json-workspace-");
     const env = createIsolatedEnv(home);
-    const addResult = runCli(["memory", "add", "remember", "json", "output", "--no-update"], env, workspace);
-    expect(addResult.exitCode).toBe(0);
+    await seedMemory(home);
 
     const result = runCliThroughCommandSubstitution(["memory", "list", "--json"], env, workspace);
 
@@ -135,12 +153,11 @@ describe("cli json output", () => {
     expectJsonStdout(result.stdout);
   });
 
-  test("memory list --json skips startup update output", () => {
+  test("memory list --json skips startup update output", async () => {
     const home = createDir("acolyte-cli-json-home-");
     const workspace = createDir("acolyte-cli-json-workspace-");
     const env = createIsolatedEnv(home);
-    const addResult = runCli(["memory", "add", "remember", "json", "output", "--no-update"], env, workspace);
-    expect(addResult.exitCode).toBe(0);
+    await seedMemory(home);
 
     const result = runCli(["memory", "list", "--json", "--update"], env, workspace);
 

@@ -1,8 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { memoryMode } from "./cli-memory";
 
-import { dedent } from "./test-utils";
-
 type MemoryDeps = Parameters<typeof memoryMode>[1];
 
 type MemoryOps = MemoryDeps["ops"];
@@ -19,14 +17,6 @@ function createOps(overrides?: Partial<MemoryOps>): MemoryOps {
         lastRecalledAt: null,
       },
     ],
-    add: async (content, scope) => ({
-      id: "mem_test123",
-      kind: "stored" as const,
-      content,
-      scope: scope ?? "user",
-      createdAt: "9999-01-01T00:00:00.000Z",
-      lastRecalledAt: null,
-    }),
     listArchived: async () => [
       {
         id: "mem_gone",
@@ -140,36 +130,7 @@ describe("cli-memory", () => {
     expect(output()).toBe("");
   });
 
-  test("add --project saves memory with correct scope", async () => {
-    let savedContent: string | undefined;
-    let savedScope: string | undefined;
-    const { deps, output } = createDeps({
-      ops: createOps({
-        add: async (content, scope) => {
-          savedContent = content;
-          savedScope = scope;
-          return {
-            id: "mem_test123",
-            kind: "stored" as const,
-            content,
-            scope: scope ?? "user",
-            createdAt: "9999-01-01T00:00:00.000Z",
-            lastRecalledAt: null,
-          };
-        },
-      }),
-    });
-    await memoryMode(["add", "--project", "some", "text"], deps);
-    expect(savedContent).toBe("some text");
-    expect(savedScope).toBe("project");
-    expect(output()).toBe(
-      dedent(`
-        Saved project memory mem_test123.
-      `),
-    );
-  });
-
-  test("add with no content calls commandError", async () => {
+  test("add is not a subcommand", async () => {
     let called = false;
     const { deps } = createDeps({
       commandError: (name) => {
@@ -177,7 +138,7 @@ describe("cli-memory", () => {
         called = true;
       },
     });
-    await memoryMode(["add"], deps);
+    await memoryMode(["add", "--project", "some", "text"], deps);
     expect(called).toBe(true);
   });
 

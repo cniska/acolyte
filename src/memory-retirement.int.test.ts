@@ -31,7 +31,6 @@ function record(id: string, content: string): MemoryRecord {
   return {
     id,
     scopeKey,
-    kind: "observation",
     content,
     createdAt: "2026-03-05T10:00:00.000Z",
     tokenEstimate: 2,
@@ -78,15 +77,14 @@ describe("archive schema constraints", () => {
     return { db, close };
   }
 
-  const columns =
-    "(id, scope, scope_key, kind, content, created_at, token_estimate, retired_at, disposition, superseded_by)";
+  const columns = "(id, scope, scope_key, content, created_at, token_estimate, retired_at, disposition, superseded_by)";
 
   test("a superseded row cannot exist without successors", () => {
     const { db, close } = archiveDb();
     expect(() =>
       db.run(
         `INSERT INTO memory_archive ${columns}
-         VALUES ('mem_bad000001', 'project', 'proj_abc123', 'observation', 'x', '2026-03-04T12:00:00.000Z', 1,
+         VALUES ('mem_bad000001', 'project', 'proj_abc123', 'x', '2026-03-04T12:00:00.000Z', 1,
                  '2026-03-05T12:00:00.000Z', 'superseded', NULL)`,
       ),
     ).toThrow();
@@ -98,7 +96,7 @@ describe("archive schema constraints", () => {
     expect(() =>
       db.run(
         `INSERT INTO memory_archive ${columns}
-         VALUES ('mem_bad000002', 'project', 'proj_abc123', 'observation', 'x', '2026-03-04T12:00:00.000Z', 1,
+         VALUES ('mem_bad000002', 'project', 'proj_abc123', 'x', '2026-03-04T12:00:00.000Z', 1,
                  '2026-03-05T12:00:00.000Z', 'noise', '["mem_whatever1"]')`,
       ),
     ).toThrow();
@@ -110,7 +108,7 @@ describe("archive schema constraints", () => {
     expect(() =>
       db.run(
         `INSERT INTO memory_archive ${columns}
-         VALUES ('mem_bad000003', 'project', 'proj_abc123', 'observation', 'x', '2026-03-04T12:00:00.000Z', 1,
+         VALUES ('mem_bad000003', 'project', 'proj_abc123', 'x', '2026-03-04T12:00:00.000Z', 1,
                  '2026-03-05T12:00:00.000Z', 'banana', NULL)`,
       ),
     ).toThrow();
@@ -123,14 +121,27 @@ describe("migration to the archive schema", () => {
     const dir = mkdtempSync(join(tmpdir(), "acolyte-migrate-"));
     const path = join(dir, "memory.db");
 
-    const before = createSqliteMemoryStore(path);
-    await before.write(record("mem_preexist01", "a fact from before the upgrade"));
+    const before = new Database(path, { create: true });
+    before.run(`
+      CREATE TABLE memories (
+        id TEXT PRIMARY KEY,
+        scope TEXT NOT NULL,
+        scope_key TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        token_estimate INTEGER NOT NULL,
+        last_recalled_at TEXT,
+        topic TEXT
+      );
+      CREATE TABLE memory_embeddings (id TEXT PRIMARY KEY, scope TEXT NOT NULL, embedding BLOB NOT NULL);
+      CREATE TABLE schema_version (version INTEGER NOT NULL);
+      INSERT INTO schema_version (version) VALUES (2);
+      INSERT INTO memories (id, scope, scope_key, kind, content, created_at, token_estimate)
+        VALUES ('mem_preexist01', 'user', 'user_local', 'stored', 'a fact from before the upgrade',
+                '2026-03-05T10:00:00.000Z', 2);
+    `);
     before.close();
-
-    const raw = new Database(path);
-    raw.run("DROP TABLE memory_archive");
-    raw.run("UPDATE schema_version SET version = 2");
-    raw.close();
 
     const after = createSqliteMemoryStore(path);
     expect((await after.list({ scopeKey })).map((r) => r.content)).toEqual(["a fact from before the upgrade"]);

@@ -27,9 +27,8 @@ describe("chat-slash helpers", () => {
     expect(suggestSlashCommands("/s")).toEqual(["/status", "/sessions", "/skills"]);
     expect(suggestSlashCommands("/st")).toEqual(["/status"]);
     expect(suggestSlashCommands("/d")).toEqual([]);
-    expect(suggestSlashCommands("/memo")).toEqual(["/memory", "/memory add", "/memory rm", "/memory list"]);
+    expect(suggestSlashCommands("/memo")).toEqual(["/memory", "/memory rm", "/memory list"]);
     expect(suggestSlashCommands("/memory l")).toEqual(["/memory list"]);
-    expect(suggestSlashCommands("/memory a")).toEqual(["/memory add"]);
     expect(suggestSlashCommands("/usa")).toEqual(["/usage"]);
     expect(suggestSlashCommands("/mo")).toEqual(["/model"]);
     expect(suggestSlashCommands("/mod")).toEqual(["/model"]);
@@ -59,7 +58,7 @@ describe("chat-slash helpers", () => {
       restore();
     }
     expect(suggestSlashCommands("/modle")).toEqual(["/model"]);
-    expect(suggestSlashCommands("/memry")).toEqual(["/memory", "/memory add", "/memory rm", "/memory list"]);
+    expect(suggestSlashCommands("/memry")).toEqual(["/memory", "/memory rm", "/memory list"]);
   });
 
   test("workspaces commands are absent while the flag is off", () => {
@@ -148,7 +147,7 @@ describe("chat-slash helpers", () => {
       const offered = slashCommandRows()
         .map((row) => row.command)
         .filter((command) => command.startsWith("/memory"));
-      expect(offered).toEqual(["/memory", "/memory add", "/memory rm", "/memory list"]);
+      expect(offered).toEqual(["/memory", "/memory rm", "/memory list"]);
     } finally {
       restore();
     }

@@ -60,7 +60,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - automatic observation via distiller (tool-based, runs after generation)
 - self-bootstrap project memory from codebase on first run
 - topic tags on observations for filtered recall
-- on-demand memory toolkit (`memory-search`, `memory-add`)
+- on-demand memory recall (`memory-search`)
 - memory recalled on-demand via tools (not injected into the system prompt)
 - semantic recall with embeddings and cosine similarity ranking
 - hybrid retrieval scoring (cosine similarity + TF-IDF token overlap) with search result re-ranking
@@ -84,7 +84,6 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 
 Implemented but gated behind feature flags. See [Configuration](configuration.md) for setup.
 
-- `syncAgents` — sync `AGENTS.md` into project memory for on-demand recall
 - `undoCheckpoints` — session-level undo via write-tool checkpoints
 - `workspaces` — manage git worktrees and workspace-scoped sessions via `/workspaces`
 - `cloudSync` — portable memory and sessions across machines via `acolyte login` and `acolyte logout`

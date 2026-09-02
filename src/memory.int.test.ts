@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { addMemory, addObservation, listMemories, removeMemory } from "./memory-ops";
+import { addObservation, listMemories, removeMemory, requireScopeKey } from "./memory-ops";
 import { createSqliteMemoryStore } from "./memory-store";
 import { tempDb, tempDir, writeGitOrigin } from "./test-utils";
 
@@ -19,18 +19,19 @@ function createRepoWorkspace(): string {
 describe("sqlite memory store", () => {
   test("adds user memory and retrieves it", async () => {
     const db = createDb();
-    const entry = await addMemory("Prefer concise answers", { scope: "user", store: db });
+    await addObservation(requireScopeKey("user", {}), "Prefer concise answers", { store: db });
 
-    expect(entry.id).toMatch(/^mem_/);
-    expect(entry.content).toBe("Prefer concise answers");
-    expect(entry.scope).toBe("user");
+    const [entry] = await listMemories({ scope: "user", store: db });
+    expect(entry?.id).toMatch(/^mem_/);
+    expect(entry?.content).toBe("Prefer concise answers");
+    expect(entry?.scope).toBe("user");
   });
 
   test("supports separate project and user memories", async () => {
     const db = createDb();
     const workspace = createRepoWorkspace();
-    await addMemory("Global preference", { scope: "user", store: db });
-    await addMemory("Project convention", { scope: "project", workspace, store: db });
+    await addObservation(requireScopeKey("user", {}), "Global preference", { store: db });
+    await addObservation(requireScopeKey("project", { workspace }), "Project convention", { store: db });
 
     const projectOnly = await listMemories({ scope: "project", workspace, store: db });
     const userOnly = await listMemories({ scope: "user", store: db });
@@ -47,11 +48,13 @@ describe("sqlite memory store", () => {
 
   test("removeMemory removes a matching memory", async () => {
     const db = createDb();
-    const entry = await addMemory("Disposable note", { scope: "user", store: db });
-    const result = await removeMemory(entry.id, { store: db });
+    const added = await addObservation(requireScopeKey("user", {}), "Disposable note", { store: db });
+    expect(added).not.toBeNull();
+    const id = added?.id ?? "";
+    const result = await removeMemory(id, { store: db });
     expect(result.kind).toBe("removed");
     const all = await listMemories({ store: db });
-    expect(all.some((item) => item.id === entry.id)).toBe(false);
+    expect(all.some((item) => item.id === id)).toBe(false);
   });
 
   test("removeMemory returns not_found for unknown id", async () => {
@@ -69,7 +72,6 @@ describe("sqlite memory store", () => {
 
     const result = await removeMemory(id, { store: db });
     expect(result.kind).toBe("removed");
-    if (result.kind === "removed") expect(result.entry.kind).toBe("observation");
 
     const all = await listMemories({ store: db });
     expect(all.some((item) => item.id === id)).toBe(false);

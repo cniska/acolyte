@@ -13,7 +13,7 @@ import {
   WORKSPACES_SPEC,
 } from "./chat-command-specs";
 import type { CommandContext, CommandEntry, CommandResult, ParsedCommand } from "./chat-commands-contract";
-import { runMemoryAdd, runMemoryList, runMemoryRemove } from "./chat-commands-memory";
+import { runMemoryList, runMemoryRemove } from "./chat-commands-memory";
 import { runModel } from "./chat-commands-model";
 import { runResume } from "./chat-commands-resume";
 import { runClear, runExit, runNew } from "./chat-commands-session";
@@ -41,7 +41,7 @@ const BUILTIN_COMMANDS: CommandEntry[] = [
   {
     spec: MEMORY_SPEC,
     run: runMemoryList,
-    runSub: { add: runMemoryAdd, rm: runMemoryRemove, list: runMemoryList },
+    runSub: { rm: runMemoryRemove, list: runMemoryList },
   },
   { spec: USAGE_SPEC, run: runUsage },
   { spec: EXIT_SPEC, run: runExit },

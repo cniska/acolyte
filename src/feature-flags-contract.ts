@@ -9,8 +9,6 @@ const parseBoolSchema = z.preprocess((value) => {
 }, z.boolean());
 
 export const featureFlagsSchema = z.object({
-  // When enabled, keep a single deterministic project-memory record in sync with AGENTS.md.
-  syncAgents: parseBoolSchema.optional(),
   // When enabled, capture write-tool checkpoints under .acolyte/undo/<sessionId> and allow undo tools.
   undoCheckpoints: parseBoolSchema.optional(),
   // When enabled, allow managing workspaces (git worktrees) from chat commands.
@@ -32,7 +30,6 @@ export const featureFlagNameSchema = z.enum(
 export type FeatureFlagName = z.infer<typeof featureFlagNameSchema>;
 
 export const resolvedFeatureFlagsSchema = z.object({
-  syncAgents: parseBoolSchema.optional().default(false),
   undoCheckpoints: parseBoolSchema.optional().default(false),
   workspaces: parseBoolSchema.optional().default(false),
   cloudSync: parseBoolSchema.optional().default(false),

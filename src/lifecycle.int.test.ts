@@ -316,7 +316,6 @@ printf '%s\n' "$@" > "${formatLog}"
         soulPrompt: "SOUL",
         workspace: undoWorkspace,
         features: {
-          syncAgents: false,
           undoCheckpoints: true,
           workspaces: false,
           cloudSync: false,
@@ -400,7 +399,6 @@ describe("plugin mcp gating", () => {
         request: { model: "gpt-5-mini", message: "test", history: [], sessionId: "sess_plugin_mcp" },
         workspace: pluginWorkspace,
         features: {
-          syncAgents: false,
           undoCheckpoints: false,
           workspaces: false,
           cloudSync: false,

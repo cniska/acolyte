@@ -25,7 +25,6 @@ function createRecord(): MemoryRecord {
   return {
     id: "mem_0001",
     scopeKey: "user_local",
-    kind: "stored",
     content: "a fact worth recalling",
     createdAt: "2026-01-01T00:00:00.000Z",
     tokenEstimate: 4,

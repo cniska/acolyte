@@ -4,7 +4,6 @@ import { join } from "node:path";
 import type { ChatRow } from "./chat-contract";
 import { isCommandOutput, isToolOutput } from "./chat-contract";
 import { createMessageHandler } from "./chat-message-handler";
-import { resolveNaturalRememberDirective } from "./chat-message-handler-helpers";
 import type { TranscriptRow } from "./chat-transcript-contract";
 import type { StreamEvent } from "./client-contract";
 import {
@@ -44,40 +43,20 @@ const interruptTurn = async (interrupt: { registered: boolean; fire: () => void 
 };
 
 describe("chat message handler", () => {
-  test("resolveNaturalRememberDirective parses user and project forms", () => {
-    expect(resolveNaturalRememberDirective("remember this: keep output concise")).toEqual({
-      scope: "user",
-      content: "keep output concise",
+  test("a remember phrase runs an ordinary turn instead of writing memory", async () => {
+    const prompts: string[] = [];
+    const { handleMessage, rows } = createMessageHandlerHarness({
+      client: createClient({
+        status: async () => ({}),
+        replyStream: async (input) => {
+          prompts.push(input.request.message);
+          return { model: "gpt-5-mini", outputStreamed: false, output: "noted" };
+        },
+      }),
     });
-    expect(resolveNaturalRememberDirective("remember this for user: prefer numbered lists")).toEqual({
-      scope: "user",
-      content: "prefer numbered lists",
-    });
-    expect(resolveNaturalRememberDirective("remember this for project: use bun scripts")).toEqual({
-      scope: "project",
-      content: "use bun scripts",
-    });
-    expect(
-      resolveNaturalRememberDirective("no need, only big features should be documented there, remember this"),
-    ).toEqual({
-      scope: "user",
-      content: "no need, only big features should be documented there",
-    });
-    expect(
-      resolveNaturalRememberDirective("only big features should be documented, remember this for project"),
-    ).toEqual({
-      scope: "project",
-      content: "only big features should be documented",
-    });
-    expect(resolveNaturalRememberDirective("remember prefer concise output")).toEqual({
-      scope: "user",
-      content: "prefer concise output",
-    });
-    expect(resolveNaturalRememberDirective("prefer concise output remember")).toEqual({
-      scope: "user",
-      content: "prefer concise output",
-    });
-    expect(resolveNaturalRememberDirective("remember this")).toBeNull();
+    await handleMessage("remember this: keep output concise");
+    expect(prompts).toEqual(["remember this: keep output concise"]);
+    expect(rows.some((row) => row.kind === "assistant" && row.content === "noted")).toBe(true);
   });
 
   test("ignores empty input", async () => {

@@ -201,7 +201,7 @@ describe("cli visual regression", () => {
     });
   });
 
-  test("memory list renders stored entry rows", async () => {
+  test("memory list renders memory rows", async () => {
     await withCliTestEnv(async ({ run, dataDir }) => {
       const dbPath = join(dataDir, "memory.db");
       const store = createSqliteMemoryStore(dbPath);
@@ -210,7 +210,6 @@ describe("cli visual regression", () => {
         {
           id: "mem_abc123",
           scopeKey,
-          kind: "stored",
           content: "Prefer concise output.",
           createdAt: "9999-01-01T00:00:00.000Z",
           tokenEstimate: 4,
@@ -446,13 +445,12 @@ describe("cli visual regression", () => {
     {
       args: ["memory", "help"],
       output: dedent(`
-        Usage: acolyte memory <list|add|restore> [options]
+        Usage: acolyte memory <list|restore> [options]
 
         Description: manage memory
 
         Examples:
           acolyte memory list
-          acolyte memory add --project "prefer bun run verify"
           acolyte memory list --archived
           acolyte memory restore mem_abc123
       `),

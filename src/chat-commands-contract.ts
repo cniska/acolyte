@@ -4,7 +4,7 @@ import type { Client } from "./client-contract";
 import type { ConfigScope } from "./config-contract";
 import type { FeatureFlagName } from "./feature-flags-contract";
 import type { PlainTranslationKey } from "./i18n";
-import type { addMemory, listArchivedMemories, listMemories, removeMemory } from "./memory-ops";
+import type { listArchivedMemories, listMemories, removeMemory } from "./memory-ops";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
 
 export type CommandResult = {
@@ -36,7 +36,6 @@ export type CommandContext = {
   tokenUsage: SessionTokenUsageEntry[];
   memoryApi?: Partial<{
     listMemories: typeof listMemories;
-    addMemory: typeof addMemory;
     removeMemory: typeof removeMemory;
     listArchivedMemories: typeof listArchivedMemories;
   }>;

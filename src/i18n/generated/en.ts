@@ -74,19 +74,6 @@ export const EN_MESSAGES = {
     { kind: "text", value: "." },
   ],
   "chat.model.failed": [{ kind: "text", value: "Failed to set model." }],
-  "chat.remember.failed": [{ kind: "text", value: "Failed to save memory." }],
-  "chat.remember.saved.project": [
-    { kind: "text", value: "Saved project memory: " },
-    { kind: "arg", name: "content" },
-  ],
-  "chat.remember.saved.session": [
-    { kind: "text", value: "Saved session memory: " },
-    { kind: "arg", name: "content" },
-  ],
-  "chat.remember.saved.user": [
-    { kind: "text", value: "Saved user memory: " },
-    { kind: "arg", name: "content" },
-  ],
   "chat.resume.ambiguous": [
     { kind: "text", value: "Ambiguous prefix: " },
     { kind: "arg", name: "prefix" },
@@ -129,7 +116,6 @@ export const EN_MESSAGES = {
   "chat.slash.help.clear": [{ kind: "text", value: "clear transcript" }],
   "chat.slash.help.exit": [{ kind: "text", value: "exit chat" }],
   "chat.slash.help.memory": [{ kind: "text", value: "manage memory" }],
-  "chat.slash.help.memory.add": [{ kind: "text", value: "add memory note" }],
   "chat.slash.help.memory.list": [{ kind: "text", value: "show memory notes" }],
   "chat.slash.help.memory.rm": [{ kind: "text", value: "remove memory note" }],
   "chat.slash.help.model": [{ kind: "text", value: "change model" }],
@@ -480,16 +466,6 @@ export const EN_MESSAGES = {
     },
     { kind: "text", value: ": " },
     { kind: "arg", name: "ids" },
-    { kind: "text", value: "." },
-  ],
-  "cli.memory.saved.project": [
-    { kind: "text", value: "Saved project memory " },
-    { kind: "arg", name: "id" },
-    { kind: "text", value: "." },
-  ],
-  "cli.memory.saved.user": [
-    { kind: "text", value: "Saved user memory " },
-    { kind: "arg", name: "id" },
     { kind: "text", value: "." },
   ],
   "cli.auth.method.required": [{ kind: "text", value: "Method required. Use --key or --subscription." }],

@@ -1,13 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { AGENTS_MD_MEMORY_ID } from "./agents-memory-sync";
-import type { MemoryDisposition, MemoryKind, MemoryRecord, MemoryStore } from "./memory-contract";
+import type { MemoryDisposition, MemoryRecord, MemoryStore } from "./memory-contract";
 import { createMemoryPolicy } from "./memory-contract";
 import type { DistillObservation } from "./memory-distiller";
 import {
   createDistillInput,
   createMemoryDistiller as createMemoryDistillerWithDeps,
   DISTILLER_PROMPT,
-  parseToolCall,
+  parseObservationToolCall,
   renderKnownFacts,
   selectKnownFactsWithinBudget,
   selectSupersessionCandidates,
@@ -47,10 +46,8 @@ function createMockStore(records: MemoryRecord[] = []): MemoryStore & {
     removed,
     retired,
     touched,
-    async list(options?: { scopeKey?: string; kind?: MemoryKind }) {
-      return records.filter(
-        (r) => (!options?.scopeKey || r.scopeKey === options.scopeKey) && (!options?.kind || r.kind === options.kind),
-      );
+    async list(options?: { scopeKey?: string }) {
+      return records.filter((r) => !options?.scopeKey || r.scopeKey === options.scopeKey);
     },
     async write(record) {
       records.push(record);
@@ -245,7 +242,6 @@ describe("memoryDistiller", () => {
         {
           id: "mem_obs_prev",
           scopeKey: "sess_test0001",
-          kind: "observation",
           content: "prefers short answers",
           createdAt: "2026-03-04T10:00:00.000Z",
           tokenEstimate: 6,
@@ -253,7 +249,6 @@ describe("memoryDistiller", () => {
         {
           id: "mem_obs_newer",
           scopeKey: "sess_test0001",
-          kind: "observation",
           content: "the build runs on bun",
           createdAt: "2026-03-04T11:00:00.000Z",
           tokenEstimate: 6,
@@ -276,7 +271,6 @@ describe("memoryDistiller", () => {
         {
           id: "mem_known00001",
           scopeKey: "sess_test0001",
-          kind: "observation",
           content: "the project uses Bun",
           createdAt: "2026-03-04T10:00:00.000Z",
           tokenEstimate: 5,
@@ -390,7 +384,7 @@ describe("memoryDistiller", () => {
         output: "done",
       });
 
-      expect(store.written.filter((entry) => entry.kind === "observation")).toHaveLength(1);
+      expect(store.written).toHaveLength(1);
       const keys = store.written.map((entry) => entry.scopeKey);
       expect(keys.some((key) => key.startsWith("proj_"))).toBe(true);
       expect(keys.some((key) => key === "sess_test0001")).toBe(false);
@@ -470,7 +464,6 @@ describe("validateSupersedes", () => {
     {
       id: "mem_shown00001",
       scopeKey: "proj_abc123",
-      kind: "observation",
       content: "a project fact",
       createdAt: "2026-03-04T10:00:00.000Z",
       tokenEstimate: 3,
@@ -478,7 +471,6 @@ describe("validateSupersedes", () => {
     {
       id: "mem_shown00002",
       scopeKey: "user_abc123",
-      kind: "observation",
       content: "a user fact",
       createdAt: "2026-03-04T10:00:00.000Z",
       tokenEstimate: 3,
@@ -512,7 +504,6 @@ describe("renderKnownFacts", () => {
       {
         id: "mem_known00001",
         scopeKey: "proj_abc123",
-        kind: "observation",
         content: "the build runs on bun",
         createdAt: "2026-03-04T10:00:00.000Z",
         tokenEstimate: 5,
@@ -528,7 +519,6 @@ describe("selectKnownFactsWithinBudget", () => {
       {
         id: "mem_large00001",
         scopeKey: "proj_abc123",
-        kind: "observation" as const,
         content: "large ".repeat(1_000),
         createdAt: "2026-03-04T10:00:00.000Z",
         tokenEstimate: 1_000,
@@ -536,7 +526,6 @@ describe("selectKnownFactsWithinBudget", () => {
       {
         id: "mem_small00001",
         scopeKey: "proj_abc123",
-        kind: "observation" as const,
         content: "small fact",
         createdAt: "2026-03-04T10:00:00.000Z",
         tokenEstimate: 2,
@@ -551,7 +540,6 @@ describe("supersession", () => {
   const existing: MemoryRecord = {
     id: "mem_stale00001",
     scopeKey: "proj_abc123",
-    kind: "observation",
     content: "the terminal-step backstop lives somewhere in lifecycle",
     createdAt: "2026-03-04T10:00:00.000Z",
     tokenEstimate: 8,
@@ -701,62 +689,6 @@ describe("supersession", () => {
     expect(metrics?.supersededFacts).toBe(1);
   });
 
-  test("never supersedes the host-managed AGENTS.md record", async () => {
-    const store = createMockStore([
-      {
-        id: AGENTS_MD_MEMORY_ID,
-        scopeKey: "proj_abc123",
-        kind: "stored",
-        content: "Project rules (AGENTS.md):\nverify before every commit",
-        createdAt: "2026-03-04T10:00:00.000Z",
-        tokenEstimate: 12,
-      },
-    ]);
-    let seen = "";
-    const distiller = createMemoryDistiller({
-      store,
-      runner: async (_prompt, userContent) => {
-        seen = userContent;
-        return [
-          {
-            scope: "project",
-            content: "verify runs before every commit",
-            topic: null,
-            supersedes: [AGENTS_MD_MEMORY_ID],
-          },
-        ];
-      },
-      policy: testPolicy,
-    });
-    const metrics = await distiller.commit(commitCtx);
-
-    expect(seen).not.toContain(AGENTS_MD_MEMORY_ID);
-    expect(store.retired).toHaveLength(0);
-    expect(metrics?.supersededFacts).toBe(0);
-  });
-
-  test("supersedes a user-authored stored record", async () => {
-    const store = createMockStore([
-      {
-        id: "mem_stored0001",
-        scopeKey: "proj_abc123",
-        kind: "stored",
-        content: "the old convention",
-        createdAt: "2026-03-04T10:00:00.000Z",
-        tokenEstimate: 4,
-      },
-    ]);
-    const distiller = createMemoryDistiller({
-      store,
-      runner: makeRunner([
-        { scope: "project", content: "the convention changed", topic: null, supersedes: ["mem_stored0001"] },
-      ]),
-      policy: testPolicy,
-    });
-    const metrics = await distiller.commit(commitCtx);
-    expect(metrics?.supersededFacts).toBe(1);
-  });
-
   test("a deduplicated write is not counted as promoted", async () => {
     const store = createMockStore([{ ...existing }]);
     const distiller = createMemoryDistiller({
@@ -822,8 +754,8 @@ describe("supersession", () => {
   });
 });
 
-describe("parseToolCall", () => {
-  const call = (input: unknown) => parseToolCall({ input: JSON.stringify(input) });
+describe("parseObservationToolCall", () => {
+  const call = (input: unknown) => parseObservationToolCall({ input: JSON.stringify(input) });
 
   test("a well-formed call becomes an observation", () => {
     expect(call({ scope: "project", content: "the loader owns retries", topic: "Loader" })).toEqual({
@@ -834,8 +766,17 @@ describe("parseToolCall", () => {
     });
   });
 
+  test("a blank topic is kept as an observation with no topic", () => {
+    expect(call({ scope: "project", content: "the loader owns retries", topic: "" })).toEqual({
+      scope: "project",
+      content: "the loader owns retries",
+      topic: null,
+      supersedes: [],
+    });
+  });
+
   test("malformed input yields no observation", () => {
-    expect(parseToolCall({ input: "not json" })).toBeNull();
+    expect(parseObservationToolCall({ input: "not json" })).toBeNull();
     expect(call({ content: "no scope given" })).toBeNull();
     expect(call({ scope: "elsewhere", content: "an unknown scope" })).toBeNull();
     expect(call({ scope: "project", content: "   " })).toBeNull();
