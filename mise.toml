@@ -1,0 +1,6 @@
+# Toolchain pins. Install mise with `brew install mise`, then `mise install`.
+
+[tools]
+# Bun is compiled into the released binary by scripts/build-compiled.sh, so its
+# version is part of what ships, not just how it is built.
+bun = "1.3.14"

@@ -39,11 +39,12 @@ The codebase is TypeScript on Bun, with Zod validation at runtime boundaries and
 
 ## Local development
 
-Requires [Bun](https://bun.sh) and Git 2.14 or newer.
+Requires [mise](https://mise.jdx.dev) and Git 2.14 or newer.
 
 ```bash
 git clone https://github.com/cniska/acolyte.git
 cd acolyte
+mise install
 bun install
 bun run dev
 ```

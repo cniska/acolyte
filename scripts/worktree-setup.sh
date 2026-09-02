@@ -11,6 +11,13 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 step() { printf '\n── %s\n' "$*"; }
 rc=0
 
+step "toolchain — mise install"
+if command -v mise >/dev/null 2>&1; then
+  ( cd "$root" && mise install ) || echo "worktree-setup: mise install failed" >&2
+else
+  echo "mise not installed (skipping)"
+fi
+
 step "install — bun install"
 if ! ( cd "$root" && bun install --frozen-lockfile ); then
   echo "worktree-setup: bun install failed" >&2
