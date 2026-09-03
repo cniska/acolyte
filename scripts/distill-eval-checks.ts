@@ -90,10 +90,10 @@ const NON_UNIT_WORDS: ReadonlySet<string> = new Set([
 const CODE_TOKEN_PATTERNS: readonly RegExp[] = [
   /`([^`]+)`/g,
   /(?<![\w-])(--[a-z][a-z0-9-]*)/gi,
-  // camelCase, PascalCase and snake_case: an internal capital or underscore is what makes a word an
-  // identifier rather than prose, so a name the turn never used cannot pass as ordinary language.
+  // camelCase, PascalCase and snake_case. A lowercase letter or an underscore is required: without
+  // one, an all-caps word is prose (PR, UTC, JSONL), and pinning those measures wording, not facts.
   /\b([A-Za-z][a-z0-9]*(?:[A-Z][A-Za-z0-9]*|_[A-Za-z0-9]+)+)\b/g,
-  /(?<![\w/])([\w.-]*(?:\/[\w.-]+)+)/g,
+  /(?<![\w/])((?:~|\.{1,2})?(?:\/[\w.-]+)+|[\w.-]+(?:\/[\w.-]+)*\/[\w-]*\.[\w-]+)/g,
   /\b([A-Za-z_]\w*\(\))/g,
 ];
 
@@ -127,7 +127,8 @@ function codeTokensIn(content: string): string[] {
       // A path shape is a path only with an extension or a directory step that reads as one; bare
       // prose slashes ("and/or") would otherwise become specifics the turn has to have quoted.
       if (!token) continue;
-      if (token.includes("/") && !token.includes(".") && !token.includes("-")) continue;
+      // An identifier needs a lowercase letter or an underscore; the rest is prose in capitals.
+      if (!token.includes("/") && !/[a-z]/.test(token) && !token.includes("_")) continue;
       tokens.push(token);
     }
   }
@@ -146,11 +147,7 @@ export function unquotedSpecifics(content: string, turnText: string): string[] {
   const missing: string[] = [];
 
   for (const token of codeTokensIn(fact)) {
-    // An all-caps acronym is prose, not an identifier: a turn writing `.jsonl` has stated JSONL, and
-    // demanding the case makes the check fire on wording rather than on a fact nobody said.
-    const isAcronym = /^[A-Z]+$/.test(token);
-    const found = isAcronym ? lowerHaystack.includes(token.toLowerCase()) : haystack.includes(token);
-    if (!found) missing.push(token);
+    if (!haystack.includes(token)) missing.push(token);
   }
 
   for (const match of fact.matchAll(FIGURE_PATTERN)) {

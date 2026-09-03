@@ -62,9 +62,15 @@ describe("unquotedSpecifics", () => {
     expect(unquotedSpecifics("commit skips below messageThreshold (4); cost consent uses a band.", turn)).toEqual([]);
   });
 
-  test("reads an all-caps acronym as prose the turn stated in any case", () => {
+  test("leaves an all-caps prose word alone, since it pins wording rather than a fact", () => {
     const turn = "claude-code writes one .jsonl per session and codex writes a rollout file.";
     expect(unquotedSpecifics("claude-code sessions are JSONL files.", turn)).toEqual([]);
+    expect(unquotedSpecifics("the patch already landed via PR #398.", "it landed upstream via #398.")).toEqual([]);
+  });
+
+  test("does not read a hyphenated phrase with a slash as a path", () => {
+    const turn = "a score would exclude correct turns that have little activity or a short response.";
+    expect(unquotedSpecifics("scoring excludes correct low-activity/short decision turns.", turn)).toEqual([]);
   });
 
   test("still holds an identifier to its case", () => {
