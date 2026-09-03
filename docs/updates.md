@@ -4,7 +4,7 @@ Acolyte manages automatic binary updates, protocol compatibility, database migra
 
 ## Auto-update
 
-The `acolyte` command on your PATH is a launcher. It runs whichever is newer: the binary the install owns, or a staged build under `<data>/bin/<version>/acolyte` (see [Paths](./paths.md)). Every channel updates this way, so `brew upgrade` runs whenever the formula is ahead of the staged build. Install through one channel only: two installs shadow each other on `PATH`.
+The `acolyte` command on your PATH is a launcher. It runs whichever is newer: the binary the install owns, or a staged build under `<data>/bin/<version>/acolyte` (see [Paths](./paths.md)). Every channel updates this way, so `brew upgrade` and `npm update -g @acolyte/cli` run whenever the published version is ahead of the staged build. Install through one channel only: two installs shadow each other on `PATH`.
 
 Starting the chat checks for a newer release, at most once per 24 hours. It downloads the binary, verifies the checksum, and stages it silently; the staged build runs the next time you start Acolyte. Only `x.y.z` versions are staged. An update writes inside the data directory alone, never to a file an installer or package manager owns.
 
@@ -34,4 +34,4 @@ Some features ship behind flags while they stabilize. When a flag is no longer n
 
 ## Release process
 
-The [`scripts/release.sh`](../scripts/release.sh) script bumps the version, generates a changelog entry, commits, and tags. CI builds platform binaries and publishes a GitHub release. The install script and auto-updater pull from GitHub releases.
+The [`scripts/release.sh`](../scripts/release.sh) script bumps the version, generates a changelog entry, commits, and tags. CI builds platform binaries and publishes a GitHub release, then repins the Homebrew formula and publishes `@acolyte/cli` with its platform packages. The install script and auto-updater pull from GitHub releases.

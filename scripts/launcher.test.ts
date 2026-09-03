@@ -63,6 +63,27 @@ describe("launcher", () => {
     expect([...filled].sort()).toEqual([...declared].sort());
   });
 
+  test("takes an unsubstituted baseline from the environment", async () => {
+    const home = createHome();
+    const baseline = writeBaseline(home, "0.12.0");
+    const launcher = join(home, ".local", "bin", "acolyte");
+    mkdirSync(join(launcher, ".."), { recursive: true });
+    writeFileSync(launcher, readFileSync(TEMPLATE, "utf8"), { mode: 0o755 });
+    writeStaged(home, "0.11.0");
+
+    const proc = Bun.spawn([launcher], {
+      env: {
+        HOME: home,
+        PATH: process.env.PATH ?? "/usr/bin:/bin",
+        ACOLYTE_BASELINE_BIN: baseline,
+        ACOLYTE_BASELINE_VERSION: "0.12.0",
+      },
+      stdout: "pipe",
+    });
+    expect((await new Response(proc.stdout).text()).trim()).toBe("baseline-0.12.0");
+    expect(await proc.exited).toBe(0);
+  });
+
   test("runs the baseline binary when nothing is staged", async () => {
     const home = createHome();
     const launcher = installLauncher(home, writeBaseline(home, "0.12.0"), "0.12.0");

@@ -24,7 +24,13 @@ Or with [Homebrew](https://brew.sh):
 brew install cniska/tap/acolyte
 ```
 
-Both install the latest released binary for macOS and Linux, behind a launcher that keeps it up to date automatically — see [Updates](docs/updates.md). Pick one: two installs shadow each other on `PATH`. To run from source instead, see [Local development](#local-development).
+Or with npm:
+
+```bash
+npm install -g @acolyte/cli
+```
+
+Each installs the latest released binary for macOS and Linux, behind a launcher that keeps it up to date automatically — see [Updates](docs/updates.md). Pick one: two installs shadow each other on `PATH`. To run from source instead, see [Local development](#local-development).
 
 Requires Git 2.14 or newer on `PATH`: Acolyte reports every file edit as a Git diff, and `/workspaces` manages Git worktrees.
 

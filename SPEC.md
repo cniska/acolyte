@@ -205,7 +205,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 
 - **NF-1** — The daemon starts automatically on client use and manages its own lifecycle.
 - **NF-1a** — Starting the chat checks for a newer released binary at most once per startup-day and, when one exists, downloads it, verifies its checksum, and stages it under its version in the data directory without announcing it; the staged build runs at the next start. Only a version the launcher can order is staged. An update writes nowhere outside the data directory and never interrupts the session that staged it.
-- **NF-2** — Installation is a single released binary for macOS and Linux via a one-line install script; no runtime toolchain install is required for end users. The installed command is a launcher that runs whichever is newer, the binary the install owns or a staged update.
+- **NF-2** — Installation is a single released binary for macOS and Linux, and every install channel delivers that same binary; no runtime toolchain install is required for end users. The installed command is a launcher that runs whichever is newer, the binary the install owns or a staged update.
 - **NF-3** — SQLite-backed stores (memory and trace) apply versioned forward migrations automatically and cumulatively on startup, within transactions.
 - **NF-4** — Releases follow semantic versioning; patch and minor releases are always safe to apply.
 - **NF-5** — Errors are classified by a structured code/kind, never by matching message strings; error messages are descriptive enough for the model to act on.
@@ -254,7 +254,7 @@ A second premise is that completion belongs to the model, not the host. The runt
 ## 12. Deliverables
 
 - **D-1** — The `acolyte` CLI/daemon binary and its documented commands (§2.4).
-- **D-2** — The one-line install script producing a macOS/Linux install whose launcher picks up staged updates. (NF-2)
+- **D-2** — The install channels producing a macOS/Linux install whose launcher picks up staged updates: the one-line install script, a Homebrew tap, and an npm package. (NF-2)
 - **D-3** — The layered test suite (unit, integration, visual) and the perf/memory-benchmark harnesses. (NF-9)
 - **D-4** — Canonical documentation under `docs/` (architecture, lifecycle, tooling, memory, workspace, sessions, tasks, protocol, configuration, CLI, errors, observability, TUI) and `AGENTS.md` invariants/seams.
 - **D-5** — The bundled engineering-skill set (plan, build, review, and the others) available to the agent from first run.

@@ -25,6 +25,7 @@ Acolyte combines a terminal-first client, headless daemon, lifecycle effects, pe
 - XDG-style global directories
 - one-line install script
 - Homebrew tap (`brew install cniska/tap/acolyte`)
+- npm package (`npm install -g @acolyte/cli`)
 
 ## Agent execution
 
