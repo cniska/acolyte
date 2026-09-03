@@ -108,9 +108,13 @@ function isVersionShaped(figure: string, content: string, index: number): boolea
   return /[vV]$/.test(content.slice(Math.max(0, index - 1), index));
 }
 
+/**
+ * The unit word a figure carries, which is the word directly after it and nothing further. A
+ * closing bracket or a clause break ends the phrase: in "messageThreshold (4); cost consent" the
+ * figure's unit is not "cost", and pairing across that boundary invents a phrase to demand.
+ */
 function wordAfter(text: string, index: number): string | null {
-  const rest = text.slice(index);
-  const match = /^[^A-Za-z0-9]*([A-Za-z]+)/.exec(rest);
+  const match = /^[ \t]*([A-Za-z]+)/.exec(text.slice(index));
   return match ? match[1] : null;
 }
 
@@ -142,7 +146,11 @@ export function unquotedSpecifics(content: string, turnText: string): string[] {
   const missing: string[] = [];
 
   for (const token of codeTokensIn(fact)) {
-    if (!haystack.includes(token)) missing.push(token);
+    // An all-caps acronym is prose, not an identifier: a turn writing `.jsonl` has stated JSONL, and
+    // demanding the case makes the check fire on wording rather than on a fact nobody said.
+    const isAcronym = /^[A-Z]+$/.test(token);
+    const found = isAcronym ? lowerHaystack.includes(token.toLowerCase()) : haystack.includes(token);
+    if (!found) missing.push(token);
   }
 
   for (const match of fact.matchAll(FIGURE_PATTERN)) {

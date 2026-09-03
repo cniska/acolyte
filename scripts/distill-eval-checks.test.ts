@@ -57,6 +57,21 @@ describe("unquotedSpecifics", () => {
     expect(unquotedSpecifics("git 2.14 remains required, and mise does not provide it.", turn)).toEqual([]);
   });
 
+  test("does not pair a figure with a word across a clause break", () => {
+    const turn = "commit skips histories below messageThreshold (4), and cost consent is plan-then-confirm.";
+    expect(unquotedSpecifics("commit skips below messageThreshold (4); cost consent uses a band.", turn)).toEqual([]);
+  });
+
+  test("reads an all-caps acronym as prose the turn stated in any case", () => {
+    const turn = "claude-code writes one .jsonl per session and codex writes a rollout file.";
+    expect(unquotedSpecifics("claude-code sessions are JSONL files.", turn)).toEqual([]);
+  });
+
+  test("still holds an identifier to its case", () => {
+    const turn = "The seam is TRANSCRIPT_SOURCES.";
+    expect(unquotedSpecifics("The seam is transcript_sources.", turn)).toContain("transcript_sources");
+  });
+
   test("flags a path the turn never named", () => {
     const turn = "The pinned Bun comes from mise.toml at the repository root.";
     expect(unquotedSpecifics("Bun is pinned in config/mise.toml.", turn)).toContain("config/mise.toml");

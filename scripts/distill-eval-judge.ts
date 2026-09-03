@@ -14,9 +14,9 @@ export type FactClass = z.infer<typeof factClassSchema>;
 
 const CLASS_RUBRIC = `Classify one recorded memory into exactly one class.
 
-state — a claim about how the codebase, the project, or a person now is. Present tense, and it stays true until someone changes the thing itself.
-narration — the subject is an act rather than a state: a commit, an edit, a reset, a command that ran, work that was done.
-plan — an intention or a proposal, in any tense. "should be removed", "will add", "needs to", "Plan:" and a requirement not yet built are all plans wearing whatever grammar they like.
+state — a claim about how the codebase, the project, or a person now is. Present tense, and it stays true until someone changes the thing itself. A claim only reaches this class if it would still be worth knowing to someone who never saw the turn that produced it.
+narration — the subject is an act rather than a state: a commit, an edit, a reset, a command that ran, work that was done. Grammar does not settle this. "The handoff is saved at that path and copied to the clipboard" and "the design was written to that file" are narration in the present tense: what they record is the turn's own act, and the artifact's existence is not a fact about the project.
+plan — an intention to do work, in any tense: "should be removed", "will add", "needs to", "Plan:", or a task someone is about to carry out. A decision that has already been reached is not a plan even when nothing implements it yet, so "imports spend oldest-first because mtime is unreliable" is a decision and belongs in state, while "next I add the staleness gate" is a plan. The test is whether the turn settled the question or merely queued the work.
 conversation — the subject is the exchange itself: what someone asked, what an agent was told, what was delegated, what a message said.
 perishable — a true present-tense claim that routine repository motion falsifies: a push, a merge, a release, a branch landing. Unpushed commits, a tag not yet cut, a workflow mid-flight, "ready to push", "not yet published".
 
