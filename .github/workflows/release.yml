@@ -134,6 +134,11 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
 
+      # Trusted publishing authenticates the publish over OIDC, which the runner's bundled npm is
+      # too old to do.
+      - name: Update npm
+        run: npm install --global npm@latest
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -146,8 +151,6 @@ jobs:
       # The platform packages go first: @acolyte/cli pins them as optional dependencies. A version
       # already on the registry is skipped, so a job that failed partway can be re-run.
       - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           for package in darwin-arm64 linux-x64 cli; do
             name=$(node -p "require('./dist/npm/$package/package.json').name")
