@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { cpSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PLATFORMS, platformPackage, platformTarball, platformTarget } from "./build-npm";
@@ -100,6 +100,23 @@ for (const host of HOSTS) {
       writeShim(join(home, ".local", "share", "acolyte", "bin", "99.0.0", "acolyte"), "staged-99.0.0");
 
       expect(await run(shim, home)).toEqual({ out: "staged-99.0.0", code: 0 });
+    });
+
+    test("runs under Bun when the machine has no Node", async () => {
+      const shim = await install();
+      const path = createDir("acolyte-npm-path-");
+      for (const tool of ["bun", "sh", "awk", "basename", "dirname"]) {
+        const resolved = Bun.which(tool);
+        if (resolved) symlinkSync(resolved, join(path, tool));
+      }
+      if (Bun.which("node", { PATH: path })) throw new Error("node is still reachable, so this proves nothing");
+
+      const proc = Bun.spawn([shim, "run", "hello"], {
+        env: { HOME: createDir("acolyte-npm-home-"), PATH: path },
+        stdout: "pipe",
+      });
+      expect((await new Response(proc.stdout).text()).trim()).toBe(`binary-${platformTarget(host)} run hello`);
+      expect(await proc.exited).toBe(0);
     });
 
     test("fails loudly when the platform package is missing", async () => {

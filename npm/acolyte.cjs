@@ -1,4 +1,8 @@
-#!/usr/bin/env node
+#!/bin/sh
+// 2>/dev/null; for rt in node bun; do command -v "$rt" >/dev/null 2>&1 && exec "$rt" "$0" "$@"; done; echo "acolyte: install Node or Bun to run this" >&2; exit 1
+// The line above runs under /bin/sh and reads as a comment under the runtime it hands off to, so
+// an install that has Bun but no Node still works.
+//
 // npm resolves the platform package only at run time, so this hands the launcher its baseline
 // through the environment. Which build actually runs stays the launcher's decision.
 const { spawn } = require("node:child_process");
