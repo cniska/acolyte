@@ -33,6 +33,8 @@ export type EvalReport = {
   readonly observationsPerTurn: number;
   readonly classRates: Readonly<Record<FactClass | "unclassified", number>>;
   readonly perishableAtDurableScope: number;
+  /** Every recorded fact, so a judge verdict or a check is always overrulable against the text. */
+  readonly facts: readonly GradedFact[];
   readonly quoteViolations: readonly GradedFact[];
   readonly atomicityViolations: readonly GradedFact[];
   readonly mustNotViolations: readonly GradedFact[];
@@ -107,6 +109,7 @@ export function aggregate(
     perishableAtDurableScope: facts.filter(
       (fact) => fact.factClass === "perishable" && (fact.scope === "project" || fact.scope === "user"),
     ).length,
+    facts,
     quoteViolations: facts.filter((fact) => fact.unquoted.length > 0),
     atomicityViolations: facts.filter((fact) => fact.chained),
     mustNotViolations: facts.filter((fact) => fact.mustNotHits.length > 0),
@@ -162,15 +165,17 @@ export function renderReport(report: EvalReport): string {
     );
   }
 
-  const flagged = [...report.quoteViolations, ...report.atomicityViolations, ...report.mustNotViolations];
-  if (flagged.length > 0) {
+  if (report.facts.length > 0) {
     lines.push("");
-    lines.push("flagged facts");
-    for (const fact of flagged) {
-      const reason = fact.unquoted.length > 0 ? `unquoted ${fact.unquoted.join(", ")}` : "";
-      const chained = fact.chained ? "chained claims" : "";
-      const must = fact.mustNotHits.length > 0 ? `mustNot ${fact.mustNotHits.join(", ")}` : "";
-      lines.push(`  [${fact.fixtureId}] ${[reason, chained, must].filter(Boolean).join(" | ")}`);
+    lines.push("every recorded fact, with what it tripped");
+    for (const fact of report.facts) {
+      const reasons = [
+        fact.factClass && fact.factClass !== "state" ? `judged ${fact.factClass}` : "",
+        fact.unquoted.length > 0 ? `unquoted ${fact.unquoted.join(", ")}` : "",
+        fact.chained ? "chained claims" : "",
+        fact.mustNotHits.length > 0 ? `mustNot ${fact.mustNotHits.join(", ")}` : "",
+      ].filter(Boolean);
+      lines.push(`  [${fact.fixtureId} r${fact.repeat} ${fact.scope}] ${reasons.join(" | ") || "clean"}`);
       lines.push(`    ${fact.content}`);
     }
   }
