@@ -52,10 +52,24 @@ export type FixtureSummary = {
   readonly violations: number;
 };
 
-const JUNK_CLASSES: readonly FactClass[] = ["narration", "plan", "conversation"];
+/**
+ * Every class the prompt's own bar rejects. `perishable` stays out: filed at session scope it dies
+ * with the session, which is what the prompt asks for, so its own column judges it by scope instead.
+ */
+const JUNK_CLASSES: readonly FactClass[] = ["narration", "plan", "conversation", "recoverable"];
 
 function rate(part: number, whole: number): number {
   return whole === 0 ? 0 : part / whole;
+}
+
+/**
+ * Whether a fact outlives the turn that wrote it. A turn that establishes nothing is answered
+ * correctly by a session-scoped note as well as by silence: the import drops session records, so
+ * neither reaches the corpus, and demanding an empty return would fail the prompt's own advice
+ * about where to file what will not outlive today.
+ */
+function isDurable(fact: GradedFact): boolean {
+  return fact.scope === "project" || fact.scope === "user";
 }
 
 function junkCount(facts: readonly GradedFact[]): number {
@@ -85,10 +99,15 @@ export function aggregate(
   const facts = repeats.flatMap((repeat) => repeat.facts);
   const fixtureIds = [...new Set(repeats.map((repeat) => repeat.fixtureId))];
 
-  const classRates = { state: 0, narration: 0, plan: 0, conversation: 0, perishable: 0, unclassified: 0 } as Record<
-    FactClass | "unclassified",
-    number
-  >;
+  const classRates = {
+    state: 0,
+    narration: 0,
+    plan: 0,
+    conversation: 0,
+    perishable: 0,
+    recoverable: 0,
+    unclassified: 0,
+  } as Record<FactClass | "unclassified", number>;
   for (const fact of facts) {
     const key = fact.factClass ?? "unclassified";
     classRates[key] += 1;
@@ -106,9 +125,7 @@ export function aggregate(
     observations: facts.length,
     observationsPerTurn: rate(facts.length, repeats.length),
     classRates,
-    perishableAtDurableScope: facts.filter(
-      (fact) => fact.factClass === "perishable" && (fact.scope === "project" || fact.scope === "user"),
-    ).length,
+    perishableAtDurableScope: facts.filter((fact) => fact.factClass === "perishable" && isDurable(fact)).length,
     facts,
     quoteViolations: facts.filter((fact) => fact.unquoted.length > 0),
     atomicityViolations: facts.filter((fact) => fact.chained),
@@ -118,7 +135,7 @@ export function aggregate(
     silenceCorrectness:
       silenceRepeats.length === 0
         ? null
-        : rate(silenceRepeats.filter((repeat) => repeat.facts.length === 0).length, silenceRepeats.length),
+        : rate(silenceRepeats.filter((repeat) => !repeat.facts.some(isDurable)).length, silenceRepeats.length),
     perFixture: fixtureIds.map((id) =>
       summarizeFixture(
         id,

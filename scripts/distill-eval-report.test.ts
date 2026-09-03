@@ -85,6 +85,26 @@ describe("aggregate", () => {
     expect(report.silenceCorrectness).toBe(0.5);
   });
 
+  test("a session-scoped note answers a nothing-turn as well as silence does", () => {
+    const report = aggregate(
+      [repeat({ facts: [fact({ scope: "session", factClass: "perishable" })], expectsSilence: true })],
+      META,
+    );
+    expect(report.silenceCorrectness).toBe(1);
+    expect(report.perishableAtDurableScope).toBe(0);
+  });
+
+  test("a durable fact on a nothing-turn is still a silence failure", () => {
+    const report = aggregate([repeat({ facts: [fact({ scope: "project" })], expectsSilence: true })], META);
+    expect(report.silenceCorrectness).toBe(0);
+  });
+
+  test("a fact one file read would tell you again counts as junk", () => {
+    const report = aggregate([repeat({ facts: [fact({ factClass: "recoverable" })] })], META);
+    expect(report.classRates.recoverable).toBe(1);
+    expect(report.perFixture[0].junkRate).toBe(1);
+  });
+
   test("silence correctness is absent rather than perfect when no fixture expects silence", () => {
     expect(aggregate([repeat()], META).silenceCorrectness).toBeNull();
   });

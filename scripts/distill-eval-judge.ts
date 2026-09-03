@@ -9,7 +9,7 @@ import { sharedRateLimiter } from "../src/rate-limiter";
  * revision produced the fact, or the other revision's output, so a classification cannot be
  * influenced by what is being compared.
  */
-export const factClassSchema = z.enum(["state", "narration", "plan", "conversation", "perishable"]);
+export const factClassSchema = z.enum(["state", "narration", "plan", "conversation", "perishable", "recoverable"]);
 export type FactClass = z.infer<typeof factClassSchema>;
 
 const CLASS_RUBRIC = `Classify one recorded memory into exactly one class.
@@ -19,6 +19,9 @@ narration — the subject is an act rather than a state: a commit, an edit, a re
 plan — an intention to do work, in any tense: "should be removed", "will add", "needs to", "Plan:", or a task someone is about to carry out. A decision that has already been reached is not a plan even when nothing implements it yet, so "imports spend oldest-first because mtime is unreliable" is a decision and belongs in state, while "next I add the staleness gate" is a plan. The test is whether the turn settled the question or merely queued the work.
 conversation — the subject is the exchange itself: what someone asked, what an agent was told, what was delegated, what a message said.
 perishable — a true present-tense claim that routine repository motion falsifies: a push, a merge, a release, a branch landing. Unpushed commits, a tag not yet cut, a workflow mid-flight, "ready to push", "not yet published".
+recoverable — a true, durable, present-tense claim that reading one file would tell you again: what a command does, which paths a module reads, how a function is wired, a constant's value. It describes the code rather than anything the code cannot say for itself, so it earns nothing by being remembered.
+
+state is the residue: true now, durable, and about something no file states — a decision and why, a constraint the work discovered, a convention, a person's preference. When a claim fits both state and recoverable, answer recoverable.
 
 Answer with the class name alone.`;
 
@@ -53,7 +56,7 @@ export function createJudgeRunner(model: string): JudgeRunner {
 }
 
 function parseClass(answer: string): FactClass | null {
-  const word = answer.toLowerCase().match(/state|narration|plan|conversation|perishable/)?.[0];
+  const word = answer.toLowerCase().match(/state|narration|plan|conversation|perishable|recoverable/)?.[0];
   return word ? factClassSchema.parse(word) : null;
 }
 
