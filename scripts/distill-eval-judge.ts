@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { streamModelCall } from "../src/model-call";
 import { createModel } from "../src/model-factory";
 import { normalizeModel, providerFromModel } from "../src/provider-config";
 import { sharedRateLimiter } from "../src/rate-limiter";
@@ -35,13 +36,19 @@ export type JudgeRunner = (system: string, user: string) => Promise<string>;
 
 export function createJudgeRunner(model: string): JudgeRunner {
   const qualified = normalizeModel(model);
-  const client = createModel(qualified, sharedRateLimiter(providerFromModel(qualified)));
+  const limiter = sharedRateLimiter(providerFromModel(qualified));
+  const client = createModel(qualified, limiter);
   return async (system, user) => {
-    const { stream } = await client.doStream({
-      prompt: [
-        { role: "system", content: system },
-        { role: "user", content: [{ type: "text", text: user }] },
-      ],
+    const { stream } = await streamModelCall({
+      client,
+      limiter,
+      label: "distill-eval-judge",
+      request: {
+        prompt: [
+          { role: "system", content: system },
+          { role: "user", content: [{ type: "text", text: user }] },
+        ],
+      },
     });
     const reader = stream.getReader();
     let text = "";

@@ -5,6 +5,7 @@ import { unreachable } from "./assert";
 import { CodedError } from "./coded-error";
 import { ERROR_KINDS, errorMessage, MEMORY_ERROR_CODES } from "./error-contract";
 import { log } from "./log";
+import { embedModelCall } from "./model-call";
 import {
   bareModelId,
   type EmbeddingProvider,
@@ -14,6 +15,7 @@ import {
   type ProviderCredentials,
   providerFromModel,
 } from "./provider-config";
+import { sharedRateLimiter } from "./rate-limiter";
 
 export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
   if (a.length !== b.length) throw new Error(`Embedding dimension mismatch: ${a.length} vs ${b.length}`);
@@ -92,9 +94,10 @@ function sameTarget(a: EmbeddingTarget, b: EmbeddingTarget): boolean {
 function getEmbeddingModel() {
   const target = resolveEmbeddingTarget(appConfig.embedding.model);
   if (!target) return null;
-  if (cached && sameTarget(cached, target)) return cached.embeddingModel;
-  cached = { ...target, embeddingModel: createEmbeddingModel(target) };
-  return cached.embeddingModel;
+  if (!cached || !sameTarget(cached, target)) {
+    cached = { ...target, embeddingModel: createEmbeddingModel(target) };
+  }
+  return { model: cached.embeddingModel, provider: cached.provider };
 }
 
 const STOPWORDS = new Set([
@@ -229,8 +232,13 @@ export async function embedQuery(text: string): Promise<Float32Array> {
     );
   }
   try {
-    const result = await model.doEmbed({ values: [text] });
-    const raw = result.embeddings[0];
+    const embeddings = await embedModelCall({
+      client: model.model,
+      limiter: sharedRateLimiter(model.provider),
+      values: [text],
+      label: "embed",
+    });
+    const raw = embeddings[0];
     if (!raw) throw new Error("the embedding response carried no vector");
     return new Float32Array(raw);
   } catch (error) {

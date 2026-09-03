@@ -18,6 +18,7 @@ import type { embedText } from "./memory-embedding";
 import { addObservation, resolveScopeKey, retireMemories, type ScopeContext } from "./memory-ops";
 import { searchMemories } from "./memory-recall";
 import { getMemoryStore } from "./memory-store";
+import { streamModelCall } from "./model-call";
 import { createModel } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
@@ -197,15 +198,21 @@ export async function defaultRunner(
   model: string,
 ): Promise<DistillObservation[]> {
   const qualifiedModel = normalizeModel(model);
-  const client = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
+  const limiter = sharedRateLimiter(providerFromModel(qualifiedModel));
+  const client = createModel(qualifiedModel, limiter);
   // The subscription backend rejects non-streaming requests ("Stream must be set to true"), so distill over doStream.
-  const { stream } = await client.doStream({
-    prompt: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: [{ type: "text", text: userContent }] },
-    ],
-    tools: [DISTILL_OUTPUT_TOOL],
-    toolChoice: { type: "auto" },
+  const { stream } = await streamModelCall({
+    client,
+    limiter,
+    label: "distill",
+    request: {
+      prompt: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: [{ type: "text", text: userContent }] },
+      ],
+      tools: [DISTILL_OUTPUT_TOOL],
+      toolChoice: { type: "auto" },
+    },
   });
   const observations: DistillObservation[] = [];
   const reader = stream.getReader();

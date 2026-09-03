@@ -34,6 +34,24 @@ function isRateLimitError(error: unknown): boolean {
   return typeof code === "string" && code.toLowerCase() === "rate_limit_exceeded";
 }
 
+const OVERLOADED_CODES: ReadonlySet<string> = new Set(["overloaded_error", "service_unavailable"]);
+
+function isOverloadedError(error: unknown): boolean {
+  const status = field(error, "status") ?? field(error, "statusCode");
+  if (status === HTTP_STATUS.overloaded || status === HTTP_STATUS.serviceUnavailable) return true;
+  const code = field(error, "code");
+  return typeof code === "string" && OVERLOADED_CODES.has(code.toLowerCase());
+}
+
+/**
+ * Whether calling again could plausibly succeed: the provider was busy, not the request wrong. Both
+ * shapes back off on the same schedule, since an overloaded provider needs the wait as much as a
+ * throttled one does — and a retry-after header, when it sends one, still wins.
+ */
+export function isRetryableProviderError(error: unknown): boolean {
+  return isRateLimitError(error) || isOverloadedError(error);
+}
+
 function retryAfterMs(error: unknown): number | undefined {
   const headers = field(error, "headers");
   const retryAfter = field(headers, "retry-after");
@@ -136,7 +154,7 @@ export function createRateLimiter(config: RateLimiterConfig): RateLimiter {
     },
 
     onError(error: unknown): { shouldRetry: boolean; delayMs: number } {
-      if (!isRateLimitError(error)) return { shouldRetry: false, delayMs: 0 };
+      if (!isRetryableProviderError(error)) return { shouldRetry: false, delayMs: 0 };
       consecutiveFailures += 1;
       const serverDelay = retryAfterMs(error);
       const backoff = Math.min(config.backoffMaxMs, config.backoffBaseMs * 2 ** (consecutiveFailures - 1));

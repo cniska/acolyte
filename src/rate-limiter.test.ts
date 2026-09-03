@@ -4,6 +4,7 @@ import {
   createRateLimiter,
   createRateLimitFetch,
   isRateLimitError,
+  isRetryableProviderError,
   type RateLimiterConfig,
   retryAfterMs,
   sharedRateLimiter,
@@ -30,6 +31,29 @@ describe("isRateLimitError", () => {
     expect(isRateLimitError({ code: "server_error" })).toBe(false);
     expect(isRateLimitError(null)).toBe(false);
     expect(isRateLimitError("string")).toBe(false);
+  });
+});
+
+describe("isRetryableProviderError", () => {
+  test("a rate limit is retryable", () => {
+    expect(isRetryableProviderError({ status: 429 })).toBe(true);
+  });
+
+  test("an overloaded provider is retryable by status", () => {
+    expect(isRetryableProviderError({ status: 529 })).toBe(true);
+    expect(isRetryableProviderError({ statusCode: 503 })).toBe(true);
+  });
+
+  test("an overloaded provider is retryable by code", () => {
+    expect(isRetryableProviderError({ code: "overloaded_error" })).toBe(true);
+    expect(isRetryableProviderError({ code: "SERVICE_UNAVAILABLE" })).toBe(true);
+  });
+
+  test("a wrong request is not retryable, since repeating it cannot help", () => {
+    expect(isRetryableProviderError({ status: 400 })).toBe(false);
+    expect(isRetryableProviderError({ status: 401 })).toBe(false);
+    expect(isRetryableProviderError({ status: 500 })).toBe(false);
+    expect(isRetryableProviderError(null)).toBe(false);
   });
 });
 
