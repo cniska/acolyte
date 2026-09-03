@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.27.2 (2026-09-03)
+
+- chore(release): publish npm packages over oidc (`d3c72dd9`)
+
+
 ## 0.27.1 (2026-09-03)
 
 - chore(scripts): remove the unused erosion harness (`a9d06e51`)
