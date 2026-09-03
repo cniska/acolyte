@@ -7,7 +7,7 @@ Acolyte is built around explicit runtime concepts: sessions, tasks, lifecycle ph
 ## Overview
 
 - [Features](./features.md) — shipped, user-visible capabilities
-- [Why Acolyte?](./why-acolyte.md) — observable execution and full developer control over AI coding
+- [Why Acolyte?](./why-acolyte.md) — memory that persists, observable execution, and full developer control over AI coding
 - [Comparison](./comparison.md) — how Acolyte compares to other AI coding agents
 - [Benchmarks](./benchmarks.md) — measured code quality comparisons across agents
 - [Soul](./soul.md) — product persona and operating principles

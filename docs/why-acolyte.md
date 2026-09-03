@@ -1,6 +1,6 @@
 # Why Acolyte?
 
-Acolyte is an open-source, terminal-first AI coding agent built for reliable, observable execution, provider choice, and developer control.
+Acolyte is an open-source AI coding agent that remembers you and your projects, with observable execution, provider choice, and developer control.
 
 ## Why open source?
 
@@ -20,12 +20,16 @@ Acolyte is for developers who want reliable, observable agent behavior, not a bl
 
 | Feature | What Acolyte does |
 |---|---|
+| Memory | Durable facts about you and your projects, distilled from completed work and scoped to session, project, or user |
 | Architecture | Headless daemon with typed RPC — CLI, editors, and custom clients share the same protocol |
 | Lifecycle | 4-phase pipeline (resolve → prepare → generate → finalize) in separate, testable modules |
 | Post-write effects | Automatic format and lint after writes; lint errors surface for the model to decide on |
-| Memory | Context distillation extracts durable facts from completed work, scoped to session, project, or user |
 | Context budgeting | Proactive token budgeting via tiktoken with system prompt reservation and priority-based allocation |
 | Developer experience | Custom React TUI with fuzzy search, autocomplete, model picker, structured output, and AST-based editing |
+
+### Memory
+
+Acolyte learns you and your projects from the work itself: a rule stated once is kept as a durable fact and recalled in a later session when the model judges it relevant. Instead of compressing context under pressure, it proactively extracts durable observations from completed work and commits them at session, project, or user scope. A later observation can supersede the records it replaces, which move to a restorable archive with lineage. The pipeline is explicit and each stage is strategy-injectable.
 
 ### Daemon architecture
 
@@ -34,10 +38,6 @@ The server runs headless. CLI, editor plugins, and third-party clients all conne
 ### Lifecycle pipeline
 
 Every request flows through four explicit phases, each in its own module with its own tests. The lifecycle trusts the model to make good decisions within a single generation pass. Format and lint effects run automatically after writes, and lint errors surface for the model to decide on. A step budget and token ceiling inlined into tool execution prevent runaway loops, and tool results are truncated at the serialization boundary to bound context growth.
-
-### Memory
-
-Instead of compressing context under pressure, Acolyte proactively extracts durable observations from completed work and commits them at session, project, or user scope. A later observation can supersede the records it replaces, which move to a restorable archive with lineage. The pipeline is explicit and each stage is strategy-injectable.
 
 ### Context budgeting
 
