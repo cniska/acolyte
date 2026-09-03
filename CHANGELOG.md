@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.27.1 (2026-09-03)
+
+- chore(scripts): remove the unused erosion harness (`a9d06e51`)
+- docs(readme): lead with what memory does (`ca52992b`)
+- fix(launcher): make the reinstall hint channel-neutral (`c6396c6f`)
+- docs(install): document the homebrew channel (`e5d75591`)
+- fix(number): carry a rounded figure up a rung (`c6c7aea9`)
+- chore(release): dispatch the homebrew formula bump (`b886a41d`)
+- fix(deps): override qs and fast-uri to patched versions (`8a3838b4`)
+- feat(install): publish an npm package (`83447b8a`)
+- fix(install): scope the launcher baseline override to npm (`7c3a8e84`)
+- fix(install): run the npm command under node or bun (`64666235`)
+
+
 ## 0.27.0 (2026-09-02)
 
 - feat(trace): record result size and model usage (#407) (`a9e6e176`)
