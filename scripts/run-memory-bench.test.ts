@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { appConfig } from "../src/app-config";
 import { aggregateMetrics, computeQueryMetrics, ndcgAtK, recallAtK } from "./memory-bench-metrics";
 import { parseDatasetId } from "./memory-bench-scenarios";
-import { applyModelOverrides, parseArgs } from "./run-memory-bench";
+import { applyModelOverrides, parseArgs, resolveDistillModel } from "./run-memory-bench";
 
 describe("parseArgs", () => {
   test("applies defaults", () => {
@@ -45,10 +45,18 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["--verbose"])).toThrow("Unknown argument: --verbose");
   });
 
+  test("distills with the model named on the command line", () => {
+    expect(resolveDistillModel({ distillModel: "anthropic/claude-opus-5" })).toBe("anthropic/claude-opus-5");
+  });
+
+  test("distills with the configured model when the command line names none", () => {
+    expect(resolveDistillModel({ distillModel: null })).toBe(appConfig.model);
+  });
+
   test("applies the embedding model override to the embedding configuration", () => {
     const previousModel = appConfig.embedding.model;
     try {
-      applyModelOverrides({ embeddingModel: "openai/text-embedding-3-large", distillModel: null });
+      applyModelOverrides({ embeddingModel: "openai/text-embedding-3-large" });
       expect(appConfig.embedding.model).toBe("openai/text-embedding-3-large");
     } finally {
       (appConfig.embedding as { model: string }).model = previousModel;
