@@ -143,12 +143,19 @@ jobs:
       - name: Build packages
         run: bun run scripts/build-npm.ts artifacts dist/npm
 
-      # The platform packages go first: @acolyte/cli pins them as optional dependencies.
+      # The platform packages go first: @acolyte/cli pins them as optional dependencies. A version
+      # already on the registry is skipped, so a job that failed partway can be re-run.
       - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           for package in darwin-arm64 linux-x64 cli; do
+            name=$(node -p "require('./dist/npm/$package/package.json').name")
+            version=$(node -p "require('./dist/npm/$package/package.json').version")
+            if npm view "$name@$version" version >/dev/null 2>&1; then
+              echo "$name@$version is already published"
+              continue
+            fi
             npm publish "dist/npm/$package" --access public --provenance
           done
 

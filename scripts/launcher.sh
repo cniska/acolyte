@@ -1,13 +1,22 @@
 #!/usr/bin/env sh
 # Acolyte launcher. Execs the newest of the binary this install owns and the builds staged in the
 # data directory, so an update only ever writes to the data directory and never to a file an
-# installer or package manager owns. Installers substitute the two placeholders below.
+# installer or package manager owns.
 set -eu
 
-# An installer that only learns the baseline path at run time, as npm does, passes it in the
-# environment instead of substituting the placeholders.
-BASELINE_BIN="${ACOLYTE_BASELINE_BIN:-__BASELINE_BIN__}"
-BASELINE_VERSION="${ACOLYTE_BASELINE_VERSION:-__BASELINE_VERSION__}"
+BASELINE_BIN="__BASELINE_BIN__"
+BASELINE_VERSION="__BASELINE_VERSION__"
+
+# Installers substitute an absolute path above. One that only learns the path at run time, as npm
+# does, leaves the placeholders and passes the values in the environment instead, so a substituted
+# baseline is never overridable from the environment.
+case "$BASELINE_BIN" in
+  /*) ;;
+  *)
+    BASELINE_BIN="${ACOLYTE_BASELINE_BIN:-}"
+    BASELINE_VERSION="${ACOLYTE_BASELINE_VERSION:-}"
+    ;;
+esac
 
 # Mirrors src/paths.ts: a relative XDG_DATA_HOME is ignored. Neither variable is required — with
 # no home to read, the baseline binary still runs.

@@ -5,6 +5,7 @@ node_modules/
 .env
 .superset/
 coverage/
+dist/
 Library/
 scripts/demo.sh
 acolyte

@@ -6,32 +6,21 @@ import { mkdirSync, rmSync } from "node:fs";
 import { basename, join } from "node:path";
 
 export interface Platform {
-  readonly directory: string;
-  readonly package: string;
   readonly os: string;
   readonly cpu: string;
   readonly description: string;
-  readonly tarball: string;
 }
 
 export const PLATFORMS: readonly Platform[] = [
-  {
-    directory: "darwin-arm64",
-    package: "@acolyte/darwin-arm64",
-    os: "darwin",
-    cpu: "arm64",
-    description: "macOS arm64 binary for Acolyte.",
-    tarball: "acolyte-darwin-arm64.tar.gz",
-  },
-  {
-    directory: "linux-x64",
-    package: "@acolyte/linux-x64",
-    os: "linux",
-    cpu: "x64",
-    description: "Linux x64 binary for Acolyte.",
-    tarball: "acolyte-linux-x64.tar.gz",
-  },
+  { os: "darwin", cpu: "arm64", description: "macOS arm64 binary for Acolyte." },
+  { os: "linux", cpu: "x64", description: "Linux x64 binary for Acolyte." },
 ];
+
+// The release build matrix, the release tarball, and the package the npm shim resolves at run
+// time all name a platform this way, so naming it once here keeps them from drifting apart.
+export const platformTarget = (platform: Platform): string => `${platform.os}-${platform.cpu}`;
+export const platformPackage = (platform: Platform): string => `@acolyte/${platformTarget(platform)}`;
+export const platformTarball = (platform: Platform): string => `acolyte-${platformTarget(platform)}.tar.gz`;
 
 const REPOSITORY = {
   type: "git",
@@ -40,7 +29,7 @@ const REPOSITORY = {
 
 export function createPlatformManifest(platform: Platform, version: string): Record<string, unknown> {
   return {
-    name: platform.package,
+    name: platformPackage(platform),
     version,
     description: platform.description,
     license: "MIT",
@@ -65,7 +54,7 @@ export function createCliManifest(version: string, platforms: readonly Platform[
     bin: { acolyte: "bin/acolyte.cjs" },
     files: ["bin/acolyte.cjs", "launcher.sh"],
     engines: { node: ">=20" },
-    optionalDependencies: Object.fromEntries(platforms.map((platform) => [platform.package, version])),
+    optionalDependencies: Object.fromEntries(platforms.map((platform) => [platformPackage(platform), version])),
   };
 }
 
@@ -89,9 +78,9 @@ async function main(artifactsDir: string, outDir: string): Promise<void> {
   rmSync(outDir, { recursive: true, force: true });
 
   for (const platform of PLATFORMS) {
-    const packageDir = join(outDir, platform.directory);
+    const packageDir = join(outDir, platformTarget(platform));
     mkdirSync(packageDir, { recursive: true });
-    extractBinary(join(artifactsDir, platform.tarball), packageDir);
+    extractBinary(join(artifactsDir, platformTarball(platform)), packageDir);
     await writeJson(join(packageDir, "package.json"), createPlatformManifest(platform, version));
   }
 

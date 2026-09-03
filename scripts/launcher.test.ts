@@ -84,6 +84,25 @@ describe("launcher", () => {
     expect(await proc.exited).toBe(0);
   });
 
+  test("keeps a substituted baseline when the environment names another", async () => {
+    const home = createHome();
+    const launcher = installLauncher(home, writeBaseline(home, "0.12.0"), "0.12.0");
+    const other = join(home, "elsewhere", "acolyte");
+    writeShim(other, "elsewhere");
+
+    const proc = Bun.spawn([launcher], {
+      env: {
+        HOME: home,
+        PATH: process.env.PATH ?? "/usr/bin:/bin",
+        ACOLYTE_BASELINE_BIN: other,
+        ACOLYTE_BASELINE_VERSION: "9.9.9",
+      },
+      stdout: "pipe",
+    });
+    expect((await new Response(proc.stdout).text()).trim()).toBe("baseline-0.12.0");
+    expect(await proc.exited).toBe(0);
+  });
+
   test("runs the baseline binary when nothing is staged", async () => {
     const home = createHome();
     const launcher = installLauncher(home, writeBaseline(home, "0.12.0"), "0.12.0");

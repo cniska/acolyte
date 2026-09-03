@@ -1,18 +1,15 @@
 #!/usr/bin/env node
 // npm resolves the platform package only at run time, so this hands the launcher its baseline
 // through the environment. Which build actually runs stays the launcher's decision.
-const { spawnSync } = require("node:child_process");
+const { spawn } = require("node:child_process");
 const { join } = require("node:path");
 
-const PLATFORM_PACKAGES = {
-  "darwin-arm64": "@acolyte/darwin-arm64",
-  "linux-x64": "@acolyte/linux-x64",
-};
+const manifest = require("../package.json");
+const supported = Object.keys(manifest.optionalDependencies);
+const platformPackage = `@acolyte/${process.platform}-${process.arch}`;
 
-const platform = `${process.platform}-${process.arch}`;
-const platformPackage = PLATFORM_PACKAGES[platform];
-if (!platformPackage) {
-  console.error(`acolyte: no build for ${platform}. Acolyte ships macOS arm64 and Linux x64.`);
+if (!supported.includes(platformPackage)) {
+  console.error(`acolyte: no build for ${platformPackage}. Acolyte ships ${supported.join(" and ")}.`);
   process.exit(1);
 }
 
@@ -24,20 +21,31 @@ try {
   process.exit(1);
 }
 
-const result = spawnSync(join(__dirname, "..", "launcher.sh"), process.argv.slice(2), {
+const child = spawn(join(__dirname, "..", "launcher.sh"), process.argv.slice(2), {
   stdio: "inherit",
   env: {
     ...process.env,
     ACOLYTE_BASELINE_BIN: baseline,
-    ACOLYTE_BASELINE_VERSION: require("../package.json").version,
+    ACOLYTE_BASELINE_VERSION: manifest.version,
   },
 });
 
-if (result.error) {
-  console.error(`acolyte: ${result.error.message}`);
+// A signal aimed at this wrapper alone, as a service manager or a bare `kill` sends it, still has
+// to reach the binary: that is the process holding the terminal and the one that restores it.
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  process.on(signal, () => child.kill(signal));
+}
+
+child.on("error", (error) => {
+  console.error(`acolyte: ${error.message}`);
   process.exit(1);
-}
-if (result.signal) {
-  process.kill(process.pid, result.signal);
-}
-process.exit(result.status ?? 1);
+});
+
+child.on("exit", (code, signal) => {
+  if (signal) {
+    process.removeAllListeners(signal);
+    process.kill(process.pid, signal);
+    return;
+  }
+  process.exit(code ?? 1);
+});
