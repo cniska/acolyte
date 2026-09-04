@@ -44,7 +44,8 @@ export type TranscriptExchange = {
 
 export type ClaudeCodeTranscript = {
   readonly sessionId: string | null;
-  readonly workspace: string | null;
+  /** Every directory the session recorded working in; a session moves between worktrees. */
+  readonly workspaces: readonly string[];
   readonly lastActivityAt: string | null;
   readonly exchanges: readonly TranscriptExchange[];
 };
@@ -60,11 +61,7 @@ function toolArgs(input: Record<string, unknown> | undefined): Record<string, un
   return typeof path === "string" ? { ...args, path } : args;
 }
 
-/**
- * Text the harness wrote into a user record rather than the person: a slash command's own markup,
- * a subagent notification delivered as a turn, an interruption notice. The format leaves `isMeta`
- * off these, so the wrapper is the only thing that tells them from something typed.
- */
+// Claude Code leaves `isMeta` off these, so the wrapper is all that marks them as not typed.
 const HARNESS_PROMPT_PREFIXES: readonly string[] = [
   "<command-name>",
   "<command-message>",
@@ -113,10 +110,6 @@ function applyToolResults(open: OpenExchange | null, blocks: ContentBlock[]): vo
   }
 }
 
-/**
- * A step that calls a tool has not ended the turn, so its text is progress rather than an answer
- * and any answer already in hand is stale. Only a step that calls nothing leaves a response behind.
- */
 function collectAssistant(open: OpenExchange | null, blocks: ContentBlock[]): void {
   if (!open) return;
   const toolUses = blocks.filter((block): block is z.infer<typeof toolUseBlockSchema> => block.type === "tool_use");
@@ -147,7 +140,7 @@ export function parseClaudeCodeTranscript(text: string): ClaudeCodeTranscript {
   const exchanges: TranscriptExchange[] = [];
   let open: OpenExchange | null = null;
   let sessionId: string | null = null;
-  let workspace: string | null = null;
+  const workspaces = new Set<string>();
   let lastActivityAt: string | null = null;
 
   let unreadable = 0;
@@ -170,7 +163,7 @@ export function parseClaudeCodeTranscript(text: string): ClaudeCodeTranscript {
     if (record.isSidechain) continue;
 
     sessionId ??= record.sessionId ?? null;
-    workspace ??= record.cwd ?? null;
+    if (record.cwd) workspaces.add(record.cwd);
     if (record.timestamp) lastActivityAt = record.timestamp;
 
     if (!record.message) continue;
@@ -192,7 +185,7 @@ export function parseClaudeCodeTranscript(text: string): ClaudeCodeTranscript {
       if (closed) exchanges.push(closed);
       open = null;
     }
-    // The harness spoke, so the person's turn is over and what follows answers nobody.
+    // Closes the open turn but starts none: what follows a harness record answers nobody.
     if (isHarnessPrompt(prompt)) continue;
     open = { prompt, response: null, calls: [], callsById: new Map() };
   }
@@ -202,9 +195,7 @@ export function parseClaudeCodeTranscript(text: string): ClaudeCodeTranscript {
     if (closed) exchanges.push(closed);
   }
 
-  // A tape this reader cannot follow means conversation went unread, and the count is the only
-  // sign of it: the shape belongs to the source agent, so a change there shows up here first.
   if (unreadable > 0) log.warn("import.transcript.unreadable_records", { sessionId, unreadable });
 
-  return { sessionId, workspace, lastActivityAt, exchanges };
+  return { sessionId, workspaces: [...workspaces], lastActivityAt, exchanges };
 }

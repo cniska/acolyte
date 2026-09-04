@@ -43,7 +43,22 @@ describe("parseClaudeCodeTranscript", () => {
     );
 
     expect(parsed.sessionId).toBe("s1");
-    expect(parsed.workspace).toBe("/repo");
+    expect(parsed.workspaces).toEqual(["/repo"]);
+  });
+
+  test("keeps every directory a session moved through, in the order first seen", () => {
+    const parsed = parseClaudeCodeTranscript(
+      transcript(
+        user("start here", { cwd: "/repo" }),
+        assistant([{ type: "text", text: "done" }]),
+        user("now the worktree", { cwd: "/repo/.worktrees/topic" }),
+        assistant([{ type: "text", text: "done" }]),
+        user("back again", { cwd: "/repo" }),
+        assistant([{ type: "text", text: "done" }]),
+      ),
+    );
+
+    expect(parsed.workspaces).toEqual(["/repo", "/repo/.worktrees/topic"]);
   });
 
   test("digests tool work into the exchange's activity", () => {

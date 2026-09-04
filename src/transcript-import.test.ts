@@ -207,6 +207,16 @@ describe("planImport", () => {
     expect(result.unattributable).toBe(0);
   });
 
+  test("claims a session that reached this project from a directory it did not start in", async () => {
+    const moved = [sessionFile("wandered", "/elsewhere", 2), sessionFile("wandered", "/repo", 2)].join("\n");
+    const result = await fullPlan({ "/transcripts/a.jsonl": moved }, emptyImportLedger(), {
+      resolveProject: (workspace) => (workspace === "/repo" ? PROJECT : "other/thing"),
+    });
+
+    expect(result.sessions.map((session) => session.workspace)).toEqual(["/repo"]);
+    expect(result.sessions.map((session) => session.project)).toEqual([PROJECT]);
+  });
+
   test("counts the sessions whose recorded directory identifies no project at all", async () => {
     const result = await fullPlan(
       {

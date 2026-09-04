@@ -35,11 +35,7 @@ export type ImportReader = {
   readTranscript: (path: string) => Promise<string>;
 };
 
-/**
- * A file the listing named and that is now gone was deleted between the two calls, which is a
- * transcript the run genuinely has no claim on. Any other failure to read it is not that, and the
- * plan has no way to account for a file it silently skipped, so the caller has to see it.
- */
+// Gone between listing and stat is a file the run has no claim on; anything else must surface.
 async function statOrMissing(path: string): Promise<Stats | null> {
   try {
     return await stat(path);
@@ -203,6 +199,19 @@ function orderingKey(lastActivityAt: string | null, file: TranscriptSourceFile):
   return Number.isNaN(parsed) ? file.modifiedAt.getTime() : parsed;
 }
 
+/** Picks the recorded directory that names this run's project, falling back to the first. */
+function attribute(
+  workspaces: readonly string[],
+  project: string,
+  resolveProject: ProjectResolver,
+): { workspace: string | null; project: string | null } {
+  for (const workspace of workspaces) {
+    if (resolveProject(workspace) === project) return { workspace, project };
+  }
+  const first = workspaces[0] ?? null;
+  return { workspace: first, project: first ? resolveProject(first) : null };
+}
+
 async function readCandidates(
   options: PlanImportOptions,
   reader: ImportReader,
@@ -212,12 +221,10 @@ async function readCandidates(
   for (const file of await reader.listTranscripts(options.dir, options.since)) {
     const transcript = parseClaudeCodeTranscript(await reader.readTranscript(file.path));
     if (transcript.exchanges.length === 0) continue;
-    const workspace = transcript.workspace;
     candidates.push({
       file,
       sourceSessionId: transcript.sessionId ?? sessionIdFromPath(file.path),
-      workspace,
-      project: workspace ? resolveProject(workspace) : null,
+      ...attribute(transcript.workspaces, options.project, resolveProject),
       lastActivityAt: transcript.lastActivityAt,
       orderedAt: orderingKey(transcript.lastActivityAt, file),
       exchanges: transcript.exchanges,
