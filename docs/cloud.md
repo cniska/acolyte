@@ -23,7 +23,7 @@ acolyte config set features.cloudSync true  # enable cloud sync (preview)
 acolyte login                               # store token and cloud URL
 ```
 
-A custom cloud URL must use HTTPS unless it targets localhost; `acolyte login` refuses a plaintext one before storing anything. It also refuses a token that names no account, and one the cloud does not accept, so a stored credential always names the account its memory is keyed to. Credentials are stored in the config directory as `credentials` (mode 0600). See [Paths](paths.md) for platform-specific locations. Environment variables `ACOLYTE_CLOUD_URL` and `ACOLYTE_CLOUD_TOKEN` take precedence over the credentials file.
+A custom cloud URL must use HTTPS unless it targets localhost; `acolyte login` refuses a plaintext one before storing anything. It also refuses a token that names no account, and one the cloud does not accept, so a stored credential always names the account its memory is keyed to. Credentials are stored in the config directory as `credentials` (mode 0600). See [Paths](paths.md) for platform-specific locations. Environment variables `ACOLYTE_CLOUD_URL`, `ACOLYTE_CLOUD_TOKEN`, and `ACOLYTE_CLOUD_REFRESH_TOKEN` take precedence over the credentials file.
 
 ## Migration
 
@@ -43,9 +43,11 @@ A scope key is a hash of what it names — a repository's `owner/repo`, or the a
 
 EdDSA JWT tokens (Ed25519) with a `sub` claim identifying the user. All data is isolated by `owner_id` derived from the token subject.
 
+The API token lasts a day. `acolyte login` also stores a refresh token, and the CLI trades it for a new API token as the old one nears expiry or when the cloud rejects it — once per rejection, then the answer stands. The refresh token lasts 90 days, is not rotated by an exchange, and buys nothing but API tokens: presented to a data route, the cloud refuses it. A token pasted with `--token` comes with no refresh token, so it stands until it expires; `acolyte logout` removes both.
+
 ## API
 
-The cloud API is versioned at `/api/v1/`. All endpoints require `Authorization: Bearer <token>`.
+The cloud API is versioned at `/api/v1/`. Every endpoint requires `Authorization: Bearer <token>`, except the refresh exchange, where the refresh token in the body is the credential.
 
 | Domain | Method | Route | Description |
 |--------|--------|-------|-------------|
@@ -68,6 +70,7 @@ The cloud API is versioned at `/api/v1/`. All endpoints require `Authorization: 
 | | DELETE | `/api/v1/sessions/:id` | Delete session |
 | | GET | `/api/v1/sessions/active` | Get active session |
 | | PUT | `/api/v1/sessions/active` | Set active session |
+| Auth | POST | `/api/v1/auth/refresh` | Exchange a refresh token for a new API token |
 
 ## Data isolation
 
@@ -80,10 +83,11 @@ See [acolyte-cloud](https://github.com/cniska/acolyte-cloud) for setup and deplo
 ## Key files
 
 - `src/cloud-client.ts` — cloud client with `MemoryStore` and `SessionStore` implementations
+- `src/cloud-session.ts` — holds the API token and renews it from the refresh token
 - `src/cloud-migrate.ts` — one-time copy of local memory and sessions into an account
 - `src/cloud-migrate-runner.ts` — opens the local stores the copy reads from
 - `src/credentials.ts` — credentials file read/write
-- `src/app-config.ts` — `cloudUrl`, `cloudToken` (from env or credentials), and `cloudSync` feature flag
+- `src/app-config.ts` — `cloudUrl`, `cloudToken`, `cloudRefreshToken` (from env or credentials), and `cloudSync` feature flag
 
 ## Further reading
 

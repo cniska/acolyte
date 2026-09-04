@@ -9,6 +9,7 @@ const EnvSchema = z.object({
   ACOLYTE_EMBEDDING_API_KEY: z.string().trim().min(1).optional(),
   ACOLYTE_CLOUD_URL: z.string().trim().min(1).optional(),
   ACOLYTE_CLOUD_TOKEN: z.string().trim().min(1).optional(),
+  ACOLYTE_CLOUD_REFRESH_TOKEN: z.string().trim().min(1).optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -13,6 +13,7 @@ function tokenFor(sub: string | undefined): string {
 }
 
 const TOKEN = tokenFor(SUBJECT);
+const REFRESH_TOKEN = "refresh-token";
 
 afterEach(() => {
   process.exitCode = 0;
@@ -31,8 +32,11 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     printDim: (message) => lines.push(message),
     printError: (message) => lines.push(message),
     promptHidden: async () => undefined,
-    writeCredential: async () => {
-      calls.push("writeCredential");
+    writeCredential: async (key) => {
+      calls.push(`writeCredential:${key}`);
+    },
+    removeCredential: async (key) => {
+      calls.push(`removeCredential:${key}`);
     },
     checkCloudCredential: async () => {
       calls.push("checkCloudCredential");
@@ -46,7 +50,7 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     createId: () => "test_state",
     startCallbackServer: async () => ({
       port: 9999,
-      result: Promise.resolve({ token: TOKEN, email: "test@example.com" }),
+      result: Promise.resolve({ token: TOKEN, refreshToken: REFRESH_TOKEN, email: "test@example.com" }),
     }),
     openBrowser: () => {
       calls.push("openBrowser");
@@ -74,8 +78,8 @@ function createLogoutDeps(overrides?: Partial<LogoutDeps>): {
   const deps: LogoutDeps = {
     hasHelpFlag: () => false,
     printDim: (message) => lines.push(message),
-    removeCredential: async () => {
-      calls.push("removeCredential");
+    removeCredential: async (key) => {
+      calls.push(`removeCredential:${key}`);
     },
     commandError: (name) => {
       calls.push(`commandError:${name}`);
@@ -99,7 +103,8 @@ describe("loginMode", () => {
     const flags: Record<string, string> = { "--token": TOKEN, "--url": "https://cloud.example.com" };
     const { deps, calls, output } = createLoginDeps({ parseFlag: (_args, flag) => flags[flag] });
     await loginMode(["--token", TOKEN, "--url", "https://cloud.example.com"], deps);
-    expect(calls.filter((c) => c === "writeCredential")).toHaveLength(2);
+    expect(calls).toContain("writeCredential:cloudToken");
+    expect(calls).toContain("writeCredential:cloudUrl");
     expect(calls).not.toContain("openBrowser");
     expect(output()).toContain("Logged in");
   });
@@ -110,7 +115,8 @@ describe("loginMode", () => {
     });
     await loginMode([], deps);
     expect(calls).toContain("openBrowser");
-    expect(calls.filter((c) => c === "writeCredential")).toHaveLength(2);
+    expect(calls).toContain("writeCredential:cloudToken");
+    expect(calls).toContain("writeCredential:cloudUrl");
     expect(output()).toContain("test@example.com");
   });
 
@@ -121,7 +127,8 @@ describe("loginMode", () => {
     });
     await loginMode([], deps);
     expect(calls).not.toContain("openBrowser");
-    expect(calls.filter((c) => c === "writeCredential")).toHaveLength(2);
+    expect(calls).toContain("writeCredential:cloudToken");
+    expect(calls).toContain("writeCredential:cloudUrl");
     expect(output()).toContain("Logged in");
   });
 
@@ -155,7 +162,7 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls).not.toContain("writeCredential");
+    expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
     expect(calls).not.toContain("migrateToCloud");
     expect(process.exitCode).toBe(1);
     expect(output()).toContain("must use HTTPS");
@@ -168,7 +175,8 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls.filter((call) => call === "writeCredential")).toHaveLength(2);
+    expect(calls).toContain("writeCredential:cloudToken");
+    expect(calls).toContain("writeCredential:cloudUrl");
     expect(process.exitCode).toBe(0);
   });
 
@@ -179,7 +187,7 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls).not.toContain("writeCredential");
+    expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
     expect(calls).not.toContain("migrateToCloud");
     expect(calls).not.toContain("mergeUserScope");
     expect(process.exitCode).toBe(1);
@@ -196,7 +204,7 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls).not.toContain("writeCredential");
+    expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
     expect(calls).not.toContain("migrateToCloud");
     expect(calls).not.toContain("mergeUserScope");
     expect(process.exitCode).toBe(1);
@@ -213,7 +221,7 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls).not.toContain("writeCredential");
+    expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
     expect(process.exitCode).toBe(1);
     expect(output()).toContain("ECONNREFUSED");
   });
@@ -225,7 +233,7 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls.indexOf("checkCloudCredential")).toBeLessThan(calls.indexOf("writeCredential"));
+    expect(calls.indexOf("checkCloudCredential")).toBeLessThan(calls.indexOf("writeCredential:cloudToken"));
   });
 
   test("merges the local user scope into the account after the copy", async () => {
@@ -349,7 +357,8 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls.filter((call) => call === "writeCredential")).toHaveLength(2);
+    expect(calls).toContain("writeCredential:cloudToken");
+    expect(calls).toContain("writeCredential:cloudUrl");
     expect(process.exitCode).toBe(1);
     expect(output()).toContain("cloud unreachable");
   });
@@ -391,10 +400,14 @@ describe("logoutMode", () => {
     expect(calls).toEqual(["commandError:logout"]);
   });
 
-  test("removes both credentials and confirms", async () => {
+  test("removes every stored cloud credential and confirms", async () => {
     const { deps, calls, output } = createLogoutDeps();
     await logoutMode([], deps);
-    expect(calls.filter((c) => c === "removeCredential")).toHaveLength(2);
+    expect(calls).toEqual([
+      "removeCredential:cloudToken",
+      "removeCredential:cloudRefreshToken",
+      "removeCredential:cloudUrl",
+    ]);
     expect(output()).toContain("Logged out");
   });
 });

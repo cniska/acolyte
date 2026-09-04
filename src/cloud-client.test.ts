@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { CloudApiError, CloudClient } from "./cloud-client";
+import { CloudSession } from "./cloud-session";
 import { mockFetch } from "./test-utils";
+
+function testClient(token = "t", baseUrl = "https://api.example.com"): CloudClient {
+  return new CloudClient(baseUrl, new CloudSession({ baseUrl, token }));
+}
 
 let cleanup: (() => void) | undefined;
 afterEach(() => cleanup?.());
@@ -24,7 +29,7 @@ function callArgs(fn: ReturnType<typeof jsonFetch>, index = 0): [string, Request
 describe("cloud sync client", () => {
   test("sends authorization header", async () => {
     const fn = jsonFetch(200, []);
-    const client = new CloudClient("https://api.example.com", "test-token");
+    const client = testClient("test-token");
     await client.memory.list();
     expect(fn).toHaveBeenCalledTimes(1);
     const [, init] = callArgs(fn);
@@ -33,7 +38,7 @@ describe("cloud sync client", () => {
 
   test("strips trailing slash from base URL", async () => {
     const fn = jsonFetch(200, []);
-    const client = new CloudClient("https://api.example.com/", "t");
+    const client = testClient("t", "https://api.example.com/");
     await client.memory.list();
     const [url] = callArgs(fn);
     expect(url).toStartWith("https://api.example.com/api/");
@@ -41,13 +46,13 @@ describe("cloud sync client", () => {
 
   test("throws CloudApiError on non-ok response", async () => {
     jsonFetch(403, "forbidden", "text/plain");
-    const client = new CloudClient("https://api.example.com", "t");
+    const client = testClient();
     await expect(client.memory.list()).rejects.toThrow(CloudApiError);
   });
 
   test("memory.list passes query params", async () => {
     const fn = jsonFetch(200, []);
-    const client = new CloudClient("https://api.example.com", "t");
+    const client = testClient();
     await client.memory.list({ scopeKey: "user_abc" });
     const [url] = callArgs(fn);
     expect(url).toContain("scopeKey=user_abc");
@@ -55,7 +60,7 @@ describe("cloud sync client", () => {
 
   test("memory.write sends POST with record", async () => {
     const fn = jsonFetch(200, { ok: true });
-    const client = new CloudClient("https://api.example.com", "t");
+    const client = testClient();
     const record = {
       id: "mem_1",
       scopeKey: "user_x",
@@ -71,7 +76,7 @@ describe("cloud sync client", () => {
 
   test("memory.remove sends DELETE", async () => {
     const fn = jsonFetch(200, undefined, "");
-    const client = new CloudClient("https://api.example.com", "t");
+    const client = testClient();
     await client.memory.remove("mem_1");
     const [url, init] = callArgs(fn);
     expect(init.method).toBe("DELETE");
@@ -80,7 +85,7 @@ describe("cloud sync client", () => {
 
   test("session.listSessions passes limit param", async () => {
     const fn = jsonFetch(200, []);
-    const client = new CloudClient("https://api.example.com", "t");
+    const client = testClient();
     await client.session.listSessions({ limit: 10 });
     const [url] = callArgs(fn);
     expect(url).toContain("limit=10");
@@ -88,7 +93,7 @@ describe("cloud sync client", () => {
 
   test("session.saveSession sends POST on first save", async () => {
     const fn = jsonFetch(200, { ok: true });
-    const client = new CloudClient("https://api.example.com", "t");
+    const client = testClient();
     await client.session.saveSession({ id: "sess_1" } as never);
     const [, init] = callArgs(fn);
     expect(init.method).toBe("POST");
@@ -96,7 +101,7 @@ describe("cloud sync client", () => {
 
   test("session.saveSession sends PATCH append after first save", async () => {
     const fn = jsonFetch(200, { ok: true });
-    const client = new CloudClient("https://api.example.com", "t");
+    const client = testClient();
     const session = {
       id: "sess_1",
       createdAt: "2026-01-01T00:00:00.000Z",
@@ -118,7 +123,7 @@ describe("cloud sync client", () => {
 
   test("session.saveSession append sends only new messages", async () => {
     const fn = jsonFetch(200, { ok: true });
-    const client = new CloudClient("https://api.example.com", "t");
+    const client = testClient();
     const msg1 = { id: "msg_1", role: "user", content: "hello", kind: "text", timestamp: "2026-01-01T00:00:00.000Z" };
     const msg2 = { id: "msg_2", role: "assistant", content: "hi", kind: "text", timestamp: "2026-01-01T00:00:01.000Z" };
     const session = {
@@ -146,7 +151,7 @@ describe("cloud sync client", () => {
     const fn = jsonFetch(200, [
       { id: "msg_1", role: "user", content: "fix auth", kind: "text", timestamp: "2026-01-01T00:00:00.000Z" },
     ]);
-    const client = new CloudClient("https://api.example.com", "t");
+    const client = testClient();
     const results = await client.session.searchSession("sess_1", "auth", { limit: 5 });
     const [url, init] = callArgs(fn);
     expect(url).toContain("/sessions/sess_1/search");
@@ -158,9 +163,50 @@ describe("cloud sync client", () => {
     expect(results[0].content).toBe("fix auth");
   });
 
+  test("a rejected token is renewed and the request retried with the new one", async () => {
+    const responses = [
+      new Response(null, { status: 401 }),
+      new Response(JSON.stringify({ token: "renewed-token" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+      new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
+    ];
+    const { fn, restore } = mockFetch(async () => responses.shift() ?? new Response(null, { status: 500 }));
+    cleanup = restore;
+    const base = "https://api.example.com";
+    const session = new CloudSession({
+      baseUrl: base,
+      token: "spent-token",
+      renewal: { refreshToken: "refresh-1", persistToken: async () => {} },
+    });
+
+    await new CloudClient(base, session).memory.list();
+
+    expect(fn).toHaveBeenCalledTimes(3);
+    const [refreshUrl] = callArgs(fn, 1);
+    expect(refreshUrl).toBe("https://api.example.com/api/v1/auth/refresh");
+    const [, retry] = callArgs(fn, 2);
+    expect(retry.headers).toMatchObject({ authorization: "Bearer renewed-token" });
+  });
+
+  test("a 401 that renewal cannot fix is raised, not retried forever", async () => {
+    const { fn, restore } = mockFetch(async () => new Response("no", { status: 401 }));
+    cleanup = restore;
+    const base = "https://api.example.com";
+    const session = new CloudSession({
+      baseUrl: base,
+      token: "spent-token",
+      renewal: { refreshToken: "refresh-1", persistToken: async () => {} },
+    });
+
+    await expect(new CloudClient(base, session).memory.list()).rejects.toThrow(CloudApiError);
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
   test("gzips large request bodies", async () => {
     const fn = jsonFetch(200, { ok: true });
-    const client = new CloudClient("https://api.example.com", "t");
+    const client = testClient();
     const largeContent = "x".repeat(2000);
     const record = {
       id: "mem_1",

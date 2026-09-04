@@ -40,6 +40,7 @@ export const appConfig = {
   },
   cloudUrl: env.ACOLYTE_CLOUD_URL ?? credentials.cloudUrl,
   cloudToken: env.ACOLYTE_CLOUD_TOKEN ?? credentials.cloudToken,
+  cloudRefreshToken: env.ACOLYTE_CLOUD_REFRESH_TOKEN ?? credentials.cloudRefreshToken,
 } as const;
 
 export function setModel(model: string): void {

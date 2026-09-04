@@ -15,6 +15,7 @@ type LoginModeDeps = {
   printError: (message: string) => void;
   promptHidden: (question: string) => Promise<string | undefined>;
   writeCredential: (key: keyof Credentials, value: string) => Promise<void>;
+  removeCredential: (key: keyof Credentials) => Promise<void>;
   checkCloudCredential: (url: string, token: string) => Promise<void>;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
@@ -49,7 +50,13 @@ function reportMerge(deps: LoginModeDeps, merge: UserScopeMergeSummary): void {
  * and a token exist, and every cloud write upserts on the record id, so signing in again finishes
  * whatever a failed run left behind.
  */
-async function completeLogin(deps: LoginModeDeps, url: string, token: string, confirmation: string): Promise<void> {
+async function completeLogin(
+  deps: LoginModeDeps,
+  url: string,
+  token: string,
+  confirmation: string,
+  refreshToken?: string,
+): Promise<void> {
   if (!isSecureUrl(url)) {
     deps.printError(t("cli.login.url.insecure"));
     process.exitCode = 1;
@@ -81,6 +88,12 @@ async function completeLogin(deps: LoginModeDeps, url: string, token: string, co
 
   await deps.writeCredential("cloudToken", token);
   await deps.writeCredential("cloudUrl", url);
+
+  // A token pasted by hand comes with no way to renew it. Dropping any stored refresh token keeps
+  // this machine from renewing the new sign-in with the previous account's credential.
+  if (refreshToken) await deps.writeCredential("cloudRefreshToken", refreshToken);
+  else await deps.removeCredential("cloudRefreshToken");
+
   deps.printDim(confirmation);
 
   deps.printDim(t("cli.login.migrate.start"));
@@ -127,8 +140,8 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
     deps.printDim(t("cli.login.waiting"));
 
     try {
-      const { token, email } = await result;
-      await completeLogin(deps, url, token, t("cli.login.welcome", { email }));
+      const { token, refreshToken, email } = await result;
+      await completeLogin(deps, url, token, t("cli.login.welcome", { email }), refreshToken);
     } catch {
       deps.printError(t("cli.login.timeout"));
       process.exitCode = 1;
@@ -165,6 +178,7 @@ export async function logoutMode(args: string[], deps: LogoutModeDeps): Promise<
   }
 
   await deps.removeCredential("cloudToken");
+  await deps.removeCredential("cloudRefreshToken");
   await deps.removeCredential("cloudUrl");
   deps.printDim(t("cli.logout.done"));
 }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { type ChatMessage, messageSchema } from "./chat-contract";
+import { CloudSession } from "./cloud-session";
 import { CodedError } from "./coded-error";
 import { CLOUD_ERROR_CODES, type CloudErrorCode } from "./error-contract";
 import {
@@ -73,12 +74,12 @@ type SyncCursor = { messageCount: number; tokenUsageCount: number };
 
 export class CloudClient {
   private readonly base: string;
-  private readonly token: string;
+  private readonly auth: CloudSession;
   private readonly syncCursors = new Map<string, SyncCursor>();
 
-  constructor(baseUrl: string, token: string) {
+  constructor(baseUrl: string, auth: CloudSession) {
     this.base = baseUrl.replace(/\/$/, "");
-    this.token = token;
+    this.auth = auth;
   }
 
   get memory(): MemoryStore {
@@ -307,7 +308,7 @@ export class CloudClient {
       if (query) url = `${url}?${query}`;
     }
     let body: BodyInit | undefined;
-    const headers: Record<string, string> = { authorization: `Bearer ${this.token}` };
+    const headers: Record<string, string> = {};
     if (options?.body !== undefined) {
       const json = JSON.stringify(options.body);
       headers["content-type"] = "application/json";
@@ -318,7 +319,15 @@ export class CloudClient {
         body = json;
       }
     }
-    const res = await fetch(url, { method, headers, body });
+
+    let res = await this.send(url, method, headers, body);
+
+    // The cloud has the last word on whether a token is spent: it can be revoked, or signed before a
+    // key rotation, long before the expiry claim says so. One renewal, then the answer stands.
+    if (res.status === 401 && (await this.auth.renew())) {
+      res = await this.send(url, method, headers, body);
+    }
+
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new CloudApiError(res.status, `Cloud API ${method} ${path} failed (${res.status})`, text);
@@ -326,6 +335,16 @@ export class CloudClient {
     const contentType = res.headers.get("content-type") ?? "";
     const json = contentType.includes("application/json") ? await res.json() : undefined;
     return options?.schema ? options.schema.parse(json) : (json as T);
+  }
+
+  private async send(
+    url: string,
+    method: string,
+    headers: Record<string, string>,
+    body: BodyInit | undefined,
+  ): Promise<Response> {
+    const token = await this.auth.accessToken();
+    return fetch(url, { method, headers: { ...headers, authorization: `Bearer ${token}` }, body });
   }
 
   private get<T = void>(
@@ -357,9 +376,16 @@ let clientInstance: CloudClient | null = null;
 export async function getCloudClient(): Promise<CloudClient> {
   if (clientInstance) return clientInstance;
   const { appConfig } = await import("./app-config");
+  const { writeCredential } = await import("./credentials");
   const url = appConfig.cloudUrl;
   const token = appConfig.cloudToken;
   if (!url || !token) throw new Error("cloudUrl and cloudToken required when cloudSync is enabled");
-  clientInstance = new CloudClient(url, token);
+  const refreshToken = appConfig.cloudRefreshToken;
+  const session = new CloudSession({
+    baseUrl: url,
+    token,
+    renewal: refreshToken ? { refreshToken, persistToken: (next) => writeCredential("cloudToken", next) } : undefined,
+  });
+  clientInstance = new CloudClient(url, session);
   return clientInstance;
 }

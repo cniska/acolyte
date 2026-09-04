@@ -1,12 +1,13 @@
 import { CloudClient } from "./cloud-client";
 import { type CloudMigrationSummary, migrateLocalDataToCloud } from "./cloud-migrate";
+import { CloudSession } from "./cloud-session";
 import { createSqliteMemoryStore } from "./memory-store";
 import type { UserResourceId } from "./resource-id";
 import { createFileSessionStore } from "./session-store";
 import { mergeLocalUserScope, type UserScopeMergeSummary } from "./user-scope-merge";
 
 export async function checkCloudCredential(url: string, token: string): Promise<void> {
-  await new CloudClient(url, token).checkCredential();
+  await new CloudClient(url, new CloudSession({ baseUrl: url, token })).checkCredential();
 }
 
 /**
@@ -21,7 +22,7 @@ export async function runCloudMigration(
 ): Promise<CloudMigrationSummary> {
   const localMemory = createSqliteMemoryStore();
   const localSessions = createFileSessionStore();
-  const client = new CloudClient(url, token);
+  const client = new CloudClient(url, new CloudSession({ baseUrl: url, token }));
 
   try {
     return await migrateLocalDataToCloud({
@@ -43,7 +44,7 @@ export async function runUserScopeMerge(
   accountKey: UserResourceId,
 ): Promise<UserScopeMergeSummary> {
   const localMemory = createSqliteMemoryStore();
-  const client = new CloudClient(url, token);
+  const client = new CloudClient(url, new CloudSession({ baseUrl: url, token }));
 
   try {
     return await mergeLocalUserScope({ localMemory, cloudMemory: client.memory, accountKey });

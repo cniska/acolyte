@@ -1,5 +1,6 @@
 export type CallbackResult = {
   token: string;
+  refreshToken: string;
   email: string;
 };
 
@@ -42,15 +43,16 @@ export function startCallbackServer(expectedState: string): Promise<{ port: numb
         }
 
         const token = url.searchParams.get("token");
+        const refreshToken = url.searchParams.get("refresh");
         const state = url.searchParams.get("state");
 
-        if (!token || !state || state !== expectedState) {
+        if (!token || !refreshToken || !state || state !== expectedState) {
           return new Response(ERROR_HTML, { status: 400, headers: { "Content-Type": "text/html" } });
         }
 
         clearTimeout(timeout);
         const email = url.searchParams.get("email");
-        resolveResult({ token, email: email || "unknown" });
+        resolveResult({ token, refreshToken, email: email || "unknown" });
 
         // Shut down after response is sent
         setTimeout(() => server.stop(), 100);

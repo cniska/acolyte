@@ -172,6 +172,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
               printError,
               promptHidden,
               writeCredential,
+              removeCredential,
               checkCloudCredential,
               commandError,
               commandHelp,

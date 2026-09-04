@@ -12,12 +12,14 @@ const CREDENTIALS_FILE = "credentials";
 const KEY_MAP = {
   cloudUrl: "ACOLYTE_CLOUD_URL",
   cloudToken: "ACOLYTE_CLOUD_TOKEN",
+  cloudRefreshToken: "ACOLYTE_CLOUD_REFRESH_TOKEN",
   embeddingApiKey: "ACOLYTE_EMBEDDING_API_KEY",
 } as const;
 
 export type Credentials = {
   cloudUrl?: string;
   cloudToken?: string;
+  cloudRefreshToken?: string;
   embeddingApiKey?: string;
 };
 
@@ -30,8 +32,10 @@ function parseCredentials(content: string): Credentials {
   const creds: Credentials = {};
   const url = getDotenvValue(entries, KEY_MAP.cloudUrl);
   const token = getDotenvValue(entries, KEY_MAP.cloudToken);
+  const refreshToken = getDotenvValue(entries, KEY_MAP.cloudRefreshToken);
   if (url) creds.cloudUrl = url;
   if (token) creds.cloudToken = token;
+  if (refreshToken) creds.cloudRefreshToken = refreshToken;
   const embeddingApiKey = getDotenvValue(entries, KEY_MAP.embeddingApiKey);
   if (embeddingApiKey) creds.embeddingApiKey = embeddingApiKey;
   return creds;
@@ -109,17 +113,26 @@ export async function removeProviderApiKey(envKey: ProviderApiEnvKey, env?: Env)
 // The subject decides the user memory scope and gates sign-in, so the claim is validated rather than
 // asserted. The signature is not checked: the cloud verifies that, and an expired token still names
 // the same account.
-const tokenClaimsSchema = z.object({ sub: z.string().min(1) });
+const tokenClaimsSchema = z.object({ sub: z.string().min(1), exp: z.number().optional() });
 
-export function decodeTokenSubject(token: string): string | undefined {
+function decodeTokenClaims(token: string): { sub: string; exp?: number } | undefined {
   const parts = token.split(".");
   if (parts.length !== 3) return undefined;
   try {
     const claims = tokenClaimsSchema.safeParse(JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")));
-    return claims.success ? claims.data.sub : undefined;
+    return claims.success ? claims.data : undefined;
   } catch {
     return undefined;
   }
+}
+
+export function decodeTokenSubject(token: string): string | undefined {
+  return decodeTokenClaims(token)?.sub;
+}
+
+/** Seconds since the epoch at which the token stops being accepted, when it says. */
+export function decodeTokenExpiry(token: string): number | undefined {
+  return decodeTokenClaims(token)?.exp;
 }
 
 export async function removeCredential(key: keyof Credentials, env?: Env): Promise<void> {
