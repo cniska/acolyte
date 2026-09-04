@@ -26,9 +26,26 @@ import { renderTaskActivity, type TaskActivity } from "./task-activity";
 import { estimateTokens } from "./token-estimate";
 import { toFunctionTool } from "./tool-contract";
 
+/**
+ * The four things a turn can leave behind that the repository cannot say for itself. A candidate
+ * that fits none of them — how the code now works, where the repository stands, work still ahead —
+ * has no value to name, and the model has to name one before it can write an entry.
+ */
+export const distillFactKindSchema = z.enum(["finding", "decision", "convention", "preference"]);
+export type DistillFactKind = z.infer<typeof distillFactKindSchema>;
+
 const DISTILL_FACT_SCHEMA = z.object({
+  kind: distillFactKindSchema.describe(
+    "finding: what the work discovered — a survey's result, a measurement, what broke and why, how a tool or system outside this checkout behaves. decision: what was settled and the reason, whether or not anything implements it yet. convention: how this project wants to be worked in. preference: what the person wants, or corrected.",
+  ),
+  content: z
+    .string()
+    .trim()
+    .min(1)
+    .describe(
+      "One present-tense sentence about the codebase, the project, or the person, understandable by someone who was not here. Figures, names, paths and error text copied exactly from the turn.",
+    ),
   scope: memoryScopeSchema,
-  content: z.string().trim().min(1),
   // Absent and blank both mean "no topic", and `.optional()` alone accepts only absent. A rejected
   // field fails the whole call, so without this an observation is lost over an optional label.
   topic: memoryTopicSchema.or(z.string().regex(/^\s*$/)).optional(),
@@ -52,31 +69,25 @@ const OBSERVE_FUNCTION_NAME = "memory-observe";
 const DISTILL_OUTPUT_TOOL = toFunctionTool({
   id: OBSERVE_FUNCTION_NAME,
   description:
-    "Record what this turn established that outlives it, one entry per fact, each stated as what is now true. facts is empty on a turn that established none, which is most turns. This repository's own position — its branch, its commit, what of it is pushed — is never an entry.",
+    "Record what this turn established that the repository cannot say for itself, one entry per fact: a finding, a decision with its reason, a convention, or a preference of the person. How the code now works, where the repository stands (branch, commits, what is pushed, what verify said) and work still ahead are not entries, however they are worded. facts is empty on a turn that established none, which is most turns.",
   inputSchema: z.toJSONSchema(DISTILL_OUTPUT_SCHEMA) as Record<string, unknown>,
 });
 
 export const DISTILLER_PROMPT = `This turn is over, and I am deciding what survives it.
 
-I have two memories. The repository is one: every file, every commit, whatever the work wrote down, all of it readable again next session — including what is true of it right now, which branch, which commit, what is pushed. This corpus is the other, and it holds the only copy of everything the repository cannot say: what we decided and why, what we rejected, what the work discovered, what the person I work with wants. When the turn ends, whatever lives only in the conversation is gone unless I write it here.
+I have two memories. The repository is one: the code, the commits, whatever the work wrote down, all of it readable again next session. This corpus is the other, and it holds the only copy of what the repository cannot say: what the work discovered, what we decided and why, how this project wants to be worked in, what the person I work with wants. Whatever lives only in the conversation is gone when the turn ends unless I write it here.
 
-One question decides every candidate: which memory already holds it. If a file read or a git command would tell me again — what the code now does, a flag, a path, a constant's value, where a commit sits — the repository is carrying it, and a copy here only goes stale. That covers this checkout and nothing else: another tool, another agent's files, a service, a machine is not my repository, so what I learn about one has no other home no matter how I found it. What I keep is what has no other home:
-- a decision, and the reason behind it — especially the alternative we rejected, which no diff shows
-- a constraint the work discovered: what broke and why, what a survey of the world outside this repo found
-- how this project wants to be worked in — its conventions and the rules its owner holds
-- who I am working with: what they prefer, what they corrected me on
+What I am shown is the request, my own report back to the person, and an "observed" digest of the edits and commands behind it. A report has parts, and I sort by part:
+- What I found. A survey's result, a measurement, a comparison, what broke and why, how another tool or system behaves. This exists nowhere else yet, and each finding is its own fact — folding several into one entry loses all but the first.
+- What we decided, and the reason. A settled design, the alternative we rejected, a rule the person holds. A decision is a fact the moment it is settled, whether or not anything implements it yet, and I write it as a decision with its reason: "the import keeps project and user scope and drops session, because nothing will ever resume the source session".
+- What the person told me they want, or corrected me on. A fact wherever in the turn it appears, even inside the request.
+- What I changed: how the code now works, a flag, a path, a schema, a name. The repository states this itself and a copy here only goes stale, so I leave it. When a turn holds both a decision and the detail that implements it, the decision is what I keep.
+- Where the repository stands: branch, commits, what is pushed, what verify said. Motion, not knowledge. I leave it.
+- What remains: next steps, proposals, work I am about to start. Not true yet. Rewording a task as a description of the project does not make it true, so I leave it.
 
-What I found this turn outranks what I was handed. A request or a handoff carries what someone already knew, and it will still be there to read; what I established here — what a survey turned up, what a comparison showed, what a measurement said — exists nowhere else yet, and each finding is its own fact. The durable part of a turn is usually its least concrete part. A settled seam, a rejected approach, a reason — those read like mere talk next to a crisp implementation detail, and they are the facts; the crisp detail is the copy the repository already keeps. When a turn holds both, the decision is what I record, carrying only the specifics that make it usable.
+Each fact is one present-tense sentence about the codebase, the project, or the person, and it stands alone: someone who was not here understands it without asking what "it" refers to. Every figure, unit, name, path and error text in it comes across exactly as the turn said it; where I cannot copy a specific I leave it out rather than reconstruct it, because a plausible substitute survives every later correction. One claim per entry: if I need "and" to hold it together, it is two. Doing a thing once is not how the project works; a convention is one the project states or the person tells me.
 
-I write each fact in the present tense, with the codebase, the project or the person as its subject: "the pre-push hook rejects placeholder author domains", "he wants provider setup kept outside the TUI". That sentence is the whole test. What I did this turn is how I found the fact out, never the fact itself, so a commit, a branch, a file I added, a command that passed, a plan I made are the route and what I record is the destination. When the only sentence I can write has an act as its subject — added, removed, fixed, reset, "commit abc1234", "plan:", "he asked me to" — I have the route in hand, and I write the state it left behind instead — unless that state is the repository's own, a branch or a commit or what is pushed, which it already holds — or I write nothing. A proposal is route too: what I am about to build is not yet true, and I record only what was settled.
-
-A design we only talked through leaves nothing behind in the code, and it is the case I get wrong most. The fact there is the decision itself, and every number, unit, name and signature in it comes across exactly as it was said — I copy those out of the turn, I do not reconstruct them from what they sound like. Where I cannot copy a specific, I record the decision without it: a plausible substitute for a figure I half-remember is the one kind of wrong that survives every later correction.
-
-Each fact stands alone. Someone who was not here understands it without asking what "it" refers to. One claim per call: if I need "and" to hold it together, it is two facts. I never write the same fact twice. A turn carries as many facts as it carries, and one call is not a quota: when the work surveyed several things, each finding is its own call, and folding them into a single entry to keep the count down loses every one of them but the first.
-
-An "observed" entry, when present, is what actually happened this turn — files touched, commands run, whether they succeeded. It is route as well: it tells me what I learned from, and I record what I learned.
-
-Every fact I keep is a line future-me rereads for as long as it lives, so each one pays rent. Most turns are routine: they move the repository and teach me nothing the repository does not now hold, and I end them with facts empty. That is the finished job on such a turn. Doing a thing once is not how the project works: a convention is one the project states or the person tells me, never one I generalize from an act I just performed.
+Most turns move the repository and teach me nothing it does not now hold. I end those with facts empty, and that is the finished job.
 
 When a "known" block is present, those are facts I already hold, each with an id. I read them before I write anything, because the corpus should sharpen rather than accumulate:
 - already there, unchanged — I record nothing. A second copy in different words is the worst thing I can add.
@@ -89,16 +100,18 @@ When a "known" block is present, those are facts I already hold, each with an id
 I only ever supersede an id from that block, and only from the same scope I am writing to. What I supersede is not deleted; it is kept with a note that this new fact replaced it, so I can be wrong about this and lose nothing.
 
 I call memory-observe once, every turn. facts holds an entry for every fact I keep, in the order I found them, and is empty when I keep none. Each entry carries:
+- kind: finding, decision, convention or preference — the part of the report it came from. A candidate that fits none of the four is not a fact.
+- content: the fact, keeping the specifics that make it usable — paths, names, figures and their units, error text, the reason behind a decision.
 - scope, which decides how long the fact lives:
          "project" — durable and specific to this codebase: architecture, tooling, conventions, decisions. It reaches every future session here.
          "user" — a preference that follows the person across projects, and reaches every session anywhere.
-         "session" — true only while this work is open: in-progress state, a temporary constraint, a working assumption. It dies with the session, so it is where I put what I doubt will outlive today — never where I file something that failed the bar above.
+         "session" — true only while this work is open: a temporary constraint, a working assumption. It dies with the session, so it is where I put what I doubt will outlive today — never where I file something that is not a fact.
          A project-scoped preference is "project", not "user". Unsure is "session".
-- content: the fact, keeping the specifics that make it usable — paths, names, figures and their units, error text, the reasoning behind a decision.
 - topic: one lowercase word, when one fits (testing, auth, config, tooling).
 - supersedes: the ids this fact replaces, when it replaces any. Omitted otherwise.`;
 
 export type DistillObservation = {
+  kind: DistillFactKind;
   scope: DistillScope;
   content: string;
   topic: string | null;
@@ -188,7 +201,8 @@ export function parseObservationToolCall(call: Pick<LanguageModelV4ToolCall, "in
   try {
     const parsed = DISTILL_OUTPUT_SCHEMA.safeParse(JSON.parse(call.input));
     if (!parsed.success) return [];
-    return parsed.data.facts.map(({ scope, content, topic, supersedes }) => ({
+    return parsed.data.facts.map(({ kind, scope, content, topic, supersedes }) => ({
+      kind,
       scope,
       content,
       topic: topic?.trim() ? topic.trim().toLowerCase() : null,

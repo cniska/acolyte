@@ -35,9 +35,9 @@ beforeAll(() => {
           name: "memory-observe",
           args: JSON.stringify({
             facts: [
-              { scope: "project", content: "project uses Bun as runtime", topic: "tooling" },
-              { scope: "user", content: "prefers concise responses" },
-              { scope: "session", content: "fixing memory search bug" },
+              { kind: "convention", scope: "project", content: "project uses Bun as runtime", topic: "tooling" },
+              { kind: "preference", scope: "user", content: "prefers concise responses" },
+              { kind: "finding", scope: "session", content: "fixing memory search bug" },
             ],
           }),
         },

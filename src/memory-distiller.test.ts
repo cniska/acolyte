@@ -165,7 +165,7 @@ describe("high-water mark", () => {
       store,
       runner: async (_prompt, userContent) => {
         seen.push(userContent);
-        return [{ scope: "session", content: "a durable fact", topic: null, supersedes: [] }];
+        return [{ kind: "finding", scope: "session", content: "a durable fact", topic: null, supersedes: [] }];
       },
       policy: testPolicy,
     });
@@ -237,7 +237,7 @@ describe("memoryDistiller", () => {
       const store = createMockStore();
       const source = createTestDistiller(
         store,
-        makeRunner([{ scope: "session", content: "a fact", topic: null, supersedes: [] }]),
+        makeRunner([{ kind: "finding", scope: "session", content: "a fact", topic: null, supersedes: [] }]),
       );
       await source.commit({
         model: "openai/gpt-5-mini",
@@ -251,7 +251,7 @@ describe("memoryDistiller", () => {
       const store = createMockStore();
       const source = createMemoryDistiller({
         store,
-        runner: makeRunner([{ scope: "session", content: "a fact", topic: null, supersedes: [] }]),
+        runner: makeRunner([{ kind: "finding", scope: "session", content: "a fact", topic: null, supersedes: [] }]),
         policy: createMemoryPolicy({ messageThreshold: 5 }),
       });
       await source.commit({
@@ -282,7 +282,9 @@ describe("memoryDistiller", () => {
       ]);
       const source = createTestDistiller(
         store,
-        makeRunner([{ scope: "session", content: "prefers short answers", topic: null, supersedes: [] }]),
+        makeRunner([
+          { kind: "finding", scope: "session", content: "prefers short answers", topic: null, supersedes: [] },
+        ]),
       );
       await source.commit({
         model: "openai/gpt-5-mini",
@@ -327,8 +329,8 @@ describe("memoryDistiller", () => {
       const source = createTestDistiller(
         store,
         makeRunner([
-          { scope: "project", content: "project uses Vitest", topic: "testing", supersedes: [] },
-          { scope: "project", content: "repo has 18k lines of code", topic: null, supersedes: [] },
+          { kind: "finding", scope: "project", content: "project uses Vitest", topic: "testing", supersedes: [] },
+          { kind: "finding", scope: "project", content: "repo has 18k lines of code", topic: null, supersedes: [] },
         ]),
       );
       await source.commit({
@@ -349,9 +351,9 @@ describe("memoryDistiller", () => {
       const source = createTestDistiller(
         store,
         makeRunner([
-          { scope: "project", content: "repo uses Bun", topic: null, supersedes: [] },
-          { scope: "user", content: "prefers short answers", topic: null, supersedes: [] },
-          { scope: "session", content: "fix failing tests", topic: null, supersedes: [] },
+          { kind: "finding", scope: "project", content: "repo uses Bun", topic: null, supersedes: [] },
+          { kind: "preference", scope: "user", content: "prefers short answers", topic: null, supersedes: [] },
+          { kind: "finding", scope: "session", content: "fix failing tests", topic: null, supersedes: [] },
         ]),
       );
       await source.commit({
@@ -375,11 +377,11 @@ describe("memoryDistiller", () => {
       const source = createTestDistiller(
         store,
         makeRunner([
-          { scope: "project", content: "project fact one", topic: null, supersedes: [] },
-          { scope: "project", content: "project fact two", topic: null, supersedes: [] },
-          { scope: "user", content: "user fact one", topic: null, supersedes: [] },
-          { scope: "session", content: "session fact one", topic: null, supersedes: [] },
-          { scope: "project", content: "project fact three", topic: null, supersedes: [] },
+          { kind: "finding", scope: "project", content: "project fact one", topic: null, supersedes: [] },
+          { kind: "finding", scope: "project", content: "project fact two", topic: null, supersedes: [] },
+          { kind: "preference", scope: "user", content: "user fact one", topic: null, supersedes: [] },
+          { kind: "finding", scope: "session", content: "session fact one", topic: null, supersedes: [] },
+          { kind: "finding", scope: "project", content: "project fact three", topic: null, supersedes: [] },
         ]),
       );
       const metrics = await source.commit({
@@ -401,9 +403,9 @@ describe("memoryDistiller", () => {
       const source = createMemoryDistiller({
         store,
         runner: makeRunner([
-          { scope: "project", content: "a project fact", topic: null, supersedes: [] },
-          { scope: "session", content: "a session fact", topic: null, supersedes: [] },
-          { scope: "user", content: "a user fact", topic: null, supersedes: [] },
+          { kind: "finding", scope: "project", content: "a project fact", topic: null, supersedes: [] },
+          { kind: "finding", scope: "session", content: "a session fact", topic: null, supersedes: [] },
+          { kind: "preference", scope: "user", content: "a user fact", topic: null, supersedes: [] },
         ]),
         policy: testPolicy,
         commitScopes: ["project"],
@@ -427,7 +429,9 @@ describe("memoryDistiller", () => {
       const store = createMockStore();
       const source = createMemoryDistiller({
         store,
-        runner: makeRunner([{ scope: "project", content: "a project fact", topic: null, supersedes: [] }]),
+        runner: makeRunner([
+          { kind: "finding", scope: "project", content: "a project fact", topic: null, supersedes: [] },
+        ]),
         policy: testPolicy,
       });
       await source.commit({
@@ -447,11 +451,41 @@ describe("memoryDistiller", () => {
         {
           name: "good_scoped_output",
           observations: [
-            { scope: "project" as const, content: "uses bun test", topic: null, supersedes: [] },
-            { scope: "user" as const, content: "prefers concise responses", topic: null, supersedes: [] },
-            { scope: "session" as const, content: "fixing failing memory tests", topic: null, supersedes: [] },
-            { scope: "session" as const, content: "stabilize memory quality", topic: null, supersedes: [] },
-            { scope: "session" as const, content: "add regression coverage", topic: null, supersedes: [] },
+            {
+              kind: "finding" as const,
+              scope: "project" as const,
+              content: "uses bun test",
+              topic: null,
+              supersedes: [],
+            },
+            {
+              kind: "preference" as const,
+              scope: "user" as const,
+              content: "prefers concise responses",
+              topic: null,
+              supersedes: [],
+            },
+            {
+              kind: "finding" as const,
+              scope: "session" as const,
+              content: "fixing failing memory tests",
+              topic: null,
+              supersedes: [],
+            },
+            {
+              kind: "finding" as const,
+              scope: "session" as const,
+              content: "stabilize memory quality",
+              topic: null,
+              supersedes: [],
+            },
+            {
+              kind: "finding" as const,
+              scope: "session" as const,
+              content: "add regression coverage",
+              topic: null,
+              supersedes: [],
+            },
           ],
           expectedMetrics: {
             projectPromotedFacts: 1,
@@ -462,7 +496,15 @@ describe("memoryDistiller", () => {
         },
         {
           name: "only_project_observations",
-          observations: [{ scope: "project" as const, content: "uses bun test", topic: null, supersedes: [] }],
+          observations: [
+            {
+              kind: "finding" as const,
+              scope: "project" as const,
+              content: "uses bun test",
+              topic: null,
+              supersedes: [],
+            },
+          ],
           expectedMetrics: {
             projectPromotedFacts: 1,
             userPromotedFacts: 0,
@@ -625,6 +667,7 @@ describe("supersession", () => {
       store,
       runner: makeRunner([
         {
+          kind: "finding",
           scope: "project",
           content: "src/lifecycle-completion.ts owns the terminal-step backstop",
           topic: "lifecycle",
@@ -648,7 +691,13 @@ describe("supersession", () => {
     const distiller = createMemoryDistiller({
       store,
       runner: makeRunner([
-        { scope: "project", content: "a brand new project fact", topic: null, supersedes: ["mem_neverseen1"] },
+        {
+          kind: "finding",
+          scope: "project",
+          content: "a brand new project fact",
+          topic: null,
+          supersedes: ["mem_neverseen1"],
+        },
       ]),
       policy: testPolicy,
     });
@@ -662,7 +711,13 @@ describe("supersession", () => {
     const distiller = createMemoryDistiller({
       store,
       runner: makeRunner([
-        { scope: "user", content: "prefers short answers", topic: null, supersedes: ["mem_stale00001"] },
+        {
+          kind: "preference",
+          scope: "user",
+          content: "prefers short answers",
+          topic: null,
+          supersedes: ["mem_stale00001"],
+        },
       ]),
       policy: testPolicy,
     });
@@ -676,7 +731,7 @@ describe("supersession", () => {
     const distiller = createMemoryDistiller({
       store,
       runner: makeRunner([
-        { scope: "project", content: existing.content, topic: null, supersedes: ["mem_stale00001"] },
+        { kind: "finding", scope: "project", content: existing.content, topic: null, supersedes: ["mem_stale00001"] },
       ]),
       policy: testPolicy,
     });
@@ -692,6 +747,7 @@ describe("supersession", () => {
       store,
       runner: makeRunner([
         {
+          kind: "finding",
           scope: "project",
           content: "src/lifecycle-completion.ts owns the backstop and classifies finishReason",
           topic: null,
@@ -715,12 +771,14 @@ describe("supersession", () => {
       store,
       runner: makeRunner([
         {
+          kind: "finding",
           scope: "project",
           content: "the backstop classifies the terminal step",
           topic: null,
           supersedes: ["mem_stale00001"],
         },
         {
+          kind: "finding",
           scope: "project",
           content: "the backstop reopens once per reason",
           topic: null,
@@ -745,7 +803,9 @@ describe("supersession", () => {
     const store = createMockStore([{ ...existing }]);
     const distiller = createMemoryDistiller({
       store,
-      runner: makeRunner([{ scope: "project", content: existing.content, topic: null, supersedes: [] }]),
+      runner: makeRunner([
+        { kind: "finding", scope: "project", content: existing.content, topic: null, supersedes: [] },
+      ]),
       policy: testPolicy,
     });
     const metrics = await distiller.commit(commitCtx);
@@ -761,7 +821,13 @@ describe("supersession", () => {
     const distiller = createMemoryDistiller({
       store,
       runner: makeRunner([
-        { scope: "project", content: "a sharper version of the fact", topic: null, supersedes: ["mem_stale00001"] },
+        {
+          kind: "finding",
+          scope: "project",
+          content: "a sharper version of the fact",
+          topic: null,
+          supersedes: ["mem_stale00001"],
+        },
       ]),
       policy: testPolicy,
     });
@@ -810,8 +876,9 @@ describe("parseObservationToolCall", () => {
   const call = (...facts: unknown[]) => parseObservationToolCall({ input: JSON.stringify({ facts }) });
 
   test("a well-formed call becomes an observation", () => {
-    expect(call({ scope: "project", content: "the loader owns retries", topic: "Loader" })).toEqual([
+    expect(call({ kind: "finding", scope: "project", content: "the loader owns retries", topic: "Loader" })).toEqual([
       {
+        kind: "finding",
         scope: "project",
         content: "the loader owns retries",
         topic: "loader",
@@ -820,12 +887,20 @@ describe("parseObservationToolCall", () => {
     ]);
   });
 
+  test("an entry names which kind of fact it is, and one outside the four rejects the call", () => {
+    expect(call({ scope: "project", content: "a fact with no kind" })).toEqual([]);
+    expect(call({ kind: "change", scope: "project", content: "renamed the flag" })).toEqual([]);
+    expect(call({ kind: "decision", scope: "project", content: "imports spend oldest-first" })[0]?.kind).toBe(
+      "decision",
+    );
+  });
+
   test("one call carries every fact a turn established", () => {
     expect(
       call(
-        { scope: "project", content: "omp and pi share a transcript format" },
-        { scope: "project", content: "opencode stores sessions in sqlite" },
-        { scope: "user", content: "he wants provider setup outside the TUI" },
+        { kind: "finding", scope: "project", content: "omp and pi share a transcript format" },
+        { kind: "finding", scope: "project", content: "opencode stores sessions in sqlite" },
+        { kind: "preference", scope: "user", content: "he wants provider setup outside the TUI" },
       ).map((observation) => observation.content),
     ).toEqual([
       "omp and pi share a transcript format",
@@ -835,8 +910,9 @@ describe("parseObservationToolCall", () => {
   });
 
   test("a blank topic is kept as an observation with no topic", () => {
-    expect(call({ scope: "project", content: "the loader owns retries", topic: "" })).toEqual([
+    expect(call({ kind: "finding", scope: "project", content: "the loader owns retries", topic: "" })).toEqual([
       {
+        kind: "finding",
         scope: "project",
         content: "the loader owns retries",
         topic: null,
@@ -851,26 +927,29 @@ describe("parseObservationToolCall", () => {
 
   test("malformed input yields no observation", () => {
     expect(parseObservationToolCall({ input: "not json" })).toEqual([]);
-    expect(parseObservationToolCall({ input: JSON.stringify({ scope: "project", content: "unwrapped" }) })).toEqual([]);
-    expect(call({ content: "no scope given" })).toEqual([]);
-    expect(call({ scope: "elsewhere", content: "an unknown scope" })).toEqual([]);
-    expect(call({ scope: "project", content: "   " })).toEqual([]);
+    expect(
+      parseObservationToolCall({ input: JSON.stringify({ kind: "finding", scope: "project", content: "unwrapped" }) }),
+    ).toEqual([]);
+    expect(call({ kind: "finding", content: "no scope given" })).toEqual([]);
+    expect(call({ kind: "finding", scope: "elsewhere", content: "an unknown scope" })).toEqual([]);
+    expect(call({ kind: "finding", scope: "project", content: "   " })).toEqual([]);
   });
 
   test("one malformed fact rejects the whole call", () => {
-    expect(call({ scope: "project", content: "a good fact" }, { scope: "elsewhere", content: "a bad one" })).toEqual(
-      [],
-    );
+    expect(
+      call({ kind: "finding", scope: "project", content: "a good fact" }, { scope: "elsewhere", content: "a bad one" }),
+    ).toEqual([]);
   });
 
   test("a non-array supersedes yields no observation", () => {
-    expect(call({ scope: "project", content: "a fact", supersedes: "mem_one000001" })).toEqual([]);
-    expect(call({ scope: "project", content: "a fact", supersedes: [1] })).toEqual([]);
+    expect(call({ kind: "finding", scope: "project", content: "a fact", supersedes: "mem_one000001" })).toEqual([]);
+    expect(call({ kind: "finding", scope: "project", content: "a fact", supersedes: [1] })).toEqual([]);
   });
 
   test("supersedes ids are trimmed and deduplicated", () => {
     expect(
       call({
+        kind: "finding",
         scope: "project",
         content: "a fact",
         supersedes: [" mem_one000001 ", "mem_one000001", "  ", "mem_two000002"],
@@ -879,6 +958,6 @@ describe("parseObservationToolCall", () => {
   });
 
   test("a blank topic becomes no topic", () => {
-    expect(call({ scope: "user", content: "a fact", topic: "   " })[0]?.topic).toBeNull();
+    expect(call({ kind: "preference", scope: "user", content: "a fact", topic: "   " })[0]?.topic).toBeNull();
   });
 });

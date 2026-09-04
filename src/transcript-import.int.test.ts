@@ -72,7 +72,7 @@ describe("transcript import", () => {
     const ledgerPath = join(scratch, "ledger.json");
     const store = createStore();
     const distiller = distillerWriting(
-      [{ scope: "project", content: "widgets builds with Bun", topic: "tooling", supersedes: [] }],
+      [{ kind: "finding", scope: "project", content: "widgets builds with Bun", topic: "tooling", supersedes: [] }],
       store,
     );
 
@@ -109,9 +109,9 @@ describe("transcript import", () => {
       policy,
       commitScopes: IMPORT_COMMIT_SCOPES,
       runner: async () => [
-        { scope: "project", content: "widgets builds with Bun", topic: null, supersedes: [] },
-        { scope: "user", content: "prefers dashes in branch names", topic: null, supersedes: [] },
-        { scope: "session", content: "halfway through the refactor", topic: null, supersedes: [] },
+        { kind: "finding", scope: "project", content: "widgets builds with Bun", topic: null, supersedes: [] },
+        { kind: "preference", scope: "user", content: "prefers dashes in branch names", topic: null, supersedes: [] },
+        { kind: "finding", scope: "session", content: "halfway through the refactor", topic: null, supersedes: [] },
       ],
     });
 
@@ -147,7 +147,15 @@ describe("transcript import", () => {
       policy,
       runner: async () => {
         calls++;
-        return [{ scope: "project" as const, content: `fact ${calls}`, topic: null, supersedes: [] }];
+        return [
+          {
+            kind: "finding" as const,
+            scope: "project" as const,
+            content: `fact ${calls}`,
+            topic: null,
+            supersedes: [],
+          },
+        ];
       },
     });
 
