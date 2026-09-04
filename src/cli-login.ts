@@ -2,7 +2,7 @@ import { type CallbackResult, DEFAULT_CLOUD_URL } from "./cli-callback-server";
 import { type CloudMigrationSummary, isCredentialRejection } from "./cloud-migrate";
 import { isSecureUrl } from "./config-contract";
 import { type Credentials, decodeTokenSubject } from "./credentials";
-import { errorMessage } from "./error-contract";
+import { errorCode, errorMessage, LOGIN_ERROR_CODES } from "./error-contract";
 import { t } from "./i18n";
 import { type UserResourceId, userResourceIdForSubject } from "./resource-id";
 import type { UserScopeMergeSummary } from "./user-scope-merge";
@@ -142,8 +142,9 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
     try {
       const { token, refreshToken, email } = await result;
       await completeLogin(deps, url, token, t("cli.login.welcome", { email }), refreshToken);
-    } catch {
-      deps.printError(t("cli.login.timeout"));
+    } catch (error) {
+      const missingRefresh = errorCode(error) === LOGIN_ERROR_CODES.refreshTokenMissing;
+      deps.printError(missingRefresh ? t("cli.login.no_refresh") : t("cli.login.timeout"));
       process.exitCode = 1;
     }
   } else {

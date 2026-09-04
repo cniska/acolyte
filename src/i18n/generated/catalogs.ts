@@ -171,6 +171,7 @@ export type MessageArgs = {
   "cli.login.migrate.rejected": never;
   "cli.login.migrate.start": never;
   "cli.login.saved": never;
+  "cli.login.no_refresh": never;
   "cli.login.timeout": never;
   "cli.login.token.anonymous": never;
   "cli.login.token.empty": never;

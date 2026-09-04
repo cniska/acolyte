@@ -418,6 +418,13 @@ export const SV_MESSAGES = {
   ],
   "cli.login.migrate.start": [{ kind: "text", value: "Kopierar lokalt minne och sessioner till molnet." }],
   "cli.login.saved": [{ kind: "text", value: "Inloggad." }],
+  "cli.login.no_refresh": [
+    {
+      kind: "text",
+      value:
+        "Den här molntjänsten returnerade ingen förnyelsetoken, så inloggningen skulle räcka bara ett dygn. Uppdatera molntjänsten till en version som utfärdar en.",
+    },
+  ],
   "cli.login.timeout": [{ kind: "text", value: "Autentiseringen tog för lång tid. Försök igen." }],
   "cli.login.token.anonymous": [
     { kind: "text", value: "Tokenen namnger inget konto, så ingenting sparades. Logga in igen." },

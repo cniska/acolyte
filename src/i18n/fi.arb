@@ -159,6 +159,7 @@
   "cli.login.migrate.rejected": "Pilvi hylkäsi tunnuksen, joten kopiointi keskeytyi. Kirjaudu uudelleen kelvollisella tunnuksella.",
   "cli.login.migrate.start": "Kopioidaan paikallinen muisti ja istunnot pilveen.",
   "cli.login.saved": "Kirjauduttu sisään.",
+  "cli.login.no_refresh": "Tämä pilvipalvelu ei palauttanut päivitystunnusta, joten kirjautuminen kestäisi vain vuorokauden. Päivitä pilvipalvelu versioon, joka myöntää sellaisen.",
   "cli.login.timeout": "Tunnistautuminen aikakatkaistiin. Yritä uudelleen.",
   "cli.login.url.insecure": "Pilven osoitteen on käytettävä HTTPS:ää, ellei se osoita localhostiin.",
   "cli.login.token.anonymous": "Tunnus ei nimeä tiliä, joten mitään ei tallennettu. Kirjaudu uudelleen.",

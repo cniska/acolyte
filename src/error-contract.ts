@@ -37,12 +37,23 @@ export const MEMORY_ERROR_CODES = {
 } as const;
 export type MemoryErrorCode = (typeof MEMORY_ERROR_CODES)[keyof typeof MEMORY_ERROR_CODES];
 
+export const LOGIN_ERROR_CODES = {
+  refreshTokenMissing: "E_LOGIN_REFRESH_TOKEN_MISSING",
+} as const;
+export type LoginErrorCode = (typeof LOGIN_ERROR_CODES)[keyof typeof LOGIN_ERROR_CODES];
+
 export const TRANSPORT_ERROR_CODES = {
   daemonLost: "E_DAEMON_LOST",
 } as const;
 export type TransportErrorCode = (typeof TRANSPORT_ERROR_CODES)[keyof typeof TRANSPORT_ERROR_CODES];
 
-export type ErrorCode = ToolErrorCode | LifecycleErrorCode | CloudErrorCode | MemoryErrorCode | TransportErrorCode;
+export type ErrorCode =
+  | ToolErrorCode
+  | LifecycleErrorCode
+  | CloudErrorCode
+  | LoginErrorCode
+  | MemoryErrorCode
+  | TransportErrorCode;
 
 export const ERROR_KINDS = {
   sandboxViolation: "sandbox_violation",

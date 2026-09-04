@@ -1,3 +1,6 @@
+import { CodedError } from "./coded-error";
+import { LOGIN_ERROR_CODES } from "./error-contract";
+
 export type CallbackResult = {
   token: string;
   refreshToken: string;
@@ -46,7 +49,16 @@ export function startCallbackServer(expectedState: string): Promise<{ port: numb
         const refreshToken = url.searchParams.get("refresh");
         const state = url.searchParams.get("state");
 
-        if (!token || !refreshToken || !state || state !== expectedState) {
+        if (!token || !state || state !== expectedState) {
+          return new Response(ERROR_HTML, { status: 400, headers: { "Content-Type": "text/html" } });
+        }
+
+        // This handoff is the only place a refresh token is issued, so a cloud that returns none
+        // says so now rather than leaving the CLI waiting out its timeout for a token never coming.
+        if (!refreshToken) {
+          clearTimeout(timeout);
+          rejectResult(new CodedError(LOGIN_ERROR_CODES.refreshTokenMissing, "the cloud returned no refresh token"));
+          setTimeout(() => server.stop(), 100);
           return new Response(ERROR_HTML, { status: 400, headers: { "Content-Type": "text/html" } });
         }
 

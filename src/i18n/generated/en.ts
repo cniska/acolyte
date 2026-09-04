@@ -410,6 +410,13 @@ export const EN_MESSAGES = {
   ],
   "cli.login.migrate.start": [{ kind: "text", value: "Copying local memory and sessions to the cloud." }],
   "cli.login.saved": [{ kind: "text", value: "Logged in." }],
+  "cli.login.no_refresh": [
+    {
+      kind: "text",
+      value:
+        "This cloud returned no refresh token, so signing in would last only a day. Update the cloud service to a version that issues one.",
+    },
+  ],
   "cli.login.timeout": [{ kind: "text", value: "Authentication timed out. Please try again." }],
   "cli.login.token.anonymous": [
     { kind: "text", value: "That token does not name an account, so nothing was stored. Sign in again." },

@@ -104,6 +104,74 @@ describe("cloud session", () => {
     expect(persisted).toEqual([]);
   });
 
+  test("an unreachable cloud leaves the token it has, so a live one still gets its chance", async () => {
+    const token = tokenExpiringIn(45);
+    const fetchFn = mock(async () => {
+      throw new TypeError("fetch failed");
+    });
+    const session = new CloudSession({
+      baseUrl: BASE,
+      token,
+      renewal: { refreshToken: "refresh-1", persistToken: async () => {} },
+      fetchFn: fetchFn as unknown as typeof fetch,
+      now: () => NOW,
+    });
+
+    expect(await session.accessToken()).toBe(token);
+    expect(await session.renew()).toBe(false);
+  });
+
+  test("a refused refresh token is not spent again on every later call", async () => {
+    const { session, fetchFn } = createSession({
+      token: tokenExpiringIn(-1),
+      refreshToken: "refresh-1",
+      respond: () => jsonResponse({ error: "Invalid token" }, 401),
+    });
+
+    expect(await session.renew()).toBe(false);
+    expect(await session.renew()).toBe(false);
+    await session.accessToken();
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  test("a network failure leaves the refresh token usable, unlike a refusal", async () => {
+    let fail = true;
+    const { session, fetchFn } = createSession({
+      token: tokenExpiringIn(-1),
+      refreshToken: "refresh-1",
+      respond: () => {
+        if (fail) throw new TypeError("fetch failed");
+        return jsonResponse({ token: "renewed-token" });
+      },
+    });
+
+    expect(await session.renew()).toBe(false);
+    fail = false;
+
+    expect(await session.renew()).toBe(true);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  test("a credentials file that cannot be written does not cost the renewed token", async () => {
+    const { session } = createSession({ token: tokenExpiringIn(-1), refreshToken: "refresh-1" });
+    const failing = new CloudSession({
+      baseUrl: BASE,
+      token: tokenExpiringIn(-1),
+      renewal: {
+        refreshToken: "refresh-1",
+        persistToken: async () => {
+          throw new Error("EROFS: read-only file system");
+        },
+      },
+      fetchFn: (async () => jsonResponse({ token: "renewed-token" })) as unknown as typeof fetch,
+      now: () => NOW,
+    });
+
+    expect(await failing.accessToken()).toBe("renewed-token");
+    expect(await session.renew()).toBe(true);
+  });
+
   test("a token with no expiry claim is never renewed on its own", async () => {
     const part = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
     const token = `${part({ alg: "EdDSA" })}.${part({ sub: "user_1", scope: "user" })}.c2ln`;
@@ -113,13 +181,15 @@ describe("cloud session", () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
-  test("a renewal that answers without a token fails loudly", async () => {
+  test("an answer carrying no token is a failed renewal, not a thrown one", async () => {
+    const token = tokenExpiringIn(-1);
     const { session } = createSession({
-      token: tokenExpiringIn(-1),
+      token,
       refreshToken: "refresh-1",
       respond: () => jsonResponse({ ok: true }),
     });
 
-    await expect(session.renew()).rejects.toThrow("returned no token");
+    expect(await session.renew()).toBe(false);
+    expect(await session.accessToken()).toBe(token);
   });
 });

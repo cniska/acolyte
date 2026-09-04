@@ -190,6 +190,57 @@ describe("cloud sync client", () => {
     expect(retry.headers).toMatchObject({ authorization: "Bearer renewed-token" });
   });
 
+  test("the retried request keeps the body and headers the first one carried", async () => {
+    const responses = [
+      new Response(null, { status: 401 }),
+      new Response(JSON.stringify({ token: "renewed-token" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+      new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "content-type": "application/json" } }),
+    ];
+    const { fn, restore } = mockFetch(async () => responses.shift() ?? new Response(null, { status: 500 }));
+    cleanup = restore;
+    const base = "https://api.example.com";
+    const session = new CloudSession({
+      baseUrl: base,
+      token: "spent-token",
+      renewal: { refreshToken: "refresh-1", persistToken: async () => {} },
+    });
+
+    await new CloudClient(base, session).memory.write({
+      id: "mem_1",
+      scopeKey: "user_x",
+      content: "x".repeat(2000),
+      createdAt: "2026-01-01T00:00:00.000Z",
+      tokenEstimate: 5,
+    });
+
+    const [firstUrl, first] = callArgs(fn, 0);
+    const [retryUrl, retry] = callArgs(fn, 2);
+    expect(retryUrl).toBe(firstUrl);
+    expect(retry.method).toBe("POST");
+    expect(retry.body).toEqual(first.body as BodyInit);
+    expect(retry.headers).toMatchObject({ "content-encoding": "gzip", "content-type": "application/json" });
+  });
+
+  test("a cloud that cannot renew still fails with its own status, not the renewal's", async () => {
+    const { fn, restore } = mockFetch(async (input) => {
+      if (String(input).includes("/auth/refresh")) throw new TypeError("fetch failed");
+      return new Response("no", { status: 401 });
+    });
+    cleanup = restore;
+    const base = "https://api.example.com";
+    const session = new CloudSession({
+      baseUrl: base,
+      token: "spent-token",
+      renewal: { refreshToken: "refresh-1", persistToken: async () => {} },
+    });
+
+    await expect(new CloudClient(base, session).memory.list()).rejects.toThrow(CloudApiError);
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
   test("a 401 that renewal cannot fix is raised, not retried forever", async () => {
     const { fn, restore } = mockFetch(async () => new Response("no", { status: 401 }));
     cleanup = restore;

@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { loginMode, logoutMode } from "./cli-login";
 import { CloudApiError } from "./cloud-client";
+import { CodedError } from "./coded-error";
+import { LOGIN_ERROR_CODES } from "./error-contract";
 import { userResourceIdForSubject } from "./resource-id";
 
 const SUBJECT = "012627e3-1df9-476a-919d-f208a6bb9830";
@@ -161,6 +163,23 @@ describe("loginMode", () => {
     await loginMode([], deps);
     expect(process.exitCode).toBe(1);
     expect(output()).toContain("empty");
+  });
+
+  test("a cloud that returns no refresh token says so instead of timing out", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      prompt: () => "",
+      startCallbackServer: async () => ({
+        port: 9999,
+        result: Promise.reject(new CodedError(LOGIN_ERROR_CODES.refreshTokenMissing, "no refresh token")),
+      }),
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("no refresh token");
+    expect(output()).not.toContain("timed out");
+    expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
+    expect(process.exitCode).toBe(1);
   });
 
   test("oauth timeout sets exit code", async () => {

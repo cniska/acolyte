@@ -1,7 +1,5 @@
 import { z } from "zod";
-import { CodedError } from "./coded-error";
 import { decodeTokenExpiry } from "./credentials";
-import { CLOUD_ERROR_CODES } from "./error-contract";
 
 const REFRESH_ROUTE = "/api/v1/auth/refresh";
 
@@ -36,6 +34,7 @@ export class CloudSession {
   private readonly now: () => number;
   private token: string;
   private inFlight: Promise<boolean> | null = null;
+  private refreshTokenRefused = false;
 
   constructor(options: CloudSessionOptions) {
     this.base = options.baseUrl.replace(/\/$/, "");
@@ -56,7 +55,7 @@ export class CloudSession {
    * turn that fans out across the API asks the cloud once.
    */
   async renew(): Promise<boolean> {
-    if (!this.renewal) return false;
+    if (!this.renewal || this.refreshTokenRefused) return false;
     this.inFlight ??= this.exchange(this.renewal).finally(() => {
       this.inFlight = null;
     });
@@ -69,22 +68,41 @@ export class CloudSession {
     return expiry * 1000 - this.now() <= RENEW_SKEW_MS;
   }
 
+  /**
+   * Never throws: renewal is what Acolyte tries before giving up, so a failure here must leave the
+   * request that asked for it to fail on its own terms — with the cloud's status and its guidance.
+   */
   private async exchange(renewal: CloudRenewal): Promise<boolean> {
     const send = this.fetchFn ?? fetch;
-    const response = await send(`${this.base}${REFRESH_ROUTE}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ refreshToken: renewal.refreshToken }),
-    });
+    let response: Response;
+    try {
+      response = await send(`${this.base}${REFRESH_ROUTE}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ refreshToken: renewal.refreshToken }),
+      });
+    } catch {
+      return false;
+    }
+
+    // A refused refresh token stays refused, so one dead credential does not put a failed exchange
+    // in front of every later call. A network failure is not an answer and is left to be retried.
+    if (response.status === 401 || response.status === 403) {
+      this.refreshTokenRefused = true;
+      return false;
+    }
     if (!response.ok) return false;
 
     const parsed = refreshResponseSchema.safeParse(await response.json().catch(() => undefined));
-    if (!parsed.success) {
-      throw new CodedError(CLOUD_ERROR_CODES.requestFailed, `Cloud API POST ${REFRESH_ROUTE} returned no token`);
-    }
+    if (!parsed.success) return false;
 
     this.token = parsed.data.token;
-    await renewal.persistToken(parsed.data.token);
+
+    // The token is already in hand and the request it renews can go; a credentials file that cannot
+    // be written costs this machine the next process's head start, not this call.
+    try {
+      await renewal.persistToken(parsed.data.token);
+    } catch {}
     return true;
   }
 }
