@@ -59,6 +59,25 @@ function toolArgs(input: Record<string, unknown> | undefined): Record<string, un
   return typeof path === "string" ? { ...args, path } : args;
 }
 
+/**
+ * Text the harness wrote into a user record rather than the person: a slash command's own markup,
+ * a subagent notification delivered as a turn, an interruption notice. The format leaves `isMeta`
+ * off these, so the wrapper is the only thing that tells them from something typed.
+ */
+const HARNESS_PROMPT_PREFIXES: readonly string[] = [
+  "<command-name>",
+  "<command-message>",
+  "<command-args>",
+  "<local-command-stdout>",
+  "<local-command-stderr>",
+  "<task-notification>",
+  "[Request interrupted",
+];
+
+function isHarnessPrompt(text: string): boolean {
+  return HARNESS_PROMPT_PREFIXES.some((prefix) => text.startsWith(prefix));
+}
+
 type OpenExchange = {
   prompt: string;
   response: string | null;
@@ -166,6 +185,8 @@ export function parseClaudeCodeTranscript(text: string): ClaudeCodeTranscript {
       if (closed) exchanges.push(closed);
       open = null;
     }
+    // The harness spoke, so the person's turn is over and what follows answers nobody.
+    if (isHarnessPrompt(prompt)) continue;
     open = { prompt, response: null, calls: [], callsById: new Map() };
   }
 

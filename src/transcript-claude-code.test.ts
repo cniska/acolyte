@@ -142,6 +142,27 @@ describe("parseClaudeCodeTranscript", () => {
     expect(parsed.exchanges.map((e) => [e.prompt, e.response])).toEqual([["stop", "Stopped."]]);
   });
 
+  test("skips what the harness wrote into a user record", () => {
+    const parsed = parseClaudeCodeTranscript(
+      transcript(
+        user("ship it"),
+        assistant([{ type: "text", text: "Shipped." }]),
+        user("<task-notification>\n<task-id>a1</task-id>\n</task-notification>"),
+        assistant([{ type: "text", text: "The agent finished." }]),
+        user("<command-message>handoff</command-message>\n<command-name>/handoff</command-name>"),
+        assistant([{ type: "text", text: "Wrote the handoff." }]),
+        user("[Request interrupted by user]"),
+        user("thanks"),
+        assistant([{ type: "text", text: "Welcome." }]),
+      ),
+    );
+
+    expect(parsed.exchanges.map((e) => [e.prompt, e.response])).toEqual([
+      ["ship it", "Shipped."],
+      ["thanks", "Welcome."],
+    ]);
+  });
+
   test("ignores unparseable lines and records it cannot read", () => {
     const parsed = parseClaudeCodeTranscript(
       [
