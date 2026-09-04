@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { LanguageModelV4, LanguageModelV4StreamPart } from "@ai-sdk/provider";
+import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { embedModelCall, streamModelCall } from "./model-call";
 import { createRateLimiter, type RateLimiter } from "./rate-limiter";
 
@@ -35,6 +36,17 @@ function flakyModel(errors: unknown[], parts: LanguageModelV4StreamPart[] = []) 
     client,
     attempts: () => attempts,
   };
+}
+
+/**
+ * Settles as "never" rather than hanging the suite. The regressions below are missing deadlines, so
+ * without the fix the call under test simply waits, and a bounded race turns that into a failure.
+ */
+function within<T>(ms: number, work: Promise<T>): Promise<T | "never settled"> {
+  return Promise.race([
+    work,
+    new Promise<"never settled">((resolve) => setTimeout(() => resolve("never settled"), ms)),
+  ]);
 }
 
 async function drain(stream: ReadableStream<LanguageModelV4StreamPart>): Promise<LanguageModelV4StreamPart[]> {
@@ -122,7 +134,7 @@ describe("streamModelCall", () => {
     expect(await drain(result.stream)).toHaveLength(4);
   });
 
-  test("hands the caller's own signal to the provider, not a copy of it", async () => {
+  test("the caller's cancellation reaches the provider, mid-answer included", async () => {
     const controller = new AbortController();
     let seen: AbortSignal | undefined;
     const client = {
@@ -137,7 +149,68 @@ describe("streamModelCall", () => {
       request: { prompt: [] },
       abortSignal: controller.signal,
     });
-    expect(seen).toBe(controller.signal);
+
+    expect(seen?.aborted).toBe(false);
+    controller.abort(new Error("user stopped the turn"));
+    expect(seen?.aborted).toBe(true);
+  });
+
+  test("a caller who already cancelled never reaches the provider unaborted", async () => {
+    const controller = new AbortController();
+    controller.abort(new Error("user stopped the turn"));
+    let seen: AbortSignal | undefined;
+    const client = {
+      doStream: async (options: { abortSignal?: AbortSignal }) => {
+        seen = options.abortSignal;
+        return { stream: partsStream([]) };
+      },
+    } as unknown as LanguageModelV4;
+    await streamModelCall({
+      client,
+      limiter: limiter(),
+      request: { prompt: [] },
+      abortSignal: controller.signal,
+    });
+
+    expect(seen?.aborted).toBe(true);
+  });
+
+  test("gives up on a stream that never opens, rather than hanging on the connect", async () => {
+    const client = {
+      // A provider that accepted the connection and sent no headers: there is no stream yet, so the
+      // stream's own idle deadline cannot see this one.
+      doStream: (options: { abortSignal?: AbortSignal }) =>
+        new Promise((_, reject) => {
+          options.abortSignal?.addEventListener("abort", () => reject(options.abortSignal?.reason), { once: true });
+        }),
+    } as unknown as LanguageModelV4;
+
+    const call = streamModelCall({
+      client,
+      limiter: limiter(),
+      request: { prompt: [] },
+      idleTimeoutMs: 20,
+      maxAttempts: 1,
+    });
+
+    await expect(within(500, call)).rejects.toThrow(/did not open/i);
+  });
+
+  test("a backoff ends the moment the caller cancels, not when the provider said to return", async () => {
+    const controller = new AbortController();
+    const slow = createRateLimiter({ backoffBaseMs: 60_000, backoffMaxMs: 60_000 });
+    const { client } = flakyModel([statusError(429), statusError(429)]);
+
+    const call = streamModelCall({
+      client,
+      limiter: slow,
+      request: { prompt: [] },
+      abortSignal: controller.signal,
+      maxAttempts: 3,
+    });
+    setTimeout(() => controller.abort(new Error("user stopped the turn")), 10);
+
+    await expect(within(500, call)).rejects.toThrow("user stopped the turn");
   });
 
   test("embeds through the same retry, so a blip cannot leave a memory unsearchable", async () => {
@@ -178,8 +251,8 @@ describe("streamModelCall", () => {
     expect(seen).toBeInstanceOf(AbortSignal);
   });
 
-  test("passes no signal when the caller gave none", async () => {
-    let seen: unknown = "unset";
+  test("a call with no caller signal is still opened under a deadline", async () => {
+    let seen: AbortSignal | undefined;
     const client = {
       doStream: async (options: { abortSignal?: AbortSignal }) => {
         seen = options.abortSignal;
@@ -187,6 +260,20 @@ describe("streamModelCall", () => {
       },
     } as unknown as LanguageModelV4;
     await streamModelCall({ client, limiter: limiter(), request: { prompt: [] } });
-    expect(seen).toBeUndefined();
+    expect(seen).toBeInstanceOf(AbortSignal);
+  });
+
+  test("the idle deadline names itself a timeout, so callers can tell it from a provider fault", async () => {
+    const client = {
+      doStream: async () => ({ stream: new ReadableStream<LanguageModelV4StreamPart>({ start() {} }) }),
+    } as unknown as LanguageModelV4;
+    const result = await streamModelCall({
+      client,
+      limiter: limiter(),
+      request: { prompt: [] },
+      idleTimeoutMs: 20,
+    });
+
+    await expect(drain(result.stream)).rejects.toMatchObject({ code: LIFECYCLE_ERROR_CODES.timeout });
   });
 });
