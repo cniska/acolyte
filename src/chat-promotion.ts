@@ -3,6 +3,7 @@ import type { ChatRow } from "./chat-contract";
 import { toRows } from "./chat-session";
 import { legacyChatRowFromTranscript, migrateLegacyChatRow, type TranscriptRow } from "./chat-transcript-contract";
 import type { Session } from "./session-contract";
+import type { SessionStorageKind } from "./session-store";
 import { createId } from "./short-id";
 import { layoutHeader } from "./terminal-chat-layout";
 import { clearTerminal } from "./tui";
@@ -26,9 +27,15 @@ export function resumeActiveTranscript(
 // Segment 0 keeps the bare id so a single-session process matches the legacy header id;
 // later segments (a /clear or in-app switch) version it so the append-only scrollback log
 // never dedupes a fresh segment's header against the prior one.
-export function createHeaderSlice(version: string, sessionId: string, segment: number): PromotedSceneSlice {
+export function createHeaderSlice(input: {
+  version: string;
+  sessionId: string;
+  segment: number;
+  storage: SessionStorageKind;
+}): PromotedSceneSlice {
+  const { version, sessionId, segment, storage } = input;
   const id = segment === 0 ? `header_${sessionId}` : `header_${sessionId}_${segment}`;
-  return freezeSlice(id, layoutHeader({ title: "Acolyte", version, sessionId }).lines);
+  return freezeSlice(id, layoutHeader({ title: "Acolyte", version, sessionId, storage }).lines);
 }
 
 export function appendPromotedSlices(
@@ -48,13 +55,13 @@ export function appendPromotedSlices(
 
 // Owns write-once slice scrollback: the header slice (seeded, versioned per segment) plus
 // the row slices the render loop commits as they scroll past the terminal-fit boundary.
-export function useScenePromotion(input: { version: string; session: Session }): {
+export function useScenePromotion(input: { version: string; session: Session; storage: SessionStorageKind }): {
   promotedSlices: PromotedSceneSlice[];
   appendSlices: (slices: readonly PromotedSceneSlice[]) => void;
   openSegment: (sessionId: string) => void;
 } {
   const [promotedSlices, setPromotedSlices] = useState<PromotedSceneSlice[]>(() => [
-    createHeaderSlice(input.version, input.session.id, 0),
+    createHeaderSlice({ version: input.version, sessionId: input.session.id, segment: 0, storage: input.storage }),
   ]);
   const segmentRef = useRef(0);
   const appendSlices = useCallback((slices: readonly PromotedSceneSlice[]) => {
@@ -64,9 +71,12 @@ export function useScenePromotion(input: { version: string; session: Session }):
     (sessionId: string) => {
       clearTerminal();
       segmentRef.current += 1;
-      setPromotedSlices((prev) => [...prev, createHeaderSlice(input.version, sessionId, segmentRef.current)]);
+      setPromotedSlices((prev) => [
+        ...prev,
+        createHeaderSlice({ version: input.version, sessionId, segment: segmentRef.current, storage: input.storage }),
+      ]);
     },
-    [input.version],
+    [input.version, input.storage],
   );
   return { promotedSlices, appendSlices, openSegment };
 }

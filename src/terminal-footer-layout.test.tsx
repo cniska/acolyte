@@ -109,7 +109,7 @@ test("footer holds the terminal width when a part must be cut", () => {
 test("viewport layout carries the semantic footer onto the final scene line", () => {
   const footer: FooterStatus = { ...base, dirty: true, ahead: 2, behind: 1, inputTokens: 48600, outputTokens: 12400 };
   const presentation = createChatViewportPresentation({
-    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1", storage: "local" },
     activeTranscript: [],
     pending: null,
     composer: {

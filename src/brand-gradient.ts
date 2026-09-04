@@ -1,7 +1,7 @@
 /**
- * Diagonal brand gradient for the braille marks. The stops are the site's own
- * purples, swept top-left to bottom-right so the mark reads as lit from one corner
- * rather than flat-filled.
+ * Vertical gradients for the braille marks, swept top to bottom so a mark reads as lit from
+ * above rather than flat-filled. The chat header takes the brand purples; the CLI takes the
+ * monochrome ramp, matching the lockup at app.acolyte.sh.
  */
 
 import { palette } from "./palette";
@@ -13,16 +13,23 @@ function hexToRgb(hex: string): Rgb {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-const STOPS: ReadonlyArray<Rgb> = [palette.brandDeep, palette.brand, palette.brandLight].map(hexToRgb);
+export const BRAND_STOPS: ReadonlyArray<Rgb> = [palette.brandLight, palette.brand].map(hexToRgb);
 
-/** Color at normalized position `t` along the gradient, clamped to the end stops. */
-export function gradientRgb(t: number): Rgb {
+/** One stop deeper than `BRAND_STOPS` at every position, so the caret sweeps but stays behind the name. */
+export const CARET_STOPS: ReadonlyArray<Rgb> = [palette.brand, palette.brandDeep].map(hexToRgb);
+
+export const MONO_STOPS: ReadonlyArray<Rgb> = [palette.markInk, palette.markMuted].map(hexToRgb);
+
+export const MONO_CARET_STOPS: ReadonlyArray<Rgb> = [palette.markMuted, palette.dim].map(hexToRgb);
+
+/** Color at normalized position `t` along a gradient, clamped to the end stops. */
+export function gradientRgb(t: number, stops: ReadonlyArray<Rgb> = BRAND_STOPS): Rgb {
   const clamped = Math.min(1, Math.max(0, t));
-  const segment = clamped * (STOPS.length - 1);
-  const index = Math.min(STOPS.length - 2, Math.floor(segment));
+  const segment = clamped * (stops.length - 1);
+  const index = Math.min(stops.length - 2, Math.floor(segment));
   const fraction = segment - index;
-  const from = STOPS[index];
-  const to = STOPS[index + 1];
+  const from = stops[index];
+  const to = stops[index + 1];
   return [
     Math.round(from[0] + (to[0] - from[0]) * fraction),
     Math.round(from[1] + (to[1] - from[1]) * fraction),
@@ -30,11 +37,13 @@ export function gradientRgb(t: number): Rgb {
   ];
 }
 
-/** Position along the diagonal for a cell, so both axes contribute equally. */
-export function diagonalPosition(x: number, y: number, width: number, height: number): number {
-  const xSpan = Math.max(1, width - 1);
-  const ySpan = Math.max(1, height - 1);
-  return (x / xSpan + y / ySpan) / 2;
+/** Position down the mark for a row, so the sweep runs top to bottom. */
+export function verticalPosition(y: number, height: number): number {
+  return y / Math.max(1, height - 1);
+}
+
+export function rgbToHex([r, g, b]: Rgb): string {
+  return `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
 }
 
 export const BRAILLE_BLANK = "⠀";

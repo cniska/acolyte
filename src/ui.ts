@@ -1,6 +1,6 @@
 import { stderr, stdout } from "node:process";
-import { BRAILLE_BLANK, diagonalPosition, gradientRgb } from "./brand-gradient";
-import { BRAND_WORDMARK_GAP, BRAND_WORDMARK_ROWS } from "./brand-mark";
+import { BRAILLE_BLANK, gradientRgb, MONO_CARET_STOPS, MONO_STOPS, type Rgb, verticalPosition } from "./brand-gradient";
+import { BRAND_WORDMARK_GAP, BRAND_WORDMARK_ROWS, BRAND_WORDMARK_WIDTH } from "./brand-mark";
 import { palette } from "./palette";
 import { ansi } from "./tui/styles";
 
@@ -54,35 +54,31 @@ const color = {
   bold: paint((value) => `\x1b[1m${value}\x1b[22m`),
 };
 
-/** Paints braille art cell by cell along the brand gradient, coalescing runs of one color. */
-function paintGradient(rows: ReadonlyArray<string>): string[] {
-  if (!colorEnabled()) return [...rows];
-  const width = Math.max(...rows.map((row) => [...row].length));
-  return rows.map((row, y) => {
-    let painted = "";
-    let current = "";
-    for (const [x, cell] of [...row].entries()) {
-      if (cell === BRAILLE_BLANK) {
-        painted += cell;
-        continue;
-      }
-      const [r, g, b] = gradientRgb(diagonalPosition(x, y, width, rows.length));
-      const sgr = `\x1b[38;2;${r};${g};${b}m`;
-      if (sgr !== current) {
-        painted += sgr;
-        current = sgr;
-      }
-      painted += cell;
-    }
-    return current ? `${painted}\x1b[39m` : painted;
-  });
+/** Wraps inked braille cells in a foreground escape; all-blank runs stay unpainted. */
+function paintCells(cells: string, sgr: string): string {
+  if (![...cells].some((cell) => cell !== BRAILLE_BLANK)) return cells;
+  return `${sgr}${cells}\x1b[39m`;
 }
 
-/** The full wordmark, with the version set under the lettering. */
+/**
+ * The full wordmark, with the version set flush to the lettering's right edge on the last row.
+ * The CLI wears the monochrome lockup from app.acolyte.sh rather than the brand purple, swept top
+ * to bottom, with the caret one stop deeper so it sits behind the name.
+ */
 export function formatCliBanner(version: string): string {
-  const art = BRAND_WORDMARK_ROWS.map((row) => row.chevron + BRAND_WORDMARK_GAP + row.word);
-  const indent = " ".repeat([...BRAND_WORDMARK_ROWS[0].chevron, ...BRAND_WORDMARK_GAP].length);
-  return [...paintGradient(art), `${indent}${color.dim(color.white(`v${version}`))}`].join("\n");
+  const versionText = `v${version}`;
+  const lastRow = BRAND_WORDMARK_ROWS.length - 1;
+  return BRAND_WORDMARK_ROWS.map((row, y) => {
+    const sweep = (stops: ReadonlyArray<Rgb>, cells: string): string => {
+      if (!colorEnabled()) return cells;
+      const [r, g, b] = gradientRgb(verticalPosition(y, BRAND_WORDMARK_ROWS.length), stops);
+      return paintCells(cells, ansi.fgRgb(r, g, b));
+    };
+    const line = sweep(MONO_CARET_STOPS, row.chevron) + BRAND_WORDMARK_GAP + sweep(MONO_STOPS, row.word);
+    if (y !== lastRow) return line;
+    const pad = BRAND_WORDMARK_WIDTH - row.word.length - versionText.length;
+    return line + BRAILLE_BLANK.repeat(Math.max(pad, 0)) + color.dim(color.white(versionText));
+  }).join("\n");
 }
 
 export function tokenizeStreamContent(content: string): string[] {

@@ -21,7 +21,7 @@ const footer = {
 
 function composerScene(text: string, cursor: number, columns = 80): TerminalScene {
   const composer = createChatViewportPresentation({
-    header: { title: "Acolyte", version: "1", sessionId: "s" },
+    header: { title: "Acolyte", version: "1", sessionId: "s", storage: "local" },
     activeTranscript: [],
     pending: null,
     composer: {
@@ -62,7 +62,7 @@ test("cursor at end of input renders a trailing caret space", () => {
 
 test("a hidden caret renders the character without the cursor role", () => {
   const composer = createChatViewportPresentation({
-    header: { title: "Acolyte", version: "1", sessionId: "s" },
+    header: { title: "Acolyte", version: "1", sessionId: "s", storage: "local" },
     activeTranscript: [],
     pending: null,
     composer: {
@@ -83,7 +83,7 @@ test("a hidden caret renders the character without the cursor role", () => {
 
 test("model picker query renders a caret via the cursor role", () => {
   const composer = createChatViewportPresentation({
-    header: { title: "Acolyte", version: "1", sessionId: "s" },
+    header: { title: "Acolyte", version: "1", sessionId: "s", storage: "local" },
     activeTranscript: [],
     pending: null,
     composer: {

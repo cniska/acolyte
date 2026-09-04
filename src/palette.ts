@@ -4,6 +4,11 @@ export const palette = {
   brandDeep: "#6745A4",
   brandLight: "#C4B5FD",
 
+  // The monochrome lockup, taken from the site: app.acolyte.sh's `--foreground` for the
+  // lettering, acolyte-logo.svg's chevron fill for the caret.
+  markInk: "#F5F5F5",
+  markMuted: "#A3A3A3",
+
   // Text — one gray + one dim, borrowed from Claude Code, shared across the UI.
   text: "white",
   gray: "#999999", // secondary content (Claude Code promptBorder / shimmer bright)

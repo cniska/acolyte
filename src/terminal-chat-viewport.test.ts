@@ -8,7 +8,7 @@ function layoutTranscript(transcript: TranscriptRow[]): TerminalScene {
   return layoutChatViewport({
     held: new Set(),
     presentation: {
-      header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+      header: { title: "Acolyte", version: "1", sessionId: "sess_1", storage: "local" },
       transcript,
       pending: null,
       composer: {
@@ -55,7 +55,7 @@ test("viewport layout orders finalized transcript before mutable pending and com
   const scene = layoutChatViewport({
     held: new Set(),
     presentation: {
-      header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+      header: { title: "Acolyte", version: "1", sessionId: "sess_1", storage: "local" },
       transcript: [{ id: "row_1", kind: "assistant", status: "complete", content: { kind: "message", text: "hello" } }],
       pending: { state: { kind: "running" }, frame: 0, startedAt: 0, queuedMessages: [], runningUsage: null },
       composer: {

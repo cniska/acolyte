@@ -16,6 +16,7 @@ import type { FooterStatus } from "./footer-status-contract";
 import type { PrState } from "./gh-contract";
 import { t } from "./i18n";
 import { formatCompactNumber } from "./number-format";
+import { palette } from "./palette";
 import { buildPromptDisplayLines } from "./prompt-display";
 import { type TasklistItemStatus, type TasklistOutput, tasklistMarker, tasklistProgress } from "./tasklist-contract";
 import type { TerminalLine, TerminalScene, TerminalSpan } from "./terminal-scene-contract";
@@ -297,6 +298,8 @@ export function transcriptOutcomeRole(status: TranscriptStatus): TerminalStyleRo
   }
 }
 
+const HEADER_INDENT = "  ";
+
 export function layoutHeader(input: ChatViewportPresentation["header"]): TerminalScene {
   const meta = (text: string): Array<{ text: string; role: TerminalStyleRole }> => {
     const [key, ...rest] = text.split(" ");
@@ -307,11 +310,14 @@ export function layoutHeader(input: ChatViewportPresentation["header"]): Termina
           { text: rest.join(" "), role: "plain" },
         ];
   };
-  const markSpans = (row: number): Array<{ text: string; role: TerminalStyleRole }> => [
-    { text: BRAND_MARK_ROWS[row].chevron, role: "header-mark" },
+  // A four-row mark is too short for a sweep to read as one, so each column takes a flat brand
+  // color, the caret a stop deeper so it stays behind the name.
+  const markSpans = (row: number): TerminalSpan[] => [
+    { text: HEADER_INDENT, role: "plain" },
+    { text: BRAND_MARK_ROWS[row].chevron, role: "header-mark", foreground: palette.brandDeep },
     { text: BRAND_MARK_GAP, role: "header-mark" },
-    { text: BRAND_MARK_ROWS[row].letter, role: "header-brand" },
-    { text: "  ", role: "plain" },
+    { text: BRAND_MARK_ROWS[row].letter, role: "header-brand", foreground: palette.brand },
+    { text: "   ", role: "plain" },
   ];
   return {
     lines: [
@@ -324,7 +330,7 @@ export function layoutHeader(input: ChatViewportPresentation["header"]): Termina
       },
       { spans: [...markSpans(1), ...meta(`version ${input.version}`)] },
       { spans: [...markSpans(2), ...meta(`session ${input.sessionId}`)] },
-      { spans: markSpans(3) },
+      { spans: [...markSpans(3), ...meta(`storage ${input.storage}`)] },
     ],
   };
 }
