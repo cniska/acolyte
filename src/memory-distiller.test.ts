@@ -935,10 +935,18 @@ describe("parseObservationToolCall", () => {
     expect(call({ kind: "finding", scope: "project", content: "   " })).toEqual([]);
   });
 
-  test("one malformed fact rejects the whole call", () => {
+  test("one malformed fact costs only itself", () => {
     expect(
-      call({ kind: "finding", scope: "project", content: "a good fact" }, { scope: "elsewhere", content: "a bad one" }),
-    ).toEqual([]);
+      call(
+        { kind: "finding", scope: "project", content: "a good fact" },
+        { scope: "elsewhere", content: "a bad one" },
+        { kind: "decision", scope: "user", content: "another good fact" },
+      ).map((observation) => observation.content),
+    ).toEqual(["a good fact", "another good fact"]);
+  });
+
+  test("a batch of nothing but malformed facts yields no observation", () => {
+    expect(call({ scope: "elsewhere", content: "a bad one" }, { kind: "finding", content: "no scope" })).toEqual([]);
   });
 
   test("a non-array supersedes yields no observation", () => {

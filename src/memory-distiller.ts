@@ -58,6 +58,9 @@ const DISTILL_OUTPUT_SCHEMA = z.object({
     .describe("Every fact the turn established, in the order found. Empty when it established none."),
 });
 
+// The batch's shape, held apart from the entries so one bad entry is judged alone.
+const DISTILL_ENVELOPE_SCHEMA = z.object({ facts: z.array(z.unknown()) });
+
 const OBSERVE_FUNCTION_NAME = "memory-observe";
 
 /**
@@ -197,20 +200,44 @@ async function getCachedStore(): Promise<MemoryStore> {
 
 export type DistillRunner = (systemPrompt: string, userContent: string, model: string) => Promise<DistillObservation[]>;
 
+/**
+ * Reads the call's facts, keeping each one that validates. Per-entry rather than per-call: the
+ * batch carries every fact a turn established, so rejecting all of them over one bad field would
+ * lose the turn's whole yield to a single formatting slip.
+ */
 export function parseObservationToolCall(call: Pick<LanguageModelV4ToolCall, "input">): DistillObservation[] {
+  let entries: unknown[];
   try {
-    const parsed = DISTILL_OUTPUT_SCHEMA.safeParse(JSON.parse(call.input));
-    if (!parsed.success) return [];
-    return parsed.data.facts.map(({ kind, scope, content, topic, supersedes }) => ({
+    const envelope = DISTILL_ENVELOPE_SCHEMA.safeParse(JSON.parse(call.input));
+    if (!envelope.success) {
+      log.warn("memory.distill.unreadable_call", { issue: envelope.error.issues[0]?.message });
+      return [];
+    }
+    entries = envelope.data.facts;
+  } catch (error) {
+    log.warn("memory.distill.unreadable_call", { error: String(error) });
+    return [];
+  }
+
+  const observations: DistillObservation[] = [];
+  let rejected = 0;
+  for (const entry of entries) {
+    const parsed = DISTILL_FACT_SCHEMA.safeParse(entry);
+    if (!parsed.success) {
+      rejected++;
+      continue;
+    }
+    const { kind, scope, content, topic, supersedes } = parsed.data;
+    observations.push({
       kind,
       scope,
       content,
       topic: topic?.trim() ? topic.trim().toLowerCase() : null,
       supersedes: [...new Set(supersedes.map((id) => id.trim()).filter(Boolean))],
-    }));
-  } catch {
-    return [];
+    });
   }
+  if (rejected > 0) log.warn("memory.distill.rejected_facts", { rejected, kept: observations.length });
+  return observations;
 }
 
 export async function defaultRunner(
