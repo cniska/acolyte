@@ -72,7 +72,7 @@ const OBSERVE_FUNCTION_NAME = "memory-observe";
 const DISTILL_OUTPUT_TOOL = toFunctionTool({
   id: OBSERVE_FUNCTION_NAME,
   description:
-    "Record what this turn established that the repository cannot say for itself, one entry per fact: a finding, a decision with its reason, a convention, or a preference of the person. How the code now works, where the repository stands (branch, commits, what is pushed, what verify said) and work still ahead are not entries, however they are worded. facts is empty on a turn that established none, which is most turns.",
+    "Record the facts this turn established. facts holds one entry per fact, in the order found, and is empty when the turn established none.",
   inputSchema: z.toJSONSchema(DISTILL_OUTPUT_SCHEMA) as Record<string, unknown>,
 });
 
