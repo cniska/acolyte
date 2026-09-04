@@ -6,7 +6,7 @@ export const statusPayloadSchema = z
     ok: z.literal(true),
     providers: z.array(providerSchema),
     provider_auth: z.array(z.string()),
-    model: z.string(),
+    model: z.string().optional(),
     memory: z.string().optional(),
     protocol_version: z.string(),
     build: z.string(),

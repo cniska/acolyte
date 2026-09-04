@@ -73,4 +73,23 @@ describe("cli-skill --model flag", () => {
 
     process.exitCode = prevExit;
   });
+
+  test("skillMode refuses to start with no model configured and none on the command line", async () => {
+    const { deps, calls } = createSkillDeps();
+    deps.appModel = undefined;
+    let sessions = 0;
+    deps.createSession = () => {
+      sessions++;
+      return {} as never;
+    };
+    const prevExit = process.exitCode;
+    process.exitCode = 0;
+
+    await skillMode(["skill-name", "do something"], deps);
+
+    expect(calls.errors).toEqual(["No model configured. Run acolyte config set model <id> to choose one."]);
+    expect(process.exitCode).toBe(1);
+    expect(sessions).toBe(0);
+    process.exitCode = prevExit;
+  });
 });

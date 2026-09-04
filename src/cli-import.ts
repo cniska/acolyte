@@ -26,6 +26,12 @@ export type PlanImportRequest = {
   includeStale: boolean;
 };
 
+/** The configured model as an import can use it: none chosen, chosen but without a credential, or runnable. */
+export type ImportModelChoice =
+  | { kind: "unconfigured" }
+  | { kind: "unavailable"; model: string }
+  | { kind: "ready"; model: string };
+
 export type ImportModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   interactive: boolean;
@@ -38,7 +44,7 @@ export type ImportModeDeps = {
   runImport: (options: RunImportOptions) => Promise<ImportSessionResult[]>;
   createStore: (path: string) => MemoryStore;
   createDistiller: (store: MemoryStore) => MemoryDistiller;
-  resolveModel: () => { model: string; available: boolean };
+  resolveModel: () => ImportModelChoice;
   readLedger: (path: string) => Promise<ImportLedger>;
   writeLedger: (path: string, ledger: ImportLedger) => Promise<void>;
   removeDir: (path: string) => Promise<void>;
@@ -183,8 +189,12 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
   // Checked before anything is cleared or read: distillation is the only thing that turns a
   // transcript into a fact, so without a model to run it there is no import to attempt. A dry run
   // makes no model call, which is what makes it the thing to run before a provider is connected.
-  const chosen = deps.resolveModel();
-  if (!dryRun && !chosen.available) {
+  const chosen = dryRun ? null : deps.resolveModel();
+  if (chosen?.kind === "unconfigured") {
+    deps.commandError("import", t("cli.model.not_configured"));
+    return;
+  }
+  if (chosen?.kind === "unavailable") {
     deps.commandError("import", t("cli.import.no_model", { model: chosen.model }));
     return;
   }
@@ -219,7 +229,7 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
 
   const band = tokenBand(pending);
   const planSummary = [t("cli.import.plan", band), ...held, ...skipped];
-  if (dryRun) {
+  if (!chosen) {
     emit(pending.map(planRow), planSummary, json, deps);
     return;
   }

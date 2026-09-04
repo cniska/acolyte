@@ -50,7 +50,8 @@ describe("parseArgs", () => {
   });
 
   test("distills with the configured model when the command line names none", () => {
-    expect(resolveDistillModel({ distillModel: null })).toBe(appConfig.model);
+    if (appConfig.model) expect(resolveDistillModel({ distillModel: null })).toBe(appConfig.model);
+    else expect(() => resolveDistillModel({ distillModel: null })).toThrow("No model configured");
   });
 
   test("applies the embedding model override to the embedding configuration", () => {

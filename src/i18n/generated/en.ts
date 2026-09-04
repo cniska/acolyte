@@ -656,6 +656,9 @@ export const EN_MESSAGES = {
     { kind: "text", value: "No retired memory found for: " },
     { kind: "arg", name: "ids" },
   ],
+  "cli.model.not_configured": [
+    { kind: "text", value: "No model configured. Run acolyte config set model <id> to choose one." },
+  ],
   "cli.memory.restored": [
     { kind: "text", value: "Restored " },
     {

@@ -213,6 +213,7 @@ export type MessageArgs = {
   "cli.memory.archive.none": never;
   "cli.memory.none": never;
   "cli.memory.restore.none": { ids: string | number };
+  "cli.model.not_configured": never;
   "cli.memory.restored": { count: number; ids: string | number };
   "cli.auth.method.required": never;
   "cli.server.already_running": { pid: number; port: number };

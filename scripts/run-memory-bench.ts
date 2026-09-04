@@ -150,7 +150,10 @@ export function applyModelOverrides(args: Pick<MemoryBenchArgs, "embeddingModel"
 
 /** The model a distilling dataset writes with: named on the command line, or the configured one. */
 export function resolveDistillModel(args: Pick<MemoryBenchArgs, "distillModel">): string {
-  return args.distillModel ?? appConfig.model;
+  const model = args.distillModel ?? appConfig.model;
+  if (!model)
+    throw new Error("No model configured; pass --distill-model <id> or set one with acolyte config set model");
+  return model;
 }
 
 function safeIsoDate(value: string): string {

@@ -19,7 +19,6 @@ function createDefaultConfig() {
   return {
     port: 6767,
     locale: "en" as const,
-    model: "gpt-5-mini",
     openaiBaseUrl: "https://api.openai.com/v1",
     anthropicBaseUrl: "https://api.anthropic.com/v1",
     googleBaseUrl: "https://generativelanguage.googleapis.com",
@@ -155,7 +154,6 @@ function serializeToml(config: Config): string {
 
 function resolveConfig(config: Config): ResolvedConfig {
   const defaults = createDefaultConfig();
-  const model = config.model ?? defaults.model;
   const port = config.port ?? defaults.port;
   const parsedFeatures = featureFlagsSchema.safeParse(config.features ?? {});
   const features = parsedFeatures.success ? parsedFeatures.data : {};
@@ -163,7 +161,7 @@ function resolveConfig(config: Config): ResolvedConfig {
   return {
     port,
     locale: config.locale ?? defaults.locale,
-    model,
+    model: config.model,
     openaiBaseUrl: config.openaiBaseUrl ?? defaults.openaiBaseUrl,
     anthropicBaseUrl: config.anthropicBaseUrl ?? defaults.anthropicBaseUrl,
     googleBaseUrl: config.googleBaseUrl ?? defaults.googleBaseUrl,

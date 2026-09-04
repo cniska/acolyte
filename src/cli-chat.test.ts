@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { createFatalErrorHandler, formatResumeCommand } from "./cli-chat";
+import { createFatalErrorHandler, formatResumeCommand, sessionModelFor } from "./cli-chat";
 import { CloudApiError } from "./cloud-client";
+import { createSession } from "./test-utils";
 
 describe("cli", () => {
   test("formatResumeCommand returns prod-friendly command", () => {
@@ -50,5 +51,25 @@ describe("fatal chat errors", () => {
     process.env.ACOLYTE_DEBUG = "cli";
     const { lines } = capture(new CloudApiError(401, "Cloud API GET /api/v1/sessions failed (401)", "{}"));
     expect(lines.some((line) => line.includes("CloudApiError"))).toBe(true);
+  });
+});
+
+describe("sessionModelFor", () => {
+  test("a fresh chat takes the configured model", () => {
+    expect(sessionModelFor(null, "anthropic/claude-sonnet-4")).toBe("anthropic/claude-sonnet-4");
+  });
+
+  test("a fresh chat has no model when none is configured", () => {
+    expect(sessionModelFor(null, undefined)).toBeUndefined();
+  });
+
+  test("a resumed session keeps its own model even when none is configured", () => {
+    const session = createSession({ model: "openai/gpt-5.2" });
+    expect(sessionModelFor({ kind: "ok", session }, undefined)).toBe("openai/gpt-5.2");
+  });
+
+  test("a resumed session keeps its own model over the configured one", () => {
+    const session = createSession({ model: "openai/gpt-5.2" });
+    expect(sessionModelFor({ kind: "ok", session }, "anthropic/claude-sonnet-4")).toBe("openai/gpt-5.2");
   });
 });

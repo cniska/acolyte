@@ -18,7 +18,7 @@ const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-distille
 let fake: FakeProviderServer;
 let savedBaseUrl: string;
 let savedApiKey: string | undefined;
-let savedModel: string;
+let savedModel: string | undefined;
 let lastRequestBody: Record<string, unknown> | undefined;
 
 beforeAll(() => {
@@ -53,7 +53,7 @@ afterAll(() => {
   fake.stop();
   (appConfig.openai as { baseUrl: string }).baseUrl = savedBaseUrl;
   (appConfig.openai as { apiKey: string | undefined }).apiKey = savedApiKey;
-  (appConfig as { model: string }).model = savedModel;
+  (appConfig as { model: string | undefined }).model = savedModel;
 });
 
 afterEach(cleanupStores);

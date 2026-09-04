@@ -1246,6 +1246,10 @@
       }
     }
   },
+  "cli.model.not_configured": "No model configured. Run acolyte config set model <id> to choose one.",
+  "@cli.model.not_configured": {
+    "description": "Shown when a command that needs a model (chat, run, skill, import) starts with no model set in any config scope. 'acolyte config set model <id>' is a literal command the user types and must not be translated."
+  },
   "cli.memory.restored": "Restored {count, plural, one {# memory} other {# memories}}: {ids}.",
   "@cli.memory.restored": {
     "description": "Confirmation after retired notes are restored. {count} is how many; {ids} is a comma-joined list of their identifiers.",

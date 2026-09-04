@@ -114,10 +114,17 @@ export async function skillMode(args: string[], deps: SkillModeDeps): Promise<vo
     return;
   }
 
+  const model = parsed.model ?? appModel;
+  if (!model) {
+    printError(t("cli.model.not_configured"));
+    process.exitCode = 1;
+    return;
+  }
+
   const instructions = await readSkillInstructions(skill.path, parsed.prompt);
 
   const resolvedConfig = readResolvedConfigSync();
-  const session = createSession(parsed.model ?? appModel);
+  const session = createSession(model);
   session.activeSkills = [{ name: skill.name, instructions }];
 
   const daemon = await ensureLocalServer({ port: serverPort, apiKey: serverApiKey, spawnCommand });

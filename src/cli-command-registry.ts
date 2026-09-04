@@ -374,8 +374,9 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         createStore: createSqliteMemoryStore,
         createDistiller: (store) => createMemoryDistiller({ store, commitScopes: IMPORT_COMMIT_SCOPES }),
         resolveModel: () => {
+          if (!appConfig.model) return { kind: "unconfigured" };
           const model = normalizeModel(appConfig.model);
-          return { model, available: resolveModelProviderState(model).available };
+          return resolveModelProviderState(model).available ? { kind: "ready", model } : { kind: "unavailable", model };
         },
         readLedger: readImportLedger,
         writeLedger: writeImportLedger,

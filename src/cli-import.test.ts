@@ -38,6 +38,8 @@ type Harness = {
 type HarnessOptions = {
   ledger?: ImportLedger;
   distillAvailable?: boolean;
+  /** `null` means no model is configured at all. */
+  model?: null;
   interactive?: boolean;
   answer?: string | null;
   project?: string | null;
@@ -88,7 +90,10 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
     },
     createStore: () => store,
     createDistiller: () => ({ commit: async () => undefined }),
-    resolveModel: () => ({ model: "openai/gpt-5-mini", available: options.distillAvailable ?? true }),
+    resolveModel: () =>
+      options.model === null
+        ? { kind: "unconfigured" }
+        : { kind: options.distillAvailable === false ? "unavailable" : "ready", model: "openai/gpt-5-mini" },
     readLedger: async () => ledger,
     writeLedger: async (_path, next) => {
       saved.push(next);
@@ -168,6 +173,24 @@ describe("importMode", () => {
     expect(h.errors[0].message).toContain("acolyte auth");
     expect(h.runs).toEqual([]);
     expect(h.removed).toEqual([]);
+  });
+
+  test("refuses to run when no model is configured, naming how to choose one", async () => {
+    const h = harness([samplePlan()], { model: null });
+    await importMode([], h.deps);
+
+    expect(h.errors[0].message).toContain("acolyte config set model");
+    expect(h.runs).toEqual([]);
+    expect(h.removed).toEqual([]);
+  });
+
+  test("--dry-run plans without a configured model", async () => {
+    const h = harness([samplePlan()], { model: null });
+    await importMode(["--dry-run"], h.deps);
+
+    expect(h.errors).toEqual([]);
+    expect(h.dim.join("\n")).toContain("abcdef01");
+    expect(h.runs).toEqual([]);
   });
 
   test("--dry-run still works with no usable model, since it makes no model call", async () => {

@@ -43,5 +43,5 @@ export const appConfig = {
 } as const;
 
 export function setModel(model: string): void {
-  (appConfig as { model: string }).model = model;
+  (appConfig as { model: string | undefined }).model = model;
 }

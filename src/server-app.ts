@@ -115,7 +115,7 @@ async function createStatusPayload(): Promise<StatusPayload> {
     ok: true,
     providers,
     provider_auth: providerAuth,
-    model,
+    ...(model ? { model } : {}),
     ...(memory ? { memory } : {}),
     protocol_version: PROTOCOL_VERSION,
     build: formatVersionWithCommit(resolveCliVersion(), resolveCliCommitShort()),

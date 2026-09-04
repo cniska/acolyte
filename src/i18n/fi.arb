@@ -202,6 +202,7 @@
   "cli.memory.none": "Ei tallennettuja muistoja.",
   "cli.memory.restore.none": "Arkistoitua muistia ei löytynyt tunnisteille: {ids}",
   "cli.memory.restored": "Palautettiin {count, plural, one {# muisti} other {# muistia}}: {ids}.",
+  "cli.model.not_configured": "Mallia ei ole määritetty. Valitse malli komennolla acolyte config set model <id>.",
   "cli.auth.method.required": "Metodi vaaditaan. Käytä --key tai --subscription.",
   "cli.server.already_running": "Palvelin on jo käynnissä portissa {port} (pid {pid})",
   "cli.server.col.pid": "PID",

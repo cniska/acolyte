@@ -333,6 +333,7 @@ describe("cli visual regression", () => {
       await withCliTestEnv(async ({ run }) => {
         const port = new URL(baseUrl).port;
         await run(["config", "set", "port", port]);
+        await run(["config", "set", "model", "gpt-5-mini"]);
         const output = normalizeRunOutput(await run(["run", "hello transport parity"]));
         expect(output).toContain("Transport parity ok.");
       });

@@ -95,6 +95,7 @@ async function runEval(args: string[]): Promise<void> {
   const promptFile = parseFlag(args, "--prompt");
   const prompt = promptFile ? await readFile(promptFile, "utf8") : DISTILLER_PROMPT;
   const model = parseFlag(args, "--model") ?? appConfig.model;
+  if (!model) throw new Error("No model configured; pass --model <id> or set one with acolyte config set model");
   const judgeModel = parseFlag(args, "--judge-model") ?? model;
   const repeats = Number(parseFlag(args, "--repeats") ?? DEFAULT_REPEATS);
   const dir = parseFlag(args, "--fixtures") ?? FIXTURE_DIR;

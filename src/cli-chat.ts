@@ -65,6 +65,14 @@ export function createFatalErrorHandler(deps: FatalErrorDeps): (error: unknown) 
   };
 }
 
+/** A resumed session keeps the model it was started on; a fresh one needs the configured model. */
+export function sessionModelFor(
+  resolved: ResumeTarget | null,
+  configuredModel: string | undefined,
+): string | undefined {
+  return resolved?.kind === "ok" ? resolved.session.model : configuredModel;
+}
+
 export async function attachFileToSession(session: Session, filePath: string): Promise<void> {
   const context = await formatFileContext(filePath);
   session.messages.push(createMessage("system", context));
@@ -80,7 +88,6 @@ async function loadSessionState(store: SessionStore): Promise<SessionState> {
 export async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefix?: string }): Promise<void> {
   const sessionStore = await getSessionStore();
   const state = await loadSessionState(sessionStore);
-  const model = appConfig.model;
   const resolved = resolveResumeTarget(state, options);
   if (resolved?.kind === "not_found") {
     printError(t("chat.resume.not_found", { prefix: resolved.prefix }));
@@ -91,6 +98,12 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     const sample = resolved.matches.slice(0, 6).map((item) => item.id);
     printError(t("chat.resume.ambiguous", { prefix: resolved.prefix, matches: sample.join(", ") }));
     printDim(t("chat.resume.matches", { matches: sample.join(", ") }));
+    process.exitCode = 1;
+    return;
+  }
+  const model = sessionModelFor(resolved, appConfig.model);
+  if (!model) {
+    printError(t("cli.model.not_configured"));
     process.exitCode = 1;
     return;
   }

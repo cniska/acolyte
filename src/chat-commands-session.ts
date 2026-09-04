@@ -1,9 +1,8 @@
-import { appConfig } from "./app-config";
 import type { CommandHandler } from "./chat-commands-contract";
 import { createSession } from "./session-store";
 
 export const runNew: CommandHandler = async (ctx) => {
-  const next = createSession(appConfig.model);
+  const next = createSession(ctx.currentSession.model);
   ctx.sessionState.sessions.unshift(next);
   ctx.sessionState.activeSessionId = next.id;
   ctx.setCurrentSession(next);

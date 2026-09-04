@@ -202,6 +202,7 @@
   "cli.memory.none": "Inga minnen sparade.",
   "cli.memory.restore.none": "Inget arkiverat minne hittades för: {ids}",
   "cli.memory.restored": "Återställde {count, plural, one {# minne} other {# minnen}}: {ids}.",
+  "cli.model.not_configured": "Ingen modell är konfigurerad. Välj en modell med acolyte config set model <id>.",
   "cli.auth.method.required": "Metod krävs. Använd --key eller --subscription.",
   "cli.server.already_running": "Servern körs redan på port {port} (pid {pid})",
   "cli.server.col.pid": "PID",

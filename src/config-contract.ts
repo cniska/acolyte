@@ -52,7 +52,8 @@ export interface Config {
 export interface ResolvedConfig {
   port: number;
   locale: TranslationLocale;
-  model: string;
+  /** Unset until the user chooses one: nothing picks a model on their behalf. */
+  model?: string;
   openaiBaseUrl: string;
   anthropicBaseUrl: string;
   googleBaseUrl: string;

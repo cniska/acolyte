@@ -671,6 +671,9 @@ export const SV_MESSAGES = {
     { kind: "text", value: "Inget arkiverat minne hittades för: " },
     { kind: "arg", name: "ids" },
   ],
+  "cli.model.not_configured": [
+    { kind: "text", value: "Ingen modell är konfigurerad. Välj en modell med acolyte config set model <id>." },
+  ],
   "cli.memory.restored": [
     { kind: "text", value: "Återställde " },
     {

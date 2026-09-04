@@ -668,6 +668,9 @@ export const FI_MESSAGES = {
     { kind: "text", value: "Arkistoitua muistia ei löytynyt tunnisteille: " },
     { kind: "arg", name: "ids" },
   ],
+  "cli.model.not_configured": [
+    { kind: "text", value: "Mallia ei ole määritetty. Valitse malli komennolla acolyte config set model <id>." },
+  ],
   "cli.memory.restored": [
     { kind: "text", value: "Palautettiin " },
     {

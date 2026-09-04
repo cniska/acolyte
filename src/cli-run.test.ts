@@ -58,6 +58,40 @@ describe("cli-run", () => {
     expect(calls.commandErrors).toEqual([]);
   });
 
+  test("refuses to run with no model configured and none on the command line", async () => {
+    const { deps, calls } = createRunDeps();
+    deps.appModel = undefined;
+    let sessions = 0;
+    deps.createSession = () => {
+      sessions++;
+      return {} as never;
+    };
+    const prevExit = process.exitCode;
+    process.exitCode = 0;
+
+    await runMode(["do something"], deps);
+
+    expect(calls.errors).toEqual(["No model configured. Run acolyte config set model <id> to choose one."]);
+    expect(process.exitCode).toBe(1);
+    expect(sessions).toBe(0);
+    process.exitCode = prevExit;
+  });
+
+  test("--model runs without a configured model", async () => {
+    const { deps, calls } = createRunDeps();
+    deps.appModel = undefined;
+    let seenModel: string | undefined;
+    deps.createSession = (model) => {
+      seenModel = model;
+      return { id: "sess_123", title: "run", createdAt: "", updatedAt: "", messages: [], tokenUsage: [] } as never;
+    };
+
+    await runMode(["--model", "anthropic/claude-sonnet-4", "do something"], deps);
+
+    expect(seenModel).toBe("anthropic/claude-sonnet-4");
+    expect(calls.errors).toEqual([]);
+  });
+
   test("prints token usage summary after run", async () => {
     const { deps, calls } = createRunDeps();
     const session = {
