@@ -16,7 +16,6 @@ import type { FooterStatus } from "./footer-status-contract";
 import type { PrState } from "./gh-contract";
 import { t } from "./i18n";
 import { formatCompactNumber } from "./number-format";
-import { palette } from "./palette";
 import { buildPromptDisplayLines } from "./prompt-display";
 import { type TasklistItemStatus, type TasklistOutput, tasklistMarker, tasklistProgress } from "./tasklist-contract";
 import type { TerminalLine, TerminalScene, TerminalSpan } from "./terminal-scene-contract";
@@ -310,13 +309,13 @@ export function layoutHeader(input: ChatViewportPresentation["header"]): Termina
           { text: rest.join(" "), role: "plain" },
         ];
   };
-  // A four-row mark is too short for a sweep to read as one, so each column takes a flat brand
-  // color, the caret a stop deeper so it stays behind the name.
+  // A four-row mark is too short for a sweep to read as one, so each column takes a flat color
+  // from its role, the caret a stop deeper so it stays behind the name.
   const markSpans = (row: number): TerminalSpan[] => [
     { text: HEADER_INDENT, role: "plain" },
-    { text: BRAND_MARK_ROWS[row].chevron, role: "header-mark", foreground: palette.brandDeep },
+    { text: BRAND_MARK_ROWS[row].chevron, role: "header-mark" },
     { text: BRAND_MARK_GAP, role: "header-mark" },
-    { text: BRAND_MARK_ROWS[row].letter, role: "header-brand", foreground: palette.brand },
+    { text: BRAND_MARK_ROWS[row].letter, role: "header-brand" },
     { text: "   ", role: "plain" },
   ];
   return {

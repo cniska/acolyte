@@ -1,12 +1,7 @@
 import { z } from "zod";
 import { terminalStyleRoleSchema } from "./terminal-theme";
 
-export const terminalSpanSchema = z.object({
-  text: z.string(),
-  role: terminalStyleRoleSchema,
-  /** Overrides the role's foreground, for a span whose color varies per cell rather than by kind. */
-  foreground: z.string().optional(),
-});
+export const terminalSpanSchema = z.object({ text: z.string(), role: terminalStyleRoleSchema });
 export type TerminalSpan = z.infer<typeof terminalSpanSchema>;
 export const terminalLineSchema = z.object({
   spans: z.array(terminalSpanSchema),

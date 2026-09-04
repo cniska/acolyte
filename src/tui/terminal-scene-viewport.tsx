@@ -32,7 +32,7 @@ export function renderSceneLines(lines: readonly TerminalLine[]): React.ReactNod
           return (
             <Text
               key={`${spanSignature}:${spanOccurrence}`}
-              color={span.foreground ?? style.foreground}
+              color={style.foreground}
               backgroundColor={background}
               bold={style.bold}
               dimColor={style.dim}
