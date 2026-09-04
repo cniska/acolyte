@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { aggregate, type GradedFact, type GradedRepeat } from "./distill-eval-report";
+import { aggregate, type GradedFact, type GradedRepeat, renderReport } from "./distill-eval-report";
 
 const META = { prompt: "current", distillModel: "m", judgeModel: "j", repeats: 1 };
 
@@ -133,5 +133,16 @@ describe("aggregate", () => {
     const report = aggregate([repeat({ facts: [flagged] })], META);
     expect(report.quoteViolations).toHaveLength(1);
     expect(report.quoteViolations[0].content).toBe("the budget is 50 turns");
+  });
+});
+
+describe("renderReport", () => {
+  test("a violation count carries its rate, so runs of different sizes compare", () => {
+    const bad = fact({ chained: true, unquoted: ["41.2k"] });
+    const one = renderReport(aggregate([repeat({ facts: [bad, fact()] })], META));
+    const twice = renderReport(aggregate([repeat({ facts: [bad, fact(), bad, fact()] })], META));
+
+    expect(one).toContain("atomicity violations: 1 (50.0%)");
+    expect(twice).toContain("atomicity violations: 2 (50.0%)");
   });
 });

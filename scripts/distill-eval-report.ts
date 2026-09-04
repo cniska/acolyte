@@ -166,12 +166,15 @@ export function renderReport(report: EvalReport): string {
     lines.push(`  ${key.padEnd(14)} ${percent(value)}`);
   }
   lines.push("");
-  lines.push(`perishable at project/user scope: ${report.perishableAtDurableScope}`);
-  lines.push(`quote violations: ${report.quoteViolations.length}`);
-  lines.push(`atomicity violations: ${report.atomicityViolations.length}`);
-  lines.push(`mustNot violations: ${report.mustNotViolations.length}`);
+  // Every figure carries its rate over the run's own observations, so a run at other --repeats or
+  // over another --only selection compares against this one instead of just scaling with volume.
+  const perObservation = (count: number) => `${count} (${percent(rate(count, report.observations))})`;
+  lines.push(`perishable at project/user scope: ${perObservation(report.perishableAtDurableScope)}`);
+  lines.push(`quote violations: ${perObservation(report.quoteViolations.length)}`);
+  lines.push(`atomicity violations: ${perObservation(report.atomicityViolations.length)}`);
+  lines.push(`mustNot violations: ${perObservation(report.mustNotViolations.length)}`);
   lines.push(`coverage: ${report.coverage === null ? "-" : percent(report.coverage)}`);
-  lines.push(`scope mismatches: ${report.scopeMismatches}`);
+  lines.push(`scope mismatches: ${perObservation(report.scopeMismatches)}`);
   lines.push(`silence correctness: ${report.silenceCorrectness === null ? "-" : percent(report.silenceCorrectness)}`);
   lines.push("");
   lines.push("per fixture");
