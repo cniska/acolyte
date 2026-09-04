@@ -110,6 +110,38 @@ describe("parseClaudeCodeTranscript", () => {
     expect(parsed.exchanges.map((e) => e.prompt)).toEqual(["answered"]);
   });
 
+  test("drops an exchange whose last word was progress before more tool work", () => {
+    const parsed = parseClaudeCodeTranscript(
+      transcript(
+        user("fix it"),
+        assistant([{ type: "text", text: "Now the storage row. Let me look." }]),
+        assistant([{ type: "tool_use", id: "t1", name: "Read", input: { file_path: "a" } }]),
+        user([{ type: "tool_result", tool_use_id: "t1" }]),
+        user("never mind"),
+        assistant([{ type: "text", text: "Dropped it." }]),
+      ),
+    );
+
+    expect(parsed.exchanges.map((e) => [e.prompt, e.response])).toEqual([["never mind", "Dropped it."]]);
+  });
+
+  test("a step that both narrates and calls a tool has not answered", () => {
+    const parsed = parseClaudeCodeTranscript(
+      transcript(
+        user("fix it"),
+        assistant([
+          { type: "text", text: "Reading the file." },
+          { type: "tool_use", id: "t1", name: "Read", input: { file_path: "a" } },
+        ]),
+        user([{ type: "tool_result", tool_use_id: "t1" }]),
+        user("stop"),
+        assistant([{ type: "text", text: "Stopped." }]),
+      ),
+    );
+
+    expect(parsed.exchanges.map((e) => [e.prompt, e.response])).toEqual([["stop", "Stopped."]]);
+  });
+
   test("ignores unparseable lines and records it cannot read", () => {
     const parsed = parseClaudeCodeTranscript(
       [

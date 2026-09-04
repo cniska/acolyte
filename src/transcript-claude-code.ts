@@ -61,13 +61,13 @@ function toolArgs(input: Record<string, unknown> | undefined): Record<string, un
 
 type OpenExchange = {
   prompt: string;
-  responses: string[];
+  response: string | null;
   calls: ToolCallRecord[];
   callsById: Map<string, ToolCallRecord>;
 };
 
 function closeExchange(open: OpenExchange): TranscriptExchange | null {
-  const response = open.responses.at(-1)?.trim();
+  const response = open.response?.trim();
   if (!response) return null;
   return {
     prompt: open.prompt,
@@ -93,12 +93,18 @@ function applyToolResults(open: OpenExchange | null, blocks: ContentBlock[]): vo
   }
 }
 
+/**
+ * A step that calls a tool has not ended the turn, so its text is progress rather than an answer
+ * and any answer already in hand is stale. Only a step that calls nothing leaves a response behind.
+ */
 function collectAssistant(open: OpenExchange | null, blocks: ContentBlock[]): void {
   if (!open) return;
+  const toolUses = blocks.filter((block): block is z.infer<typeof toolUseBlockSchema> => block.type === "tool_use");
   const text = joinText(blocks);
-  if (text) open.responses.push(text);
-  for (const block of blocks) {
-    if (block.type !== "tool_use") continue;
+  if (toolUses.length > 0) open.response = null;
+  else if (text) open.response = text;
+
+  for (const block of toolUses) {
     const args = toolArgs(block.input);
     const call: ToolCallRecord = {
       toolName: block.name,
@@ -158,8 +164,9 @@ export function parseClaudeCodeTranscript(text: string): ClaudeCodeTranscript {
     if (open) {
       const closed = closeExchange(open);
       if (closed) exchanges.push(closed);
+      open = null;
     }
-    open = { prompt, responses: [], calls: [], callsById: new Map() };
+    open = { prompt, response: null, calls: [], callsById: new Map() };
   }
 
   if (open) {
