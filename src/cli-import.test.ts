@@ -30,7 +30,6 @@ type Harness = {
   errors: { name: string; message?: string }[];
   removed: string[];
   saved: ImportLedger[];
-  asked: string[];
   closed: number;
   runs: RunImportOptions[];
 };
@@ -40,8 +39,6 @@ type HarnessOptions = {
   distillAvailable?: boolean;
   /** `null` means no model is configured at all. */
   model?: null;
-  interactive?: boolean;
-  answer?: string | null;
   project?: string | null;
   stale?: StaleSessionRef[];
   unattributable?: number;
@@ -53,7 +50,6 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
   const errors: { name: string; message?: string }[] = [];
   const removed: string[] = [];
   const saved: ImportLedger[] = [];
-  const asked: string[] = [];
   const runs: RunImportOptions[] = [];
   const state = { closed: 0 };
   const store = { close: () => state.closed++ } as unknown as MemoryStore;
@@ -61,11 +57,6 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
 
   const deps: ImportModeDeps = {
     hasHelpFlag: () => false,
-    interactive: options.interactive ?? true,
-    prompt: (question) => {
-      asked.push(question);
-      return options.answer === undefined ? "y" : options.answer;
-    },
     transcriptDir: "/transcripts",
     scratchDir: "/scratch",
     workspace: "/checkout",
@@ -85,7 +76,10 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
         superseded: 1,
         tokens: 500,
       }));
-      for (const _ of results) saved.push(runOptions.ledger);
+      for (const result of results) {
+        saved.push(runOptions.ledger);
+        runOptions.onSession?.(result);
+      }
       return results;
     },
     createStore: () => store,
@@ -114,7 +108,6 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
     errors,
     removed,
     saved,
-    asked,
     runs,
     get closed() {
       return state.closed;
@@ -272,55 +265,28 @@ describe("importMode", () => {
     expect(h.removed).toEqual([]);
   });
 
-  test("shows the plan and the cost band, then asks before the first model call", async () => {
+  test("shows the plan and the cost band before it spends anything", async () => {
     const h = harness([samplePlan()]);
     await importMode([], h.deps);
 
     expect(h.dim.join("\n")).toContain("4 turns to read");
     expect(h.dim.join("\n")).toContain("1.2k–41.2k");
-    expect(h.asked).toHaveLength(1);
-    expect(h.asked[0]).toContain("1.2k–41.2k");
     expect(h.runs).toHaveLength(1);
   });
 
-  test("a refused question imports nothing", async () => {
-    const h = harness([samplePlan()], { answer: "n" });
+  test("says what each session yielded as it finishes, not only at the end", async () => {
+    const h = harness([samplePlan({ sourceSessionId: "first00000" }), samplePlan({ sourceSessionId: "second0000" })]);
     await importMode([], h.deps);
 
-    expect(h.runs).toEqual([]);
-    expect(h.dim.join("\n")).toContain("Nothing imported");
+    expect(h.dim.filter((line) => line.startsWith("first000"))).toHaveLength(1);
+    expect(h.dim.filter((line) => line.startsWith("second00"))).toHaveLength(1);
+    expect(h.dim.join("\n")).toContain("3 memories, 1 replaced, 500 tokens");
   });
 
-  test("--yes runs without asking", async () => {
-    const h = harness([samplePlan()]);
-    await importMode(["--yes"], h.deps);
-
-    expect(h.asked).toEqual([]);
-    expect(h.runs).toHaveLength(1);
-  });
-
-  test("refuses rather than assume consent when nobody can answer", async () => {
-    const h = harness([samplePlan()], { interactive: false });
-    await importMode([], h.deps);
-
-    expect(h.errors[0].message).toContain("--yes");
-    expect(h.asked).toEqual([]);
-    expect(h.runs).toEqual([]);
-  });
-
-  test("--json cannot show a plan to consent to, so it needs --yes", async () => {
-    const h = harness([samplePlan()]);
-    await importMode(["--json"], h.deps);
-
-    expect(h.errors[0].message).toContain("--yes");
-    expect(h.runs).toEqual([]);
-  });
-
-  test("--dry-run asks nothing, since it spends nothing", async () => {
+  test("--dry-run spends nothing", async () => {
     const h = harness([samplePlan()]);
     await importMode(["--dry-run"], h.deps);
 
-    expect(h.asked).toEqual([]);
     expect(h.runs).toEqual([]);
   });
 

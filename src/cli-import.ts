@@ -33,8 +33,6 @@ export type ImportModelChoice =
 
 export type ImportModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
-  interactive: boolean;
-  prompt: (question: string) => string | null;
   transcriptDir: string;
   scratchDir: string;
   workspace: string;
@@ -116,6 +114,25 @@ function notices(plan: ImportPlan): string[] {
   return lines;
 }
 
+function report(result: ImportSessionResult, json: boolean, deps: ImportModeDeps): void {
+  if (json) {
+    const out = createJsonOutput();
+    out.addTable([resultRow(result)], columnLabels());
+    const rendered = out.render();
+    if (rendered) deps.printOutput(rendered);
+    return;
+  }
+  deps.printDim(
+    t("cli.import.session_done", {
+      session: shortId(result.plan.sourceSessionId),
+      project: result.plan.project,
+      count: result.facts,
+      superseded: result.superseded,
+      tokens: formatCompactNumber(result.tokens),
+    }),
+  );
+}
+
 function emit(rows: Record<string, string>[], summary: string[], json: boolean, deps: ImportModeDeps): void {
   const out: CliOutput = json ? createJsonOutput() : createTextOutput();
   out.addTable(rows, columnLabels());
@@ -125,23 +142,6 @@ function emit(rows: Record<string, string>[], summary: string[], json: boolean, 
   }
   const rendered = out.render();
   if (rendered) (json ? deps.printOutput : deps.printDim)(rendered);
-}
-
-/**
- * Asks before the first model call. An import is unlike a chat turn in the two ways that decide
- * this: it can run for hours, and nothing shows a meter while it does. Spend is the user's
- * authority, so a run that cannot show the plan and read an answer refuses rather than assume one:
- * a stdin nobody is at, and a `--json` run whose stdout carries the one document it was asked for.
- */
-function consented(band: { count: number; low: string; high: string }, json: boolean, deps: ImportModeDeps): boolean {
-  if (json || !deps.interactive) {
-    deps.commandError("import", t("cli.import.needs_consent"));
-    return false;
-  }
-  const answer = deps.prompt(t("cli.import.confirm", band))?.trim().toLowerCase();
-  if (answer === "y" || answer === "yes") return true;
-  deps.printDim(t("cli.import.cancelled"));
-  return false;
 }
 
 /**
@@ -230,7 +230,6 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
     return;
   }
   if (!json) emit(pending.map(planRow), planSummary, false, deps);
-  if (!hasBoolFlag(args, "--yes") && !consented(band, json, deps)) return;
 
   const store = deps.createStore(join(deps.scratchDir, STORE_FILE));
   try {
@@ -240,6 +239,7 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
       model: chosen.model,
       ledger,
       saveLedger: (next) => deps.writeLedger(ledgerPath, next),
+      onSession: (result) => report(result, json, deps),
     });
     const summary = t("cli.import.done", {
       count: results.reduce((sum, result) => sum + result.facts, 0),
@@ -247,7 +247,7 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
       tokens: formatCompactNumber(results.reduce((sum, result) => sum + result.tokens, 0)),
       path: deps.scratchDir,
     });
-    emit(results.map(resultRow), [summary, ...held], json, deps);
+    if (!json) deps.printDim(summary);
   } finally {
     store.close();
   }

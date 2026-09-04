@@ -355,16 +355,13 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
     hidden: true,
     help: () => ({
       command: "import",
-      usage:
-        "acolyte import [--since <duration>] [--max-turns <n>] [--include-stale] [--yes] [--dry-run] [--reset] [--json]",
+      usage: "acolyte import [--since <duration>] [--max-turns <n>] [--include-stale] [--dry-run] [--reset] [--json]",
       description: t("cli.help.desc.import"),
       examples: ["acolyte import --dry-run", "acolyte import --max-turns 10", "acolyte import --reset"],
     }),
     handler: (args) =>
       importMode(args, {
         hasHelpFlag,
-        interactive: process.stdin.isTTY === true,
-        prompt: (message) => prompt(message),
         transcriptDir: claudeCodeTranscriptDir(),
         scratchDir: importScratchDir(),
         workspace: process.cwd(),

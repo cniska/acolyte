@@ -451,36 +451,6 @@ export const SV_MESSAGES = {
     { kind: "arg", name: "high" },
     { kind: "text", value: " tokens." },
   ],
-  "cli.import.confirm": [
-    { kind: "text", value: "Läs " },
-    {
-      kind: "plural",
-      name: "count",
-      arms: {
-        one: [
-          { kind: "arg", name: "count" },
-          { kind: "text", value: " tur" },
-        ],
-        other: [
-          { kind: "arg", name: "count" },
-          { kind: "text", value: " turer" },
-        ],
-      },
-    },
-    { kind: "text", value: " för ungefär " },
-    { kind: "arg", name: "low" },
-    { kind: "text", value: "–" },
-    { kind: "arg", name: "high" },
-    { kind: "text", value: " tokens? [y/N]:" },
-  ],
-  "cli.import.cancelled": [{ kind: "text", value: "Inget importerat." }],
-  "cli.import.needs_consent": [
-    {
-      kind: "text",
-      value:
-        "Att läsa transkript kostar tokens. Kör det i en terminal för att bekräfta, eller ange --yes för att godta utan fråga.",
-    },
-  ],
   "cli.import.stale": [
     {
       kind: "plural",
@@ -567,6 +537,31 @@ export const SV_MESSAGES = {
     { kind: "arg", name: "tokens" },
     { kind: "text", value: " tokens. Skrivet till " },
     { kind: "arg", name: "path" },
+  ],
+  "cli.import.session_done": [
+    { kind: "arg", name: "session" },
+    { kind: "text", value: " " },
+    { kind: "arg", name: "project" },
+    { kind: "text", value: ": " },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " minne" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " minnen" },
+        ],
+      },
+    },
+    { kind: "text", value: ", " },
+    { kind: "arg", name: "superseded" },
+    { kind: "text", value: " ersatta, " },
+    { kind: "arg", name: "tokens" },
+    { kind: "text", value: " tokens" },
   ],
   "cli.import.reset": [
     { kind: "text", value: "Rensade " },

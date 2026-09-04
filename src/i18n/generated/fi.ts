@@ -447,36 +447,6 @@ export const FI_MESSAGES = {
     { kind: "arg", name: "high" },
     { kind: "text", value: " tokenia." },
   ],
-  "cli.import.confirm": [
-    { kind: "text", value: "Luetaanko " },
-    {
-      kind: "plural",
-      name: "count",
-      arms: {
-        one: [
-          { kind: "arg", name: "count" },
-          { kind: "text", value: " vuoro" },
-        ],
-        other: [
-          { kind: "arg", name: "count" },
-          { kind: "text", value: " vuoroa" },
-        ],
-      },
-    },
-    { kind: "text", value: " noin " },
-    { kind: "arg", name: "low" },
-    { kind: "text", value: "–" },
-    { kind: "arg", name: "high" },
-    { kind: "text", value: " tokenilla? [y/N]:" },
-  ],
-  "cli.import.cancelled": [{ kind: "text", value: "Mitään ei tuotu." }],
-  "cli.import.needs_consent": [
-    {
-      kind: "text",
-      value:
-        "Tallenteiden lukeminen kuluttaa tokeneita. Aja se päätteessä vahvistaaksesi tai anna --yes hyväksyäksesi kysymättä.",
-    },
-  ],
   "cli.import.stale": [
     {
       kind: "plural",
@@ -560,6 +530,31 @@ export const FI_MESSAGES = {
     { kind: "arg", name: "tokens" },
     { kind: "text", value: " tokenia. Kirjoitettu polkuun " },
     { kind: "arg", name: "path" },
+  ],
+  "cli.import.session_done": [
+    { kind: "arg", name: "session" },
+    { kind: "text", value: " " },
+    { kind: "arg", name: "project" },
+    { kind: "text", value: ": " },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " muisto" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " muistoa" },
+        ],
+      },
+    },
+    { kind: "text", value: ", " },
+    { kind: "arg", name: "superseded" },
+    { kind: "text", value: " korvattu, " },
+    { kind: "arg", name: "tokens" },
+    { kind: "text", value: " tokenia" },
   ],
   "cli.import.reset": [
     { kind: "text", value: "Tyhjennetty " },

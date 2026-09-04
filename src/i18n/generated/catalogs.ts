@@ -171,13 +171,17 @@ export type MessageArgs = {
   "cli.import.none": { project: string | number; since: string | number };
   "cli.import.no_project": never;
   "cli.import.plan": { count: number; high: string | number; low: string | number };
-  "cli.import.confirm": { count: number; high: string | number; low: string | number };
-  "cli.import.cancelled": never;
-  "cli.import.needs_consent": never;
   "cli.import.stale": { commits: number; count: number };
   "cli.import.undated": { count: number };
   "cli.import.unattributable": { count: number };
   "cli.import.done": { count: number; path: string | number; superseded: number; tokens: string | number };
+  "cli.import.session_done": {
+    count: string | number;
+    project: string | number;
+    session: string | number;
+    superseded: string | number;
+    tokens: string | number;
+  };
   "cli.import.reset": { path: string | number };
   "cli.login.opening.browser": never;
   "cli.login.open.manually": { url: string | number };

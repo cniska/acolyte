@@ -368,6 +368,7 @@ export type RunImportOptions = {
   model: string;
   ledger: ImportLedger;
   saveLedger: (ledger: ImportLedger) => Promise<void>;
+  onSession?: (result: ImportSessionResult) => void;
 };
 
 /**
@@ -385,6 +386,7 @@ export async function runImport(options: RunImportOptions): Promise<ImportSessio
       ledger = markConsumed(ledger, CLAUDE_CODE_SOURCE, plan.sourceSessionId, through);
       await options.saveLedger(ledger);
     });
+    options.onSession?.(result);
     results.push(result);
   }
   return results;

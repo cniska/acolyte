@@ -965,29 +965,6 @@
       }
     }
   },
-  "cli.import.confirm": "Read {count, plural, one {# turn} other {# turns}} for roughly {low}–{high} tokens? [y/N]:",
-  "@cli.import.confirm": {
-    "description": "Asked once before an import reads anything, under the plan table it refers to. {low} and {high} are already-formatted short numbers such as '130k'. '[y/N]' shows the accepted answers: the code accepts only 'y' or 'yes', so leave those letters untranslated. Ends with a colon and no trailing space: `prompt()` writes the separating space itself.",
-    "placeholders": {
-      "count": {
-        "type": "number"
-      },
-      "low": {
-        "type": "String"
-      },
-      "high": {
-        "type": "String"
-      }
-    }
-  },
-  "cli.import.cancelled": "Nothing imported.",
-  "@cli.import.cancelled": {
-    "description": "Shown when the user answers no to the import confirmation."
-  },
-  "cli.import.needs_consent": "Reading transcripts costs tokens. Run it in a terminal to confirm, or pass --yes to accept without being asked.",
-  "@cli.import.needs_consent": {
-    "description": "Shown when 'import' cannot ask for consent: stdin is not a terminal, or --json was given and its output carries one document. '--yes' is a literal flag name."
-  },
   "cli.import.stale": "{count, plural, one {Skipped # session: the project has {commits} commits since it ended} other {Skipped # sessions: the project has up to {commits} commits since they ended}}. Add --include-stale to read them anyway.",
   "@cli.import.stale": {
     "description": "Shown with the import plan for sessions the staleness budget kept out: the project has moved on, so what they would establish is likely out of date. {commits} is the largest count measured. '--include-stale' is a literal flag name.",
@@ -1019,6 +996,27 @@
     }
   },
   "cli.import.done": "{count, plural, one {# memory} other {# memories}} saved, {superseded} replaced, {tokens} tokens. Written to {path}",
+  "cli.import.session_done": "{session} {project}: {count, plural, one {# memory} other {# memories}}, {superseded} replaced, {tokens} tokens",
+  "@cli.import.session_done": {
+    "description": "Printed as each source session finishes during an import run, so a long run shows progress. {session} is a short session id, {tokens} an already-formatted short number such as '48.6k'.",
+    "placeholders": {
+      "session": {
+        "type": "String"
+      },
+      "project": {
+        "type": "String"
+      },
+      "count": {
+        "type": "num"
+      },
+      "superseded": {
+        "type": "num"
+      },
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
   "@cli.import.done": {
     "description": "Summary line under the 'import' table once the run finishes. {tokens} is an already-formatted short number such as '48.6k'. {path} is the throwaway directory the import wrote to, not the real corpus.",
     "placeholders": {

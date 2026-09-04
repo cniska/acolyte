@@ -440,36 +440,6 @@ export const EN_MESSAGES = {
     { kind: "arg", name: "high" },
     { kind: "text", value: " tokens." },
   ],
-  "cli.import.confirm": [
-    { kind: "text", value: "Read " },
-    {
-      kind: "plural",
-      name: "count",
-      arms: {
-        one: [
-          { kind: "arg", name: "count" },
-          { kind: "text", value: " turn" },
-        ],
-        other: [
-          { kind: "arg", name: "count" },
-          { kind: "text", value: " turns" },
-        ],
-      },
-    },
-    { kind: "text", value: " for roughly " },
-    { kind: "arg", name: "low" },
-    { kind: "text", value: "–" },
-    { kind: "arg", name: "high" },
-    { kind: "text", value: " tokens? [y/N]:" },
-  ],
-  "cli.import.cancelled": [{ kind: "text", value: "Nothing imported." }],
-  "cli.import.needs_consent": [
-    {
-      kind: "text",
-      value:
-        "Reading transcripts costs tokens. Run it in a terminal to confirm, or pass --yes to accept without being asked.",
-    },
-  ],
   "cli.import.stale": [
     {
       kind: "plural",
@@ -550,6 +520,31 @@ export const EN_MESSAGES = {
     { kind: "arg", name: "tokens" },
     { kind: "text", value: " tokens. Written to " },
     { kind: "arg", name: "path" },
+  ],
+  "cli.import.session_done": [
+    { kind: "arg", name: "session" },
+    { kind: "text", value: " " },
+    { kind: "arg", name: "project" },
+    { kind: "text", value: ": " },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " memory" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " memories" },
+        ],
+      },
+    },
+    { kind: "text", value: ", " },
+    { kind: "arg", name: "superseded" },
+    { kind: "text", value: " replaced, " },
+    { kind: "arg", name: "tokens" },
+    { kind: "text", value: " tokens" },
   ],
   "cli.import.reset": [
     { kind: "text", value: "Cleared " },
