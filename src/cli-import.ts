@@ -1,6 +1,5 @@
 import { join } from "node:path";
 import { hasBoolFlag, parseFlag, parsePositional } from "./cli-args";
-import { formatUsage } from "./cli-help";
 import { type CliOutput, createJsonOutput, createTextOutput } from "./cli-output";
 import { parseSince } from "./datetime";
 import { t } from "./i18n";
@@ -154,11 +153,9 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
     deps.commandHelp("import");
     return;
   }
-  const usage = formatUsage(
-    "acolyte import [--since <duration>] [--max-turns <n>] [--include-stale] [--yes] [--dry-run] [--reset] [--json]",
-  );
+  // No message, so the usage comes from the command's own registry entry rather than a second copy.
   if (parsePositional(args, ["--since", "--max-turns"]).length > 0) {
-    deps.commandError("import", usage);
+    deps.commandError("import");
     return;
   }
 
