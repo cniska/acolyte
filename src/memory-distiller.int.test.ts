@@ -30,22 +30,16 @@ beforeAll(() => {
       lastRequestBody = ctx.body as Record<string, unknown>;
       return createToolCallsPayload(ctx.model, ctx.responseCounter, [
         {
-          id: `fc_proj_${ctx.responseCounter}`,
-          callId: `call_proj_${ctx.responseCounter}`,
+          id: `fc_facts_${ctx.responseCounter}`,
+          callId: `call_facts_${ctx.responseCounter}`,
           name: "memory-observe",
-          args: JSON.stringify({ scope: "project", content: "project uses Bun as runtime", topic: "tooling" }),
-        },
-        {
-          id: `fc_user_${ctx.responseCounter}`,
-          callId: `call_user_${ctx.responseCounter}`,
-          name: "memory-observe",
-          args: JSON.stringify({ scope: "user", content: "prefers concise responses" }),
-        },
-        {
-          id: `fc_sess_${ctx.responseCounter}`,
-          callId: `call_sess_${ctx.responseCounter}`,
-          name: "memory-observe",
-          args: JSON.stringify({ scope: "session", content: "fixing memory search bug" }),
+          args: JSON.stringify({
+            facts: [
+              { scope: "project", content: "project uses Bun as runtime", topic: "tooling" },
+              { scope: "user", content: "prefers concise responses" },
+              { scope: "session", content: "fixing memory search bug" },
+            ],
+          }),
         },
       ]);
     },
