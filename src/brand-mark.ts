@@ -5,7 +5,7 @@
  */
 
 /** The `❯` caret, spanning the 16-pixel x-height band; both marks draw it from here. */
-export const BRAND_CARET_ROWS: ReadonlyArray<string> = ["⠹⣿⣆⠀", "⠀⠹⣿⣆", "⠀⣰⣿⠏", "⣰⣿⠏⠀"];
+const BRAND_CARET_ROWS: ReadonlyArray<string> = ["⠹⣿⣆⠀", "⠀⠹⣿⣆", "⠀⣰⣿⠏", "⣰⣿⠏⠀"];
 
 const BRAND_CARET_BLANK_ROW = "⠀⠀⠀⠀";
 
@@ -17,8 +17,6 @@ const BRAND_MARK_LETTER_ROWS = ["⢠⣶⡿⠿⢿⣶⡄", "⢀⣤⣤⣤⣤⣿⣿"
 export const BRAND_MARK_ROWS: ReadonlyArray<{ chevron: string; letter: string }> = BRAND_MARK_LETTER_ROWS.map(
   (letter, row) => ({ chevron: BRAND_CARET_ROWS[row], letter }),
 );
-
-export const BRAND_MARK_WIDTH = BRAND_CARET_BLANK_ROW.length + BRAND_MARK_GAP.length + 7;
 
 export const BRAND_WORDMARK_GAP = "⠀⠀";
 

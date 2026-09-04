@@ -38,8 +38,4 @@ export function verticalPosition(y: number, height: number): number {
   return y / Math.max(1, height - 1);
 }
 
-export function rgbToHex([r, g, b]: Rgb): string {
-  return `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
-}
-
 export const BRAILLE_BLANK = "⠀";
