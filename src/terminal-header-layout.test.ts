@@ -13,9 +13,9 @@ test("semantic header layout reproduces mark physical lines", () => {
     ),
   ).toEqual([
     "  ⠹⣿⣆⠀⠀⠀⠀⢠⣶⡿⠿⢿⣶⡄   Acolyte",
-    "  ⠀⠹⣿⣆⠀⠀⠀⢀⣤⣤⣤⣤⣿⣿   version 0.1.0",
-    "  ⠀⣰⣿⠏⠀⠀⠀⣾⣿⠋⠁⢀⣿⣿   session sess_demo1234",
-    "  ⣰⣿⠏⠀⠀⠀⠀⠸⢿⣷⣶⠞⣿⣿   storage local",
+    "  ⠀⠹⣿⣆⠀⠀⠀⢀⣠⣤⣤⣤⣿⣿   version 0.1.0",
+    "  ⠀⣰⣿⠏⠀⠀⠀⣿⣿⠋⠉⢉⣿⣿   session sess_demo1234",
+    "  ⣰⣿⠏⠀⠀⠀⠀⠻⢿⣷⣶⠟⣿⣿   storage local",
   ]);
 });
 

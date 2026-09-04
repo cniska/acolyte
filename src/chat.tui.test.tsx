@@ -120,9 +120,9 @@ describe("chat tui visual regression: header", () => {
     expect(out).toBe(
       [
         "  ⠹⣿⣆⠀⠀⠀⠀⢠⣶⡿⠿⢿⣶⡄   Acolyte",
-        "  ⠀⠹⣿⣆⠀⠀⠀⢀⣤⣤⣤⣤⣿⣿   version 0.1.0",
-        "  ⠀⣰⣿⠏⠀⠀⠀⣾⣿⠋⠁⢀⣿⣿   session sess_demo1234",
-        "  ⣰⣿⠏⠀⠀⠀⠀⠸⢿⣷⣶⠞⣿⣿   storage local",
+        "  ⠀⠹⣿⣆⠀⠀⠀⢀⣠⣤⣤⣤⣿⣿   version 0.1.0",
+        "  ⠀⣰⣿⠏⠀⠀⠀⣿⣿⠋⠉⢉⣿⣿   session sess_demo1234",
+        "  ⣰⣿⠏⠀⠀⠀⠀⠻⢿⣷⣶⠟⣿⣿   storage local",
       ].join("\n"),
     );
   });
