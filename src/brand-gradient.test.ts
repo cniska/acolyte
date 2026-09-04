@@ -1,23 +1,11 @@
 import { expect, test } from "bun:test";
-import {
-  BRAND_STOPS,
-  CARET_STOPS,
-  gradientRgb,
-  MONO_CARET_STOPS,
-  MONO_STOPS,
-  verticalPosition,
-} from "./brand-gradient";
+import { gradientRgb, MONO_CARET_STOPS, MONO_STOPS, verticalPosition } from "./brand-gradient";
+
+const luminance = ([r, g, b]: readonly [number, number, number]) => r + g + b;
 
 test("gradient ends land on the first and last stop", () => {
-  expect(gradientRgb(0)).toEqual([196, 181, 253]);
-  expect(gradientRgb(1)).toEqual([165, 110, 255]);
-});
-
-test("every ramp reads as lit from above, brightest on the top row", () => {
-  const luminance = ([r, g, b]: readonly [number, number, number]) => r + g + b;
-  for (const stops of [BRAND_STOPS, CARET_STOPS, MONO_STOPS, MONO_CARET_STOPS]) {
-    expect(luminance(gradientRgb(1, stops))).toBeLessThan(luminance(gradientRgb(0, stops)));
-  }
+  expect(gradientRgb(0, MONO_STOPS)).toEqual([245, 245, 245]);
+  expect(gradientRgb(1, MONO_STOPS)).toEqual([163, 163, 163]);
 });
 
 test("a three-stop ramp passes through its middle stop at the midpoint", () => {
@@ -29,23 +17,21 @@ test("a three-stop ramp passes through its middle stop at the midpoint", () => {
   expect(gradientRgb(0.5, stops)).toEqual([10, 20, 30]);
 });
 
-test("the caret ramp stays deeper than the lettering at every position", () => {
-  const luminance = ([r, g, b]: readonly [number, number, number]) => r + g + b;
-  for (const t of [0, 0.25, 0.5, 0.75, 1]) {
-    expect(luminance(gradientRgb(t, CARET_STOPS))).toBeLessThan(luminance(gradientRgb(t, BRAND_STOPS)));
+test("every ramp reads as lit from above, brightest on the top row", () => {
+  for (const stops of [MONO_STOPS, MONO_CARET_STOPS]) {
+    expect(luminance(gradientRgb(1, stops))).toBeLessThan(luminance(gradientRgb(0, stops)));
   }
 });
 
-test("the monochrome caret ramp stays deeper than the monochrome lettering", () => {
-  const luminance = ([r, g, b]: readonly [number, number, number]) => r + g + b;
-  for (const t of [0, 0.5, 1]) {
+test("the caret ramp stays deeper than the lettering at every position", () => {
+  for (const t of [0, 0.25, 0.5, 0.75, 1]) {
     expect(luminance(gradientRgb(t, MONO_CARET_STOPS))).toBeLessThan(luminance(gradientRgb(t, MONO_STOPS)));
   }
 });
 
 test("positions outside the range clamp to the end stops", () => {
-  expect(gradientRgb(-2)).toEqual(gradientRgb(0));
-  expect(gradientRgb(4)).toEqual(gradientRgb(1));
+  expect(gradientRgb(-2, MONO_STOPS)).toEqual(gradientRgb(0, MONO_STOPS));
+  expect(gradientRgb(4, MONO_STOPS)).toEqual(gradientRgb(1, MONO_STOPS));
 });
 
 test("the sweep runs from the top row to the bottom row", () => {
