@@ -649,7 +649,7 @@ export const EN_MESSAGES = {
     {
       kind: "text",
       value:
-        "This account does not have access to Acolyte Cloud. Run `acolyte login` to sign in with a different account.",
+        "This account does not have access to Acolyte Cloud. Run `acolyte login` to sign in with a different account, or `acolyte logout` to keep working offline.",
     },
   ],
   "fatal.cloud.request_failed": [
@@ -659,7 +659,11 @@ export const EN_MESSAGES = {
     },
   ],
   "fatal.cloud.unauthorized": [
-    { kind: "text", value: "Your cloud session has expired. Run `acolyte login` to sign in again." },
+    {
+      kind: "text",
+      value:
+        "Your cloud session has expired. Run `acolyte login` to sign in again, or `acolyte logout` to keep working offline.",
+    },
   ],
   "fatal.memory.embedding_unavailable": [
     {

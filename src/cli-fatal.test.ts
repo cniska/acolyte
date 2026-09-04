@@ -6,7 +6,7 @@ import { CodedError } from "./coded-error";
 test("a coded error with guidance says what to do, not what the server said", () => {
   const error = new CloudApiError(401, "Cloud API GET /api/v1/sessions failed (401)", '{"error":"Invalid token"}');
   expect(formatFatalError(error)).toEqual([
-    "Your cloud session has expired. Run `acolyte login` to sign in again. (E_CLOUD_UNAUTHORIZED)",
+    "Your cloud session has expired. Run `acolyte login` to sign in again, or `acolyte logout` to keep working offline. (E_CLOUD_UNAUTHORIZED)",
   ]);
 });
 

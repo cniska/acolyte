@@ -675,7 +675,8 @@ export const FI_MESSAGES = {
   "fatal.cloud.forbidden": [
     {
       kind: "text",
-      value: "Tällä tilillä ei ole pääsyä Acolyte Cloudiin. Kirjaudu toisella tilillä komennolla `acolyte login`.",
+      value:
+        "Tällä tilillä ei ole pääsyä Acolyte Cloudiin. Kirjaudu toisella tilillä komennolla `acolyte login` tai jatka paikallisesti komennolla `acolyte logout`.",
     },
   ],
   "fatal.cloud.request_failed": [
@@ -685,7 +686,11 @@ export const FI_MESSAGES = {
     },
   ],
   "fatal.cloud.unauthorized": [
-    { kind: "text", value: "Pilvi-istuntosi on vanhentunut. Kirjaudu uudelleen komennolla `acolyte login`." },
+    {
+      kind: "text",
+      value:
+        "Pilvi-istuntosi on vanhentunut. Kirjaudu uudelleen komennolla `acolyte login` tai jatka paikallisesti komennolla `acolyte logout`.",
+    },
   ],
   "fatal.memory.embedding_unavailable": [
     {

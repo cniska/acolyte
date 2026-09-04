@@ -2,6 +2,7 @@ import { stdout as output } from "node:process";
 import { appConfig } from "./app-config";
 import { runChat } from "./chat-app";
 import { createMessage } from "./chat-session";
+import { fatalDebugEnabled, formatFatalError } from "./cli-fatal";
 import { resolveCliVersion } from "./cli-version";
 import { createClient } from "./client-factory";
 import { nowIso } from "./datetime";
@@ -45,6 +46,23 @@ function resolveResumeTarget(
 
 export function formatResumeCommand(sessionId: string): string {
   return `acolyte resume ${sessionId}`;
+}
+
+type FatalErrorDeps = {
+  releaseLock: () => void;
+  print: (line: string) => void;
+  exit: () => void;
+};
+
+/** The chat renderer's fatal exit goes through the same guidance table as the CLI boundary. */
+export function createFatalErrorHandler(deps: FatalErrorDeps): (error: unknown) => void {
+  return (error: unknown): void => {
+    deps.releaseLock();
+    for (const line of formatFatalError(error, { debug: fatalDebugEnabled(process.env.ACOLYTE_DEBUG) })) {
+      deps.print(line);
+    }
+    deps.exit();
+  };
 }
 
 export async function attachFileToSession(session: Session, filePath: string): Promise<void> {
@@ -110,11 +128,11 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
 
   // Runs after the renderer has restored the terminal, so the error prints cleanly.
   // process.exit skips the finally below, so release the session lock here too.
-  const onFatalError = (error: unknown): void => {
-    releaseSessionLock(session.id);
-    printError(error instanceof Error ? (error.stack ?? error.message) : String(error));
-    process.exit(1);
-  };
+  const onFatalError = createFatalErrorHandler({
+    releaseLock: () => releaseSessionLock(session.id),
+    print: printError,
+    exit: () => process.exit(1),
+  });
 
   try {
     if (output.isTTY) clearScreen();

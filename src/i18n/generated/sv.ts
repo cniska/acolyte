@@ -676,7 +676,7 @@ export const SV_MESSAGES = {
     {
       kind: "text",
       value:
-        "Det här kontot har inte åtkomst till Acolyte Cloud. Kör `acolyte login` för att logga in med ett annat konto.",
+        "Det här kontot har inte åtkomst till Acolyte Cloud. Kör `acolyte login` för att logga in med ett annat konto, eller `acolyte logout` för att arbeta vidare lokalt.",
     },
   ],
   "fatal.cloud.request_failed": [
@@ -686,7 +686,11 @@ export const SV_MESSAGES = {
     },
   ],
   "fatal.cloud.unauthorized": [
-    { kind: "text", value: "Din molnsession har gått ut. Kör `acolyte login` för att logga in igen." },
+    {
+      kind: "text",
+      value:
+        "Din molnsession har gått ut. Kör `acolyte login` för att logga in igen, eller `acolyte logout` för att arbeta vidare lokalt.",
+    },
   ],
   "fatal.memory.embedding_unavailable": [
     {

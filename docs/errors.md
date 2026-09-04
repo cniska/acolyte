@@ -32,6 +32,8 @@ Guidance replaces the thrown message rather than joining it. The message, any se
 
 The table is the last resort for errors nobody caught. A call site that can handle a failure with more context than a code carries prints its own message and never reaches here.
 
+The chat renderer's fatal exit uses the same table: an error that kills a chat session releases the session lock, prints the guidance line, and exits non-zero.
+
 ## Design rule
 
 Keep error contracts minimal. Error messages should be descriptive enough for the model to act on. Keep runtime error classes separate from parsing/normalization logic.
