@@ -239,6 +239,10 @@ export type MessageArgs = {
   "error.reply_timeout": never;
   "error.unauthorized": never;
   "error.unknown": never;
+  "fatal.cloud.forbidden": never;
+  "fatal.cloud.request_failed": never;
+  "fatal.cloud.unauthorized": never;
+  "fatal.memory.embedding_unavailable": never;
   "lifecycle.finish.content_filter": never;
   "lifecycle.finish.empty_answer": never;
   "lifecycle.finish.provider_error": never;

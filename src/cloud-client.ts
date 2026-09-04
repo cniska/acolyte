@@ -55,9 +55,9 @@ function cloudErrorCode(status: number): CloudErrorCode {
   return CLOUD_ERROR_CODES.requestFailed;
 }
 
-export class CloudApiError extends CodedError<CloudErrorCode, { status: number }> {
-  constructor(status: number, message: string) {
-    super(cloudErrorCode(status), message, { meta: { status } });
+export class CloudApiError extends CodedError<CloudErrorCode, { status: number; body?: string }> {
+  constructor(status: number, message: string, body?: string) {
+    super(cloudErrorCode(status), message, { meta: { status, ...(body ? { body } : {}) } });
     this.name = "CloudApiError";
   }
 }
@@ -321,7 +321,7 @@ export class CloudClient {
     const res = await fetch(url, { method, headers, body });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new CloudApiError(res.status, `Cloud API ${method} ${path} failed (${res.status}): ${text}`);
+      throw new CloudApiError(res.status, `Cloud API ${method} ${path} failed (${res.status})`, text);
     }
     const contentType = res.headers.get("content-type") ?? "";
     const json = contentType.includes("application/json") ? await res.json() : undefined;

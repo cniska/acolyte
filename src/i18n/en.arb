@@ -1414,6 +1414,22 @@
   "@error.unknown": {
     "description": "Last-resort text used when a caught error carried no message of its own (cli-status.ts:70, cli-run.ts:122). No trailing period, because callers print it as a bare value."
   },
+  "fatal.cloud.forbidden": "This account does not have access to Acolyte Cloud. Run `acolyte login` to sign in with a different account.",
+  "@fatal.cloud.forbidden": {
+    "description": "Shown at the CLI boundary when the cloud rejects the account with 403. States the cause, then the command that fixes it. 'acolyte login' is a literal command and must not be translated; keep the backticks."
+  },
+  "fatal.cloud.request_failed": "Acolyte Cloud returned an error. Try again, or set ACOLYTE_DEBUG=cli to see the response.",
+  "@fatal.cloud.request_failed": {
+    "description": "Shown at the CLI boundary for a cloud failure that is neither 401 nor 403. 'ACOLYTE_DEBUG=cli' is a literal environment variable and must not be translated."
+  },
+  "fatal.cloud.unauthorized": "Your cloud session has expired. Run `acolyte login` to sign in again.",
+  "@fatal.cloud.unauthorized": {
+    "description": "Shown at the CLI boundary when the cloud token is rejected with 401. States the cause, then the command that fixes it. 'acolyte login' is a literal command and must not be translated; keep the backticks."
+  },
+  "fatal.memory.embedding_unavailable": "Memory search needs an embedding provider. Set an API key for the embedding model, or turn memory search off.",
+  "@fatal.memory.embedding_unavailable": {
+    "description": "Shown at the CLI boundary when memory work cannot embed because no provider is configured. Two sentences: what is missing, then the two ways out."
+  },
   "lifecycle.finish.content_filter": "The response was stopped by a content filter.",
   "@lifecycle.finish.content_filter": {
     "description": "Shown in place of the answer when the provider's content filter stopped the response (lifecycle-generate.ts:134). User-facing, and deliberately states only the fact."

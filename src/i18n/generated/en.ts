@@ -645,6 +645,29 @@ export const EN_MESSAGES = {
     { kind: "text", value: "The server rejected this connection as unauthorized. Check the configured API key." },
   ],
   "error.unknown": [{ kind: "text", value: "Unknown error" }],
+  "fatal.cloud.forbidden": [
+    {
+      kind: "text",
+      value:
+        "This account does not have access to Acolyte Cloud. Run `acolyte login` to sign in with a different account.",
+    },
+  ],
+  "fatal.cloud.request_failed": [
+    {
+      kind: "text",
+      value: "Acolyte Cloud returned an error. Try again, or set ACOLYTE_DEBUG=cli to see the response.",
+    },
+  ],
+  "fatal.cloud.unauthorized": [
+    { kind: "text", value: "Your cloud session has expired. Run `acolyte login` to sign in again." },
+  ],
+  "fatal.memory.embedding_unavailable": [
+    {
+      kind: "text",
+      value:
+        "Memory search needs an embedding provider. Set an API key for the embedding model, or turn memory search off.",
+    },
+  ],
   "lifecycle.finish.content_filter": [{ kind: "text", value: "The response was stopped by a content filter." }],
   "lifecycle.finish.empty_answer": [
     { kind: "text", value: "The agent finished without writing a response. Retry or rephrase the request." },

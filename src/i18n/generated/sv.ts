@@ -672,6 +672,29 @@ export const SV_MESSAGES = {
     { kind: "text", value: "Servern avvisade anslutningen som obehörig. Kontrollera den konfigurerade API-nyckeln." },
   ],
   "error.unknown": [{ kind: "text", value: "Okänt fel" }],
+  "fatal.cloud.forbidden": [
+    {
+      kind: "text",
+      value:
+        "Det här kontot har inte åtkomst till Acolyte Cloud. Kör `acolyte login` för att logga in med ett annat konto.",
+    },
+  ],
+  "fatal.cloud.request_failed": [
+    {
+      kind: "text",
+      value: "Acolyte Cloud svarade med ett fel. Försök igen, eller sätt ACOLYTE_DEBUG=cli för att se svaret.",
+    },
+  ],
+  "fatal.cloud.unauthorized": [
+    { kind: "text", value: "Din molnsession har gått ut. Kör `acolyte login` för att logga in igen." },
+  ],
+  "fatal.memory.embedding_unavailable": [
+    {
+      kind: "text",
+      value:
+        "Minnessökning kräver en inbäddningsleverantör. Ange en API-nyckel för inbäddningsmodellen, eller stäng av minnessökning.",
+    },
+  ],
   "lifecycle.finish.content_filter": [{ kind: "text", value: "Svaret stoppades av ett innehållsfilter." }],
   "lifecycle.finish.empty_answer": [
     { kind: "text", value: "Agenten avslutade utan att skriva något svar. Försök igen eller formulera om begäran." },

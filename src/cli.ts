@@ -3,11 +3,12 @@ import { appConfig } from "./app-config";
 import { parseGlobalArgsAndCommand } from "./cli-args";
 import { chatModeWithOptions } from "./cli-chat";
 import { commands, usage } from "./cli-command-registry";
+import { fatalDebugEnabled, formatFatalError } from "./cli-fatal";
 import { stageUpdateOnStartup, updateMode } from "./cli-update";
 import { formatVersionWithCommit, resolveCliCommitShort, resolveCliVersion } from "./cli-version";
 import { setLocale } from "./i18n";
 import { setLogSink } from "./log";
-import { printOutput } from "./ui";
+import { printError, printOutput } from "./ui";
 
 setLocale(appConfig.locale);
 
@@ -62,4 +63,13 @@ async function main(): Promise<void> {
   process.exitCode = 1;
 }
 
-if (import.meta.main) await main();
+if (import.meta.main) {
+  try {
+    await main();
+  } catch (error) {
+    for (const line of formatFatalError(error, { debug: fatalDebugEnabled(process.env.ACOLYTE_DEBUG) })) {
+      printError(line);
+    }
+    process.exitCode = 1;
+  }
+}

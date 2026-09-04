@@ -672,6 +672,27 @@ export const FI_MESSAGES = {
     { kind: "text", value: "Palvelin hylkäsi tämän yhteyden valtuuttamattomana. Tarkista määritetty API-avain." },
   ],
   "error.unknown": [{ kind: "text", value: "Tuntematon virhe" }],
+  "fatal.cloud.forbidden": [
+    {
+      kind: "text",
+      value: "Tällä tilillä ei ole pääsyä Acolyte Cloudiin. Kirjaudu toisella tilillä komennolla `acolyte login`.",
+    },
+  ],
+  "fatal.cloud.request_failed": [
+    {
+      kind: "text",
+      value: "Acolyte Cloud palautti virheen. Yritä uudelleen tai aseta ACOLYTE_DEBUG=cli nähdäksesi vastauksen.",
+    },
+  ],
+  "fatal.cloud.unauthorized": [
+    { kind: "text", value: "Pilvi-istuntosi on vanhentunut. Kirjaudu uudelleen komennolla `acolyte login`." },
+  ],
+  "fatal.memory.embedding_unavailable": [
+    {
+      kind: "text",
+      value: "Muistihaku tarvitsee upotuspalvelun. Aseta API-avain upotusmallille tai poista muistihaku käytöstä.",
+    },
+  ],
   "lifecycle.finish.content_filter": [{ kind: "text", value: "Sisältösuodatin pysäytti vastauksen." }],
   "lifecycle.finish.empty_answer": [
     { kind: "text", value: "Agentti lopetti kirjoittamatta vastausta. Yritä uudelleen tai muotoile pyyntö toisin." },
