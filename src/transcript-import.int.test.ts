@@ -282,4 +282,13 @@ describe("import ledger", () => {
 
     await expect(readImportLedger(path)).rejects.toThrow(/version/);
   });
+
+  test("a ledger that cannot be opened fails rather than reading as absent", async () => {
+    const dir = createDir("acolyte-ledger-");
+    const path = join(dir, "ledger.json");
+    mkdirSync(path, { recursive: true });
+
+    await expect(readImportLedger(path)).rejects.toThrow();
+  });
+
 });

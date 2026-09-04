@@ -1,5 +1,4 @@
-import { mkdirSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
 import { isoDateTimeSchema, nowIso } from "./datetime";
@@ -52,13 +51,14 @@ export async function readImportLedger(path: string): Promise<ImportLedger> {
   let raw: string;
   try {
     raw = await readFile(path, "utf8");
-  } catch {
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     return emptyImportLedger();
   }
   return importLedgerSchema.parse(JSON.parse(raw));
 }
 
 export async function writeImportLedger(path: string, ledger: ImportLedger): Promise<void> {
-  mkdirSync(dirname(path), { recursive: true });
+  await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(ledger, null, 2)}\n`, "utf8");
 }
