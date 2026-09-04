@@ -36,20 +36,23 @@ const DISTILL_FACT_SCHEMA = z.object({
 });
 
 const DISTILL_OUTPUT_SCHEMA = z.object({
-  facts: z.array(DISTILL_FACT_SCHEMA),
+  facts: z
+    .array(DISTILL_FACT_SCHEMA)
+    .describe("Every fact the turn established, in the order found. Empty when it established none."),
 });
 
 const OBSERVE_FUNCTION_NAME = "memory-observe";
 
 /**
  * The only tool offered to the distiller's own model call, and the shape its observations come back
- * in. Nothing executes the call — reading it is the whole handling — and returning none is how a turn
- * says it established nothing.
+ * in. Nothing executes the call — reading it is the whole handling. The model calls it on every turn,
+ * so silence is an empty `facts` array rather than the absence of a call: measured, the model never
+ * withholds the call, and a contract that hangs silence on withholding it gets one stray fact instead.
  */
 const DISTILL_OUTPUT_TOOL = toFunctionTool({
   id: OBSERVE_FUNCTION_NAME,
   description:
-    "Record the facts that outlive this turn, one entry each, stated as what is now true. Most turns establish none and do not call this at all.",
+    "Record what this turn established that outlives it, one entry per fact, each stated as what is now true. facts is empty on a turn that established none, which is most turns. This repository's own position — its branch, its commit, what of it is pushed — is never an entry.",
   inputSchema: z.toJSONSchema(DISTILL_OUTPUT_SCHEMA) as Record<string, unknown>,
 });
 
@@ -73,7 +76,7 @@ Each fact stands alone. Someone who was not here understands it without asking w
 
 An "observed" entry, when present, is what actually happened this turn — files touched, commands run, whether they succeeded. It is route as well: it tells me what I learned from, and I record what I learned.
 
-Every fact I keep is a line future-me rereads for as long as it lives, so each one pays rent. Most turns are routine: they move the repository and teach me nothing the repository does not now hold, and I end them without calling the tool at all. Silence is the finished job on such a turn. Doing a thing once is not how the project works: a convention is one the project states or the person tells me, never one I generalize from an act I just performed.
+Every fact I keep is a line future-me rereads for as long as it lives, so each one pays rent. Most turns are routine: they move the repository and teach me nothing the repository does not now hold, and I end them with facts empty. That is the finished job on such a turn. Doing a thing once is not how the project works: a convention is one the project states or the person tells me, never one I generalize from an act I just performed.
 
 When a "known" block is present, those are facts I already hold, each with an id. I read them before I write anything, because the corpus should sharpen rather than accumulate:
 - already there, unchanged — I record nothing. A second copy in different words is the worst thing I can add.
@@ -85,7 +88,7 @@ When a "known" block is present, those are facts I already hold, each with an id
 
 I only ever supersede an id from that block, and only from the same scope I am writing to. What I supersede is not deleted; it is kept with a note that this new fact replaced it, so I can be wrong about this and lose nothing.
 
-I call memory-observe once, with facts: an entry for every fact I keep, in the order I found them. A turn that established nothing calls nothing at all. Each entry carries:
+I call memory-observe once, every turn. facts holds an entry for every fact I keep, in the order I found them, and is empty when I keep none. Each entry carries:
 - scope, which decides how long the fact lives:
          "project" — durable and specific to this codebase: architecture, tooling, conventions, decisions. It reaches every future session here.
          "user" — a preference that follows the person across projects, and reaches every session anywhere.
