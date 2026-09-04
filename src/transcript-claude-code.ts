@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { log } from "./log";
 import { createTaskActivity, type TaskActivity } from "./task-activity";
 import type { ToolCallRecord } from "./tool-contract";
 
@@ -149,16 +150,22 @@ export function parseClaudeCodeTranscript(text: string): ClaudeCodeTranscript {
   let workspace: string | null = null;
   let lastActivityAt: string | null = null;
 
+  let unreadable = 0;
+
   for (const line of text.split("\n")) {
     if (!line.trim()) continue;
     let raw: unknown;
     try {
       raw = JSON.parse(line);
     } catch {
+      unreadable++;
       continue;
     }
     const parsed = transcriptRecordSchema.safeParse(raw);
-    if (!parsed.success) continue;
+    if (!parsed.success) {
+      unreadable++;
+      continue;
+    }
     const record: TranscriptRecord = parsed.data;
     if (record.isSidechain) continue;
 
@@ -194,6 +201,10 @@ export function parseClaudeCodeTranscript(text: string): ClaudeCodeTranscript {
     const closed = closeExchange(open);
     if (closed) exchanges.push(closed);
   }
+
+  // A tape this reader cannot follow means conversation went unread, and the count is the only
+  // sign of it: the shape belongs to the source agent, so a change there shows up here first.
+  if (unreadable > 0) log.warn("import.transcript.unreadable_records", { sessionId, unreadable });
 
   return { sessionId, workspace, lastActivityAt, exchanges };
 }
