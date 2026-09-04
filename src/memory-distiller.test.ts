@@ -807,36 +807,65 @@ describe("supersession", () => {
 });
 
 describe("parseObservationToolCall", () => {
-  const call = (input: unknown) => parseObservationToolCall({ input: JSON.stringify(input) });
+  const call = (...facts: unknown[]) => parseObservationToolCall({ input: JSON.stringify({ facts }) });
 
   test("a well-formed call becomes an observation", () => {
-    expect(call({ scope: "project", content: "the loader owns retries", topic: "Loader" })).toEqual({
-      scope: "project",
-      content: "the loader owns retries",
-      topic: "loader",
-      supersedes: [],
-    });
+    expect(call({ scope: "project", content: "the loader owns retries", topic: "Loader" })).toEqual([
+      {
+        scope: "project",
+        content: "the loader owns retries",
+        topic: "loader",
+        supersedes: [],
+      },
+    ]);
+  });
+
+  test("one call carries every fact a turn established", () => {
+    expect(
+      call(
+        { scope: "project", content: "omp and pi share a transcript format" },
+        { scope: "project", content: "opencode stores sessions in sqlite" },
+        { scope: "user", content: "he wants provider setup outside the TUI" },
+      ).map((observation) => observation.content),
+    ).toEqual([
+      "omp and pi share a transcript format",
+      "opencode stores sessions in sqlite",
+      "he wants provider setup outside the TUI",
+    ]);
   });
 
   test("a blank topic is kept as an observation with no topic", () => {
-    expect(call({ scope: "project", content: "the loader owns retries", topic: "" })).toEqual({
-      scope: "project",
-      content: "the loader owns retries",
-      topic: null,
-      supersedes: [],
-    });
+    expect(call({ scope: "project", content: "the loader owns retries", topic: "" })).toEqual([
+      {
+        scope: "project",
+        content: "the loader owns retries",
+        topic: null,
+        supersedes: [],
+      },
+    ]);
+  });
+
+  test("a call with no facts records nothing", () => {
+    expect(parseObservationToolCall({ input: JSON.stringify({ facts: [] }) })).toEqual([]);
   });
 
   test("malformed input yields no observation", () => {
-    expect(parseObservationToolCall({ input: "not json" })).toBeNull();
-    expect(call({ content: "no scope given" })).toBeNull();
-    expect(call({ scope: "elsewhere", content: "an unknown scope" })).toBeNull();
-    expect(call({ scope: "project", content: "   " })).toBeNull();
+    expect(parseObservationToolCall({ input: "not json" })).toEqual([]);
+    expect(parseObservationToolCall({ input: JSON.stringify({ scope: "project", content: "unwrapped" }) })).toEqual([]);
+    expect(call({ content: "no scope given" })).toEqual([]);
+    expect(call({ scope: "elsewhere", content: "an unknown scope" })).toEqual([]);
+    expect(call({ scope: "project", content: "   " })).toEqual([]);
+  });
+
+  test("one malformed fact rejects the whole call", () => {
+    expect(call({ scope: "project", content: "a good fact" }, { scope: "elsewhere", content: "a bad one" })).toEqual(
+      [],
+    );
   });
 
   test("a non-array supersedes yields no observation", () => {
-    expect(call({ scope: "project", content: "a fact", supersedes: "mem_one000001" })).toBeNull();
-    expect(call({ scope: "project", content: "a fact", supersedes: [1] })).toBeNull();
+    expect(call({ scope: "project", content: "a fact", supersedes: "mem_one000001" })).toEqual([]);
+    expect(call({ scope: "project", content: "a fact", supersedes: [1] })).toEqual([]);
   });
 
   test("supersedes ids are trimmed and deduplicated", () => {
@@ -845,11 +874,11 @@ describe("parseObservationToolCall", () => {
         scope: "project",
         content: "a fact",
         supersedes: [" mem_one000001 ", "mem_one000001", "  ", "mem_two000002"],
-      })?.supersedes,
+      })[0]?.supersedes,
     ).toEqual(["mem_one000001", "mem_two000002"]);
   });
 
   test("a blank topic becomes no topic", () => {
-    expect(call({ scope: "user", content: "a fact", topic: "   " })?.topic).toBeNull();
+    expect(call({ scope: "user", content: "a fact", topic: "   " })[0]?.topic).toBeNull();
   });
 });
