@@ -49,10 +49,22 @@ describe("isRetryableProviderError", () => {
     expect(isRetryableProviderError({ code: "SERVICE_UNAVAILABLE" })).toBe(true);
   });
 
+  test("a provider that failed on its own side is retryable", () => {
+    expect(isRetryableProviderError({ status: 500 })).toBe(true);
+    expect(isRetryableProviderError({ statusCode: 502 })).toBe(true);
+    expect(isRetryableProviderError({ status: 504 })).toBe(true);
+  });
+
+  test("an error the provider sdk marked retryable is retryable", () => {
+    expect(isRetryableProviderError({ statusCode: 408, isRetryable: true })).toBe(true);
+    expect(isRetryableProviderError({ statusCode: 409, isRetryable: true })).toBe(true);
+  });
+
   test("a wrong request is not retryable, since repeating it cannot help", () => {
     expect(isRetryableProviderError({ status: 400 })).toBe(false);
     expect(isRetryableProviderError({ status: 401 })).toBe(false);
-    expect(isRetryableProviderError({ status: 500 })).toBe(false);
+    expect(isRetryableProviderError({ status: 404 })).toBe(false);
+    expect(isRetryableProviderError({ statusCode: 422, isRetryable: false })).toBe(false);
     expect(isRetryableProviderError(null)).toBe(false);
   });
 });
@@ -166,9 +178,9 @@ describe("createRateLimiter", () => {
     expect(result.delayMs).toBeGreaterThan(0);
   });
 
-  test("onError returns no retry for non-rate-limit errors", () => {
+  test("onError returns no retry for an error repeating cannot fix", () => {
     const limiter = createRateLimiter(FAST);
-    const result = limiter.onError({ status: 500 });
+    const result = limiter.onError({ status: 400 });
     expect(result.shouldRetry).toBe(false);
     expect(result.delayMs).toBe(0);
   });

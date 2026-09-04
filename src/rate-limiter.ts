@@ -36,20 +36,26 @@ function isRateLimitError(error: unknown): boolean {
 
 const OVERLOADED_CODES: ReadonlySet<string> = new Set(["overloaded_error", "service_unavailable"]);
 
-function isOverloadedError(error: unknown): boolean {
-  const status = field(error, "status") ?? field(error, "statusCode");
-  if (status === HTTP_STATUS.overloaded || status === HTTP_STATUS.serviceUnavailable) return true;
-  const code = field(error, "code");
-  return typeof code === "string" && OVERLOADED_CODES.has(code.toLowerCase());
+function statusOf(error: unknown): unknown {
+  return field(error, "status") ?? field(error, "statusCode");
 }
 
 /**
- * Whether calling again could plausibly succeed: the provider was busy, not the request wrong. Both
- * shapes back off on the same schedule, since an overloaded provider needs the wait as much as a
- * throttled one does — and a retry-after header, when it sends one, still wins.
+ * Whether calling again could plausibly succeed: the provider failed, not the request. Every shape
+ * backs off on the same schedule, since a busy provider needs the wait as much as a throttled one
+ * does — and a retry-after header, when it sends one, still wins.
+ *
+ * A provider error the AI SDK built carries its own verdict in `isRetryable`, which covers timeouts
+ * and conflicts this cannot see from a status alone; the status and code checks answer for errors
+ * that reach here from anywhere else.
  */
 export function isRetryableProviderError(error: unknown): boolean {
-  return isRateLimitError(error) || isOverloadedError(error);
+  if (isRateLimitError(error)) return true;
+  if (field(error, "isRetryable") === true) return true;
+  const status = statusOf(error);
+  if (typeof status === "number" && status >= HTTP_STATUS.internalServerError) return true;
+  const code = field(error, "code");
+  return typeof code === "string" && OVERLOADED_CODES.has(code.toLowerCase());
 }
 
 function retryAfterMs(error: unknown): number | undefined {

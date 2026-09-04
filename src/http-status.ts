@@ -5,6 +5,5 @@ export const HTTP_STATUS = {
   notFound: 404,
   conflict: 409,
   tooManyRequests: 429,
-  serviceUnavailable: 503,
-  overloaded: 529,
+  internalServerError: 500,
 } as const;
