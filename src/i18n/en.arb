@@ -969,9 +969,13 @@
   "@cli.login.saved": {
     "description": "Confirmation that credentials were stored and the user is signed in."
   },
-  "cli.login.no_refresh": "This cloud returned no refresh token, so signing in would last only a day. Update the cloud service to a version that issues one.",
-  "@cli.login.no_refresh": {
-    "description": "Shown when the browser handoff carries no refresh token, which means the cloud service predates token renewal. States the cause, then what fixes it."
+  "cli.login.exchange_refused": "The cloud refused this sign-in. Run `acolyte login` to try again.",
+  "@cli.login.exchange_refused": {
+    "description": "Shown when the code exchange reaches the cloud and is turned down. 'acolyte login' is a literal command and must not be translated; keep the backticks."
+  },
+  "cli.login.no_exchange": "This cloud is running a version that predates the current sign-in. Update the cloud service, then sign in again.",
+  "@cli.login.no_exchange": {
+    "description": "Shown when the browser handoff or the code exchange shows the cloud service is older than the CLI. States the cause, then what fixes it."
   },
   "cli.login.timeout": "Authentication timed out. Please try again.",
   "@cli.login.timeout": {

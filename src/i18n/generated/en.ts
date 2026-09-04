@@ -410,11 +410,14 @@ export const EN_MESSAGES = {
   ],
   "cli.login.migrate.start": [{ kind: "text", value: "Copying local memory and sessions to the cloud." }],
   "cli.login.saved": [{ kind: "text", value: "Logged in." }],
-  "cli.login.no_refresh": [
+  "cli.login.exchange_refused": [
+    { kind: "text", value: "The cloud refused this sign-in. Run `acolyte login` to try again." },
+  ],
+  "cli.login.no_exchange": [
     {
       kind: "text",
       value:
-        "This cloud returned no refresh token, so signing in would last only a day. Update the cloud service to a version that issues one.",
+        "This cloud is running a version that predates the current sign-in. Update the cloud service, then sign in again.",
     },
   ],
   "cli.login.timeout": [{ kind: "text", value: "Authentication timed out. Please try again." }],

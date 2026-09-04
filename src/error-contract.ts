@@ -38,7 +38,9 @@ export const MEMORY_ERROR_CODES = {
 export type MemoryErrorCode = (typeof MEMORY_ERROR_CODES)[keyof typeof MEMORY_ERROR_CODES];
 
 export const LOGIN_ERROR_CODES = {
-  refreshTokenMissing: "E_LOGIN_REFRESH_TOKEN_MISSING",
+  codeMissing: "E_LOGIN_CODE_MISSING",
+  exchangeUnsupported: "E_LOGIN_EXCHANGE_UNSUPPORTED",
+  exchangeRefused: "E_LOGIN_EXCHANGE_REFUSED",
 } as const;
 export type LoginErrorCode = (typeof LOGIN_ERROR_CODES)[keyof typeof LOGIN_ERROR_CODES];
 

@@ -417,11 +417,14 @@ export const FI_MESSAGES = {
   ],
   "cli.login.migrate.start": [{ kind: "text", value: "Kopioidaan paikallinen muisti ja istunnot pilveen." }],
   "cli.login.saved": [{ kind: "text", value: "Kirjauduttu sisään." }],
-  "cli.login.no_refresh": [
+  "cli.login.exchange_refused": [
+    { kind: "text", value: "Pilvipalvelu hylkäsi tämän kirjautumisen. Yritä uudelleen komennolla `acolyte login`." },
+  ],
+  "cli.login.no_exchange": [
     {
       kind: "text",
       value:
-        "Tämä pilvipalvelu ei palauttanut päivitystunnusta, joten kirjautuminen kestäisi vain vuorokauden. Päivitä pilvipalvelu versioon, joka myöntää sellaisen.",
+        "Tämä pilvipalvelu on vanhempi kuin nykyinen kirjautuminen. Päivitä pilvipalvelu ja kirjaudu sitten uudelleen.",
     },
   ],
   "cli.login.timeout": [{ kind: "text", value: "Tunnistautuminen aikakatkaistiin. Yritä uudelleen." }],

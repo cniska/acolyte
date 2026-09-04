@@ -2,9 +2,7 @@ import { CodedError } from "./coded-error";
 import { LOGIN_ERROR_CODES } from "./error-contract";
 
 export type CallbackResult = {
-  token: string;
-  refreshToken: string;
-  email: string;
+  code: string;
 };
 
 const TIMEOUT_MS = 120_000;
@@ -45,26 +43,24 @@ export function startCallbackServer(expectedState: string): Promise<{ port: numb
           return new Response("Not found", { status: 404 });
         }
 
-        const token = url.searchParams.get("token");
-        const refreshToken = url.searchParams.get("refresh");
+        const code = url.searchParams.get("code");
         const state = url.searchParams.get("state");
 
-        if (!token || !state || state !== expectedState) {
+        if (!state || state !== expectedState) {
           return new Response(ERROR_HTML, { status: 400, headers: { "Content-Type": "text/html" } });
         }
 
-        // This handoff is the only place a refresh token is issued, so a cloud that returns none
-        // says so now rather than leaving the CLI waiting out its timeout for a token never coming.
-        if (!refreshToken) {
+        // A cloud that predates the code handoff redirects a token instead, and no code will ever
+        // arrive: say so now rather than leaving the CLI waiting out its timeout.
+        if (!code) {
           clearTimeout(timeout);
-          rejectResult(new CodedError(LOGIN_ERROR_CODES.refreshTokenMissing, "the cloud returned no refresh token"));
+          rejectResult(new CodedError(LOGIN_ERROR_CODES.codeMissing, "the cloud returned no authorization code"));
           setTimeout(() => server.stop(), 100);
           return new Response(ERROR_HTML, { status: 400, headers: { "Content-Type": "text/html" } });
         }
 
         clearTimeout(timeout);
-        const email = url.searchParams.get("email");
-        resolveResult({ token, refreshToken, email: email || "unknown" });
+        resolveResult({ code });
 
         // Shut down after response is sent
         setTimeout(() => server.stop(), 100);

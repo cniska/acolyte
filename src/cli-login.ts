@@ -1,9 +1,10 @@
 import { type CallbackResult, DEFAULT_CLOUD_URL } from "./cli-callback-server";
+import { challengeFor, type CloudTokens } from "./cloud-auth-code";
 import { type CloudMigrationSummary, isCredentialRejection } from "./cloud-migrate";
 import { isSecureUrl } from "./config-contract";
 import { type Credentials, decodeTokenSubject } from "./credentials";
 import { errorCode, errorMessage, LOGIN_ERROR_CODES } from "./error-contract";
-import { t } from "./i18n";
+import { type PlainTranslationKey, t } from "./i18n";
 import { type UserResourceId, userResourceIdForSubject } from "./resource-id";
 import type { UserScopeMergeSummary } from "./user-scope-merge";
 
@@ -20,6 +21,8 @@ type LoginModeDeps = {
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
   createId: () => string;
+  createVerifier: () => string;
+  exchangeAuthCode: (baseUrl: string, code: string, verifier: string) => Promise<CloudTokens>;
   startCallbackServer: (state: string) => Promise<{ port: number; result: Promise<CallbackResult> }>;
   openBrowser: (url: string) => void;
   migrateToCloud: (url: string, token: string, accountKey: UserResourceId) => Promise<CloudMigrationSummary>;
@@ -110,6 +113,15 @@ async function completeLogin(
   }
 }
 
+/** What to tell the user when the browser handoff did not end in a signed-in machine. */
+function loginFailureKey(code: string | undefined): PlainTranslationKey {
+  if (code === LOGIN_ERROR_CODES.codeMissing || code === LOGIN_ERROR_CODES.exchangeUnsupported) {
+    return "cli.login.no_exchange";
+  }
+  if (code === LOGIN_ERROR_CODES.exchangeRefused) return "cli.login.exchange_refused";
+  return "cli.login.timeout";
+}
+
 export async function loginMode(args: string[], deps: LoginModeDeps): Promise<void> {
   if (deps.hasHelpFlag(args)) {
     deps.commandHelp("login");
@@ -130,21 +142,23 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
   const url = urlInput || DEFAULT_CLOUD_URL;
 
   if (url === DEFAULT_CLOUD_URL) {
-    // OAuth flow
+    // The browser carries back a code; the verifier behind this challenge stays in this process, so
+    // the code is worth nothing to anything that reads it out of browser history.
+    const verifier = deps.createVerifier();
     const state = deps.createId();
     const { port, result } = await deps.startCallbackServer(state);
-    const authUrl = `${url}/auth/cli?port=${port}&state=${state}`;
+    const authUrl = `${url}/auth/cli?port=${port}&state=${state}&challenge=${encodeURIComponent(challengeFor(verifier))}`;
 
     deps.printDim(t("cli.login.opening.browser"));
     deps.openBrowser(authUrl);
     deps.printDim(t("cli.login.waiting"));
 
     try {
-      const { token, refreshToken, email } = await result;
-      await completeLogin(deps, url, token, t("cli.login.welcome", { email }), refreshToken);
+      const { code } = await result;
+      const tokens = await deps.exchangeAuthCode(url, code, verifier);
+      await completeLogin(deps, url, tokens.token, t("cli.login.welcome", { email: tokens.email }), tokens.refresh);
     } catch (error) {
-      const missingRefresh = errorCode(error) === LOGIN_ERROR_CODES.refreshTokenMissing;
-      deps.printError(missingRefresh ? t("cli.login.no_refresh") : t("cli.login.timeout"));
+      deps.printError(t(loginFailureKey(errorCode(error))));
       process.exitCode = 1;
     }
   } else {

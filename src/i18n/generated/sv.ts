@@ -418,11 +418,13 @@ export const SV_MESSAGES = {
   ],
   "cli.login.migrate.start": [{ kind: "text", value: "Kopierar lokalt minne och sessioner till molnet." }],
   "cli.login.saved": [{ kind: "text", value: "Inloggad." }],
-  "cli.login.no_refresh": [
+  "cli.login.exchange_refused": [
+    { kind: "text", value: "Molntjänsten avvisade den här inloggningen. Kör `acolyte login` för att försöka igen." },
+  ],
+  "cli.login.no_exchange": [
     {
       kind: "text",
-      value:
-        "Den här molntjänsten returnerade ingen förnyelsetoken, så inloggningen skulle räcka bara ett dygn. Uppdatera molntjänsten till en version som utfärdar en.",
+      value: "Den här molntjänsten är äldre än den nuvarande inloggningen. Uppdatera molntjänsten och logga in igen.",
     },
   ],
   "cli.login.timeout": [{ kind: "text", value: "Autentiseringen tog för lång tid. Försök igen." }],

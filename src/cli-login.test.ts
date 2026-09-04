@@ -50,9 +50,14 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
       calls.push(`commandHelp:${name}`);
     },
     createId: () => "test_state",
+    createVerifier: () => "test_verifier",
+    exchangeAuthCode: async () => {
+      calls.push("exchangeAuthCode");
+      return { token: TOKEN, refresh: REFRESH_TOKEN, email: "test@example.com" };
+    },
     startCallbackServer: async () => ({
       port: 9999,
-      result: Promise.resolve({ token: TOKEN, refreshToken: REFRESH_TOKEN, email: "test@example.com" }),
+      result: Promise.resolve({ code: "code_1" }),
     }),
     openBrowser: () => {
       calls.push("openBrowser");
@@ -165,21 +170,65 @@ describe("loginMode", () => {
     expect(output()).toContain("empty");
   });
 
-  test("a cloud that returns no refresh token says so instead of timing out", async () => {
+  test("a cloud too old for the code handoff says so instead of timing out", async () => {
     const { deps, calls, output } = createLoginDeps({
       prompt: () => "",
       startCallbackServer: async () => ({
         port: 9999,
-        result: Promise.reject(new CodedError(LOGIN_ERROR_CODES.refreshTokenMissing, "no refresh token")),
+        result: Promise.reject(new CodedError(LOGIN_ERROR_CODES.codeMissing, "no code")),
       }),
     });
 
     await loginMode([], deps);
 
-    expect(output()).toContain("no refresh token");
+    expect(output()).toContain("predates the current sign-in");
     expect(output()).not.toContain("timed out");
     expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
     expect(process.exitCode).toBe(1);
+  });
+
+  test("a cloud with no exchange route says so", async () => {
+    const { deps, output } = createLoginDeps({
+      prompt: () => "",
+      exchangeAuthCode: async () => {
+        throw new CodedError(LOGIN_ERROR_CODES.exchangeUnsupported, "no exchange");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("predates the current sign-in");
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("an exchange the cloud turns down is reported as a refusal, not a timeout", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      prompt: () => "",
+      exchangeAuthCode: async () => {
+        throw new CodedError(LOGIN_ERROR_CODES.exchangeRefused, "refused");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("refused this sign-in");
+    expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("the handoff carries a challenge, and the verifier never leaves the process", async () => {
+    let authUrl = "";
+    const { deps } = createLoginDeps({
+      prompt: () => "",
+      openBrowser: (url: string) => {
+        authUrl = url;
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(authUrl).toContain("challenge=");
+    expect(authUrl).not.toContain("test_verifier");
   });
 
   test("oauth timeout sets exit code", async () => {
