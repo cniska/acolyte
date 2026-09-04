@@ -166,7 +166,6 @@ export function renderReport(report: EvalReport): string {
     lines.push(`  ${key.padEnd(14)} ${percent(value)}`);
   }
   lines.push("");
-  // Rated over the run's own observations, so runs at other --repeats or --only still compare.
   const perObservation = (count: number) => `${count} (${percent(rate(count, report.observations))})`;
   lines.push(`perishable at project/user scope: ${perObservation(report.perishableAtDurableScope)}`);
   lines.push(`quote violations: ${perObservation(report.quoteViolations.length)}`);

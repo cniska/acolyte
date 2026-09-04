@@ -38,10 +38,6 @@ function flakyModel(errors: unknown[], parts: LanguageModelV4StreamPart[] = []) 
   };
 }
 
-/**
- * Settles as "never" rather than hanging the suite. The regressions below are missing deadlines, so
- * without the fix the call under test simply waits, and a bounded race turns that into a failure.
- */
 function within<T>(ms: number, work: Promise<T>): Promise<T | "never settled"> {
   return Promise.race([
     work,
@@ -177,8 +173,6 @@ describe("streamModelCall", () => {
 
   test("gives up on a stream that never opens, rather than hanging on the connect", async () => {
     const client = {
-      // A provider that accepted the connection and sent no headers: there is no stream yet, so the
-      // stream's own idle deadline cannot see this one.
       doStream: (options: { abortSignal?: AbortSignal }) =>
         new Promise((_, reject) => {
           options.abortSignal?.addEventListener("abort", () => reject(options.abortSignal?.reason), { once: true });

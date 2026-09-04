@@ -58,7 +58,6 @@ const DISTILL_OUTPUT_SCHEMA = z.object({
     .describe("Every fact the turn established, in the order found. Empty when it established none."),
 });
 
-// The batch's shape, held apart from the entries so one bad entry is judged alone.
 const DISTILL_ENVELOPE_SCHEMA = z.object({ facts: z.array(z.unknown()) });
 
 const OBSERVE_FUNCTION_NAME = "memory-observe";
@@ -200,7 +199,6 @@ async function getCachedStore(): Promise<MemoryStore> {
 
 export type DistillRunner = (systemPrompt: string, userContent: string, model: string) => Promise<DistillObservation[]>;
 
-/** Reads the call's facts, keeping each one that validates, so one bad entry costs only itself. */
 export function parseObservationToolCall(call: Pick<LanguageModelV4ToolCall, "input">): DistillObservation[] {
   let entries: unknown[];
   try {

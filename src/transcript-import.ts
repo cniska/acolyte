@@ -35,7 +35,6 @@ export type ImportReader = {
   readTranscript: (path: string) => Promise<string>;
 };
 
-// Gone between listing and stat is a file the run has no claim on; anything else must surface.
 async function statOrMissing(path: string): Promise<Stats | null> {
   try {
     return await stat(path);
@@ -199,7 +198,6 @@ function orderingKey(lastActivityAt: string | null, file: TranscriptSourceFile):
   return Number.isNaN(parsed) ? file.modifiedAt.getTime() : parsed;
 }
 
-/** Picks the recorded directory that names this run's project, falling back to the first. */
 function attribute(
   workspaces: readonly string[],
   project: string,

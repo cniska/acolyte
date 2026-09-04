@@ -44,7 +44,6 @@ export type TranscriptExchange = {
 
 export type ClaudeCodeTranscript = {
   readonly sessionId: string | null;
-  /** Every directory the session recorded working in; a session moves between worktrees. */
   readonly workspaces: readonly string[];
   readonly lastActivityAt: string | null;
   readonly exchanges: readonly TranscriptExchange[];
@@ -185,7 +184,6 @@ export function parseClaudeCodeTranscript(text: string): ClaudeCodeTranscript {
       if (closed) exchanges.push(closed);
       open = null;
     }
-    // Closes the open turn but starts none: what follows a harness record answers nobody.
     if (isHarnessPrompt(prompt)) continue;
     open = { prompt, response: null, calls: [], callsById: new Map() };
   }

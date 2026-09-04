@@ -153,7 +153,6 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
     deps.commandHelp("import");
     return;
   }
-  // No message: `commandError` then prints the usage from the command's own registry entry.
   if (parsePositional(args, ["--since", "--max-turns"]).length > 0) {
     deps.commandError("import");
     return;
@@ -183,7 +182,6 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
     return;
   }
 
-  // Ahead of the model gate: clearing what earlier runs wrote asks nothing of a model.
   if (hasBoolFlag(args, "--reset")) {
     await deps.removeDir(deps.scratchDir);
     if (!json) deps.printDim(t("cli.import.reset", { path: deps.scratchDir }));

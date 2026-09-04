@@ -95,11 +95,6 @@ async function withProviderRetry<T>(
   }
 }
 
-/**
- * Opens the stream under a deadline, since a provider can accept the connection and send no headers
- * at all — a stall with no stream yet for `withIdleDeadline` to watch. The deadline covers only the
- * opening, so a long healthy answer is never cut short; the caller's own signal stays live throughout.
- */
 async function openStream(
   client: LanguageModelV4,
   request: ModelCallRequest,
@@ -138,7 +133,6 @@ export type EmbedCallOptions = {
   client: EmbeddingModelV4;
   limiter: RateLimiter;
   values: readonly string[];
-  /** The caller's own cancellation, kept live alongside the per-attempt deadline. */
   abortSignal?: AbortSignal;
   timeoutMs?: number;
   maxAttempts?: number;

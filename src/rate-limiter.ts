@@ -41,15 +41,7 @@ function statusOf(error: unknown): unknown {
   return field(error, "status") ?? field(error, "statusCode");
 }
 
-/**
- * Whether calling again could plausibly succeed: the provider failed, not the request. Every shape
- * backs off on the same schedule, since a busy provider needs the wait as much as a throttled one
- * does — and a retry-after header, when it sends one, still wins.
- *
- * A provider error the AI SDK built carries its own verdict in `isRetryable`, which covers timeouts
- * and conflicts this cannot see from a status alone; the status and code checks answer for errors
- * that reach here from anywhere else.
- */
+/** Whether calling again could plausibly succeed: the provider failed, not the request. */
 export function isRetryableProviderError(error: unknown): boolean {
   if (isRateLimitError(error)) return true;
   if (field(error, "isRetryable") === true) return true;

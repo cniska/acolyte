@@ -1,4 +1,3 @@
-/** Waits, and gives up the moment the caller cancels. */
 export function sleep(ms: number, abortSignal?: AbortSignal): Promise<void> {
   if (abortSignal?.aborted) return Promise.reject(abortSignal.reason);
   return new Promise((resolve, reject) => {
