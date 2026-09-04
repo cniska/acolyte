@@ -59,7 +59,7 @@ describe("chat slash command visual regression", () => {
       client: createClient({
         status: async () => ({
           provider_auth: ["openai (api key)"],
-          model: "gpt-5-mini",
+          memory: "sqlite (142 entries)",
         }),
       }),
     });
@@ -73,7 +73,7 @@ describe("chat slash command visual regression", () => {
           Status
 
           Providers:          openai (api key)
-          Model:              gpt-5-mini
+          Memory:             sqlite (142 entries)
     `),
     );
   });

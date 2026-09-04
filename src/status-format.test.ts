@@ -9,21 +9,19 @@ describe("status format", () => {
 
   test("labels follow the locale set after the module loads", () => {
     setLocale("fi");
-    const pairs = createStatusOutput({ model: "gpt-5-mini" })?.sections[0] ?? [];
-    expect(pairs).toContainEqual(["Malli", "gpt-5-mini"]);
+    const pairs = createStatusOutput({ memory: "sqlite (142 entries)" })?.sections[0] ?? [];
+    expect(pairs).toContainEqual(["Muisti", "sqlite (142 entries)"]);
   });
 
   test("maps known fields to labeled pairs", () => {
     const output = createStatusOutput({
       provider_auth: ["openai (api key)"],
-      model: "gpt-5-mini",
       service: "http://localhost:6767",
     });
 
     expect(output?.header).toBe("Status");
     const pairs = output?.sections[0] ?? [];
     expect(pairs).toContainEqual(["Providers", "openai (api key)"]);
-    expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
     expect(pairs).toContainEqual(["Service", "http://localhost:6767"]);
   });
 
@@ -35,7 +33,6 @@ describe("status format", () => {
 
   test("surfaces resource diagnostics the daemon emits", () => {
     const output = createStatusOutput({
-      model: "gpt-5-mini",
       "resources.prompt.agents": "missing_or_unreadable",
       "resources.skills.invalid": 2,
       "resources.config.collisions": "project,user",
@@ -48,11 +45,11 @@ describe("status format", () => {
 
   test("drops labels the daemon never emits", () => {
     const output = createStatusOutput({
-      model: "gpt-5-mini",
+      memory: "off",
       active_skill: "review",
     });
     const pairs = output?.sections[0] ?? [];
-    expect(pairs.map(([k]: [string, string]) => k)).toEqual(["Model"]);
+    expect(pairs.map(([k]: [string, string]) => k)).toEqual(["Memory"]);
   });
 
   test("returns null for empty fields", () => {
@@ -65,6 +62,12 @@ describe("status format", () => {
     });
     const pairs = output?.sections[0] ?? [];
     expect(pairs).toContainEqual(["Providers", "openai (subscription + api key), anthropic (api key)"]);
+  });
+
+  test("carries no model, since the session's own model is the only one", () => {
+    const output = createStatusOutput({ provider_auth: ["openai (api key)"], model: "gpt-5-mini" });
+    const pairs = output?.sections[0] ?? [];
+    expect(pairs.map(([k]: [string, string]) => k)).not.toContain("Model");
   });
 
   test("filters out unknown fields", () => {
