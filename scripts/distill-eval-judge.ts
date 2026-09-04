@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { defaultCredentials } from "../src/agent-model";
 import { streamModelCall } from "../src/model-call";
 import { createModel } from "../src/model-factory";
 import { normalizeModel, providerFromModel } from "../src/provider-config";
@@ -34,10 +35,18 @@ Answer with the number of the memory that states it, or "none".`;
 
 export type JudgeRunner = (system: string, user: string) => Promise<string>;
 
-export function createJudgeRunner(model: string): JudgeRunner {
+/**
+ * A base URL routes the judge alone at an OpenAI-compatible endpoint, so a local judge can grade a
+ * hosted distiller's output in one run — the provider's own base URL is global and would move both.
+ */
+export function createJudgeRunner(model: string, baseUrl?: string): JudgeRunner {
   const qualified = normalizeModel(model);
-  const limiter = sharedRateLimiter(providerFromModel(qualified));
-  const client = createModel(qualified, limiter);
+  const provider = providerFromModel(qualified);
+  const limiter = sharedRateLimiter(provider);
+  const credentials = baseUrl
+    ? { ...defaultCredentials(), [provider]: { ...defaultCredentials()[provider], baseUrl } }
+    : undefined;
+  const client = createModel(qualified, limiter, credentials);
   return async (system, user) => {
     const { stream } = await streamModelCall({
       client,

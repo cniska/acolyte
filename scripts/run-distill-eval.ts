@@ -21,8 +21,8 @@ const DEFAULT_REPEATS = 5;
 const CONTEXT_MESSAGE_WINDOW = 20;
 
 const USAGE = `Usage:
-  run-distill-eval.ts [--prompt <file>] [--model <id>] [--judge-model <id>] [--repeats <n>]
-                      [--fixtures <dir>] [--only <id,...>] [--json]
+  run-distill-eval.ts [--prompt <file>] [--model <id>] [--judge-model <id>] [--judge-base-url <url>]
+                      [--repeats <n>] [--fixtures <dir>] [--only <id,...>] [--json]
   run-distill-eval.ts --capture <transcript.jsonl> --turn <n> --id <name> [--note <text>] [--fixtures <dir>]
   run-distill-eval.ts --find <transcript.jsonl> --pattern <regex>`;
 
@@ -115,7 +115,7 @@ async function runEval(args: string[]): Promise<void> {
     throw new Error(`no check catches the recorded failure in: ${uncaught.join(", ")}`);
   }
 
-  const judge = createJudgeRunner(judgeModel);
+  const judge = createJudgeRunner(judgeModel, parseFlag(args, "--judge-base-url"));
   const graded: GradedRepeat[] = [];
   for (const fixture of fixtures) {
     for (let repeatIndex = 0; repeatIndex < repeats; repeatIndex++) {
