@@ -1,6 +1,7 @@
 import { field } from "./field";
 import { HTTP_STATUS } from "./http-status";
 import type { Provider } from "./provider-contract";
+import { sleep } from "./sleep";
 
 export type RateLimiterConfig = {
   readonly backoffBaseMs: number;
@@ -111,7 +112,7 @@ export type RateLimitState = {
 };
 
 export type RateLimiter = {
-  beforeCall(): Promise<void>;
+  beforeCall(abortSignal?: AbortSignal): Promise<void>;
   onResponse(headers: Headers): void;
   onError(error: unknown): { shouldRetry: boolean; delayMs: number };
   reset(): void;
@@ -126,14 +127,14 @@ export function createRateLimiter(config: RateLimiterConfig): RateLimiter {
   let tokensResetMs: number | undefined;
 
   return {
-    async beforeCall() {
+    async beforeCall(abortSignal?: AbortSignal) {
       // Pace based on remaining budget learned from previous responses
       const reqReset = requestsResetMs;
       const tokReset = tokensResetMs;
       if (requestsRemaining !== undefined && requestsRemaining <= 1 && reqReset !== undefined) {
-        await new Promise((resolve) => setTimeout(resolve, jitter(reqReset)));
+        await sleep(jitter(reqReset), abortSignal);
       } else if (tokensRemaining !== undefined && tokensRemaining <= 0 && tokReset !== undefined) {
-        await new Promise((resolve) => setTimeout(resolve, jitter(tokReset)));
+        await sleep(jitter(tokReset), abortSignal);
       }
     },
 
