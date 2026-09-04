@@ -1,4 +1,6 @@
 import { stderr, stdout } from "node:process";
+import { BRAILLE_BLANK, diagonalPosition, gradientRgb } from "./brand-gradient";
+import { BRAND_WORDMARK_GAP, BRAND_WORDMARK_ROWS } from "./brand-mark";
 import { palette } from "./palette";
 import { ansi } from "./tui/styles";
 
@@ -52,8 +54,35 @@ const color = {
   bold: paint((value) => `\x1b[1m${value}\x1b[22m`),
 };
 
-export function formatCliTitle(version: string): string {
-  return `${color.brand("Acolyte")}${color.dim(color.white(` v${version}`))}`;
+/** Paints braille art cell by cell along the brand gradient, coalescing runs of one color. */
+function paintGradient(rows: ReadonlyArray<string>): string[] {
+  if (!colorEnabled()) return [...rows];
+  const width = Math.max(...rows.map((row) => [...row].length));
+  return rows.map((row, y) => {
+    let painted = "";
+    let current = "";
+    for (const [x, cell] of [...row].entries()) {
+      if (cell === BRAILLE_BLANK) {
+        painted += cell;
+        continue;
+      }
+      const [r, g, b] = gradientRgb(diagonalPosition(x, y, width, rows.length));
+      const sgr = `\x1b[38;2;${r};${g};${b}m`;
+      if (sgr !== current) {
+        painted += sgr;
+        current = sgr;
+      }
+      painted += cell;
+    }
+    return current ? `${painted}\x1b[39m` : painted;
+  });
+}
+
+/** The full wordmark, with the version set under the lettering. */
+export function formatCliBanner(version: string): string {
+  const art = BRAND_WORDMARK_ROWS.map((row) => row.chevron + BRAND_WORDMARK_GAP + row.word);
+  const indent = " ".repeat([...BRAND_WORDMARK_ROWS[0].chevron, ...BRAND_WORDMARK_GAP].length);
+  return [...paintGradient(art), `${indent}${color.dim(color.white(`v${version}`))}`].join("\n");
 }
 
 export function tokenizeStreamContent(content: string): string[] {

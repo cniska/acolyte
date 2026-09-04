@@ -1,8 +1,8 @@
 export const palette = {
   // Brand
   brand: "#A56EFF",
-  mascot: "#2A1D4A",
-  mascotEyes: "#FFD84D",
+  brandDeep: "#6745A4",
+  brandLight: "#C4B5FD",
 
   // Text — one gray + one dim, borrowed from Claude Code, shared across the UI.
   text: "white",

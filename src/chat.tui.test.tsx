@@ -119,11 +119,10 @@ describe("chat tui visual regression: header", () => {
     expect(out).toBe(
       dedent(
         `
-     ▗█████▖   Acolyte
-    ▟█ ● ● █▙  version 0.1.0
-    ▜█▄▄▄▄▄█▛  session sess_demo1234
-    `,
-        2,
+  ⠙⣿⣆⠀⠀⠀⠀⠀⣾⠿⠿⢿⣷⣄  Acolyte
+  ⠀⠈⢿⣧⡀⠀⠀⢀⣤⣤⣤⣤⣿⣿  version 0.1.0
+  ⠀⢀⣾⡟⠁⠀⠀⣿⣿⠋⠁⢀⣿⣿  session sess_demo1234
+  ⣠⣿⠏⠀⠀⠀⠀⠹⢿⣷⣶⠞⣿⣿`,
       ),
     );
   });

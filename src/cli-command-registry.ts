@@ -54,7 +54,7 @@ import { createId } from "./short-id";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skill-ops";
 import { formatStatus } from "./status-format";
 import { openTraceStore } from "./trace-store";
-import { formatCliTitle, printDim, printError, printOutput } from "./ui";
+import { formatCliBanner, printDim, printError, printOutput } from "./ui";
 
 export function commandHelpDoc(name: string): CliCommandHelp | undefined {
   return COMMAND_REGISTRY[name]?.help();
@@ -72,7 +72,7 @@ export function usage(version: string): void {
   const docs = Object.values(COMMAND_REGISTRY)
     .filter((entry) => !entry.hidden)
     .map((entry) => entry.help());
-  printUsage(version, docs, printOutput, formatCliTitle);
+  printUsage(version, docs, printOutput, formatCliBanner);
 }
 
 async function resumeMode(args: string[]): Promise<void> {

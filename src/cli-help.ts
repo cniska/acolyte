@@ -46,7 +46,7 @@ export function printUsage(
   version: string,
   docs: CliCommandHelp[],
   printOutput: Print,
-  formatCliTitle: (version: string) => string,
+  formatCliBanner: (version: string) => string,
 ): void {
   const commands = createUsageCommandRows(docs);
   const options = createUsageOptionRows();
@@ -61,7 +61,7 @@ export function printUsage(
   const optionLines = aligned.slice(commands.length);
 
   printLineBreak(printOutput);
-  printOutput(formatCliTitle(version));
+  for (const line of formatCliBanner(version).split("\n")) printOutput(line);
   printLineBreak(printOutput);
   printOutput(headingText(t("cli.help.section.usage")));
   printOutput("  acolyte");

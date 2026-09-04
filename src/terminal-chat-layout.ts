@@ -1,6 +1,7 @@
 import { extname } from "node:path";
 import { z } from "zod";
 import { unreachable } from "./assert";
+import { BRAND_MARK_GAP, BRAND_MARK_ROWS } from "./brand-mark";
 import { segmentAssistantContent, wrapAssistantContent, wrapUserText } from "./chat-content";
 import { alignCols, formatCommandOutput } from "./chat-format";
 import { GLYPH_FILLED, GLYPH_FISHEYE, GLYPH_HOLLOW, GLYPH_USER } from "./chat-glyphs";
@@ -306,24 +307,24 @@ export function layoutHeader(input: ChatViewportPresentation["header"]): Termina
           { text: rest.join(" "), role: "plain" },
         ];
   };
+  const markSpans = (row: number): Array<{ text: string; role: TerminalStyleRole }> => [
+    { text: BRAND_MARK_ROWS[row].chevron, role: "header-mark" },
+    { text: BRAND_MARK_GAP, role: "header-mark" },
+    { text: BRAND_MARK_ROWS[row].letter, role: "header-brand" },
+    { text: "  ", role: "plain" },
+  ];
   return {
     lines: [
       {
         spans: [
-          { text: "   ▗█████▖   ", role: "header-mascot" },
+          ...markSpans(0),
           { text: input.title, role: "header-brand" },
           ...(input.titleSuffix ? [{ text: input.titleSuffix, role: "header-brand" as const }] : []),
         ],
       },
-      {
-        spans: [
-          { text: "  ▟█ ", role: "header-mascot" },
-          { text: "● ●", role: "header-eyes" },
-          { text: " █▙  ", role: "header-mascot" },
-          ...meta(`version ${input.version}`),
-        ],
-      },
-      { spans: [{ text: "  ▜█▄▄▄▄▄█▛  ", role: "header-mascot" }, ...meta(`session ${input.sessionId}`)] },
+      { spans: [...markSpans(1), ...meta(`version ${input.version}`)] },
+      { spans: [...markSpans(2), ...meta(`session ${input.sessionId}`)] },
+      { spans: markSpans(3) },
     ],
   };
 }
