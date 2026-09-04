@@ -186,9 +186,16 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
     return;
   }
 
-  // Checked before anything is cleared or read: distillation is the only thing that turns a
-  // transcript into a fact, so without a model to run it there is no import to attempt. A dry run
-  // makes no model call, which is what makes it the thing to run before a provider is connected.
+  // Discarding what earlier runs wrote asks nothing of a model, so it answers before the model is
+  // resolved: an install with none configured is exactly where clearing a half-finished run belongs.
+  if (hasBoolFlag(args, "--reset")) {
+    await deps.removeDir(deps.scratchDir);
+    if (!json) deps.printDim(t("cli.import.reset", { path: deps.scratchDir }));
+  }
+
+  // Checked before anything is read: distillation is the only thing that turns a transcript into a
+  // fact, so without a model to run it there is no import to attempt. A dry run makes no model
+  // call, which is what makes it the thing to run before a provider is connected.
   const chosen = dryRun ? null : deps.resolveModel();
   if (chosen?.kind === "unconfigured") {
     deps.commandError("import", t("cli.model.not_configured"));
@@ -197,11 +204,6 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
   if (chosen?.kind === "unavailable") {
     deps.commandError("import", t("cli.import.no_model", { model: chosen.model }));
     return;
-  }
-
-  if (hasBoolFlag(args, "--reset")) {
-    await deps.removeDir(deps.scratchDir);
-    if (!json) deps.printDim(t("cli.import.reset", { path: deps.scratchDir }));
   }
 
   const ledgerPath = join(deps.scratchDir, LEDGER_FILE);

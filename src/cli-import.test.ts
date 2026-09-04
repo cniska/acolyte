@@ -236,6 +236,20 @@ describe("importMode", () => {
     expect(h.removed).toEqual(["/scratch"]);
   });
 
+  test("--reset clears the corpus on an install with no model configured", async () => {
+    const h = harness([samplePlan({ pending: 0 })], { model: null });
+    await importMode(["--reset"], h.deps);
+
+    expect(h.removed).toEqual(["/scratch"]);
+  });
+
+  test("--reset clears the corpus when the model's provider has no credential", async () => {
+    const h = harness([samplePlan({ pending: 0 })], { distillAvailable: false });
+    await importMode(["--reset"], h.deps);
+
+    expect(h.removed).toEqual(["/scratch"]);
+  });
+
   test("--json prints one record per session and no summary prose", async () => {
     const h = harness([samplePlan()]);
     await importMode(["--json", "--yes"], h.deps);
