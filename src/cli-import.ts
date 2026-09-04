@@ -72,7 +72,7 @@ function columnLabels(): Record<string, string> {
 function planRow(plan: ImportSessionPlan): Record<string, string> {
   return {
     session: shortId(plan.sourceSessionId),
-    project: plan.project ?? "-",
+    project: plan.project,
     turns: String(plan.pending),
     tokens: formatCompactNumber(plan.estimatedTokens),
   };
@@ -81,7 +81,7 @@ function planRow(plan: ImportSessionPlan): Record<string, string> {
 function resultRow(result: ImportSessionResult): Record<string, string> {
   return {
     session: shortId(result.plan.sourceSessionId),
-    project: result.plan.project ?? "-",
+    project: result.plan.project,
     memories: String(result.facts),
     replaced: String(result.superseded),
     tokens: formatCompactNumber(result.tokens),

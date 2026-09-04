@@ -99,7 +99,7 @@ export type ImportSessionPlan = {
   readonly path: string;
   readonly sessionId: string;
   readonly workspace: string | null;
-  readonly project: string | null;
+  readonly project: string;
   readonly lastActivityAt: string | null;
   readonly movement: number | null;
   readonly stale: boolean;
@@ -293,7 +293,7 @@ export async function planImport(options: PlanImportOptions): Promise<ImportPlan
       path: candidate.file.path,
       sessionId: importedSessionId(CLAUDE_CODE_SOURCE, candidate.sourceSessionId),
       workspace: candidate.workspace,
-      project: candidate.project,
+      project: options.project,
       lastActivityAt: candidate.lastActivityAt,
       movement,
       stale: isStale,
