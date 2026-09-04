@@ -98,6 +98,9 @@ export interface SessionState {
   activeSessionId?: SessionId;
 }
 
+export const sessionStorageKindSchema = z.enum(["local", "cloud"]);
+export type SessionStorageKind = z.infer<typeof sessionStorageKindSchema>;
+
 export interface SessionStore {
   listSessions(options?: { limit?: number }): Promise<readonly Session[]>;
   getSession(id: SessionId): Promise<Session | null>;

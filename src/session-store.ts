@@ -6,7 +6,7 @@ import type { appConfig as AppConfig } from "./app-config";
 import { legacyChatRowFromTranscript, transcriptRowSchema } from "./chat-transcript-contract";
 import { log } from "./log";
 import { dataDir } from "./paths";
-import type { SessionStore } from "./session-contract";
+import type { SessionStorageKind, SessionStore } from "./session-contract";
 import { type Session, type SessionId, type SessionState, sessionIdSchema, sessionSchema } from "./session-contract";
 import { searchMessages } from "./session-ops";
 import { createId } from "./short-id";
@@ -193,9 +193,6 @@ export function getSessionStore(): Promise<SessionStore> {
   });
   return storePromise;
 }
-
-export const sessionStorageKindSchema = z.enum(["local", "cloud"]);
-export type SessionStorageKind = z.infer<typeof sessionStorageKindSchema>;
 
 /** Where sessions land, so the chat header can name the backend `getSessionStore` will resolve to. */
 export function sessionStorageKind(config: typeof AppConfig): SessionStorageKind {
