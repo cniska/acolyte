@@ -3,7 +3,7 @@ import { CodedError } from "./coded-error";
 import { decodeTokenExpiry } from "./credentials";
 import { CLOUD_ERROR_CODES } from "./error-contract";
 
-export const REFRESH_ROUTE = "/api/v1/auth/refresh";
+const REFRESH_ROUTE = "/api/v1/auth/refresh";
 
 /** Renew this far ahead of expiry, so a token cannot lapse between the check and the request. */
 const RENEW_SKEW_MS = 60_000;

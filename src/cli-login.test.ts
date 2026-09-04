@@ -120,6 +120,27 @@ describe("loginMode", () => {
     expect(output()).toContain("test@example.com");
   });
 
+  test("the oauth handoff stores the refresh token the browser returned", async () => {
+    const { deps, calls } = createLoginDeps({ prompt: () => "" });
+
+    await loginMode([], deps);
+
+    expect(calls).toContain("writeCredential:cloudRefreshToken");
+    expect(calls).not.toContain("removeCredential:cloudRefreshToken");
+  });
+
+  test("a hand-pasted token drops the refresh token of the account it replaces", async () => {
+    const { deps, calls } = createLoginDeps({
+      prompt: () => "https://custom.example.com",
+      promptHidden: async () => TOKEN,
+    });
+
+    await loginMode([], deps);
+
+    expect(calls).toContain("removeCredential:cloudRefreshToken");
+    expect(calls).not.toContain("writeCredential:cloudRefreshToken");
+  });
+
   test("custom url falls back to manual token", async () => {
     const { deps, calls, output } = createLoginDeps({
       prompt: () => "https://custom.example.com",
