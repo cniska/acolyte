@@ -60,8 +60,7 @@ export async function readImportLedger(path: string): Promise<ImportLedger> {
 
 export async function writeImportLedger(path: string, ledger: ImportLedger): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  // Write + rename so a run killed mid-write leaves the last complete ledger rather than a
-  // truncated one: this is rewritten after every turn, so the window is open for most of a run.
+  // Write + rename so a run killed mid-write leaves the last complete ledger, not a truncated one.
   const tmp = `${path}.${process.pid}.tmp`;
   await writeFile(tmp, `${JSON.stringify(ledger, null, 2)}\n`, "utf8");
   await rename(tmp, path);

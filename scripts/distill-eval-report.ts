@@ -166,8 +166,7 @@ export function renderReport(report: EvalReport): string {
     lines.push(`  ${key.padEnd(14)} ${percent(value)}`);
   }
   lines.push("");
-  // Every figure carries its rate over the run's own observations, so a run at other --repeats or
-  // over another --only selection compares against this one instead of just scaling with volume.
+  // Rated over the run's own observations, so runs at other --repeats or --only still compare.
   const perObservation = (count: number) => `${count} (${percent(rate(count, report.observations))})`;
   lines.push(`perishable at project/user scope: ${perObservation(report.perishableAtDurableScope)}`);
   lines.push(`quote violations: ${perObservation(report.quoteViolations.length)}`);

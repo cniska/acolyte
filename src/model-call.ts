@@ -96,11 +96,9 @@ async function withProviderRetry<T>(
 }
 
 /**
- * Opens the stream under the same deadline that later bounds reading it, because a provider can
- * accept the connection and then send no headers at all — a stall the stream's own timer never sees,
- * since there is no stream yet. The deadline covers only the opening; once headers arrive the timer
- * is dropped and a long healthy answer runs as long as it needs. The caller's own cancellation stays
- * live for the whole call, so aborting mid-answer still reaches the provider.
+ * Opens the stream under a deadline, since a provider can accept the connection and send no headers
+ * at all — a stall with no stream yet for `withIdleDeadline` to watch. The deadline covers only the
+ * opening, so a long healthy answer is never cut short; the caller's own signal stays live throughout.
  */
 async function openStream(
   client: LanguageModelV4,
@@ -158,7 +156,6 @@ export async function embedModelCall(options: EmbedCallOptions): Promise<number[
     options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
     options.label,
     options.abortSignal,
-    // A fresh deadline per attempt, so a retry gets the whole round trip rather than what is left.
     () =>
       options.client.doEmbed({
         values: [...options.values],

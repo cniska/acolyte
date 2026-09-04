@@ -200,11 +200,7 @@ async function getCachedStore(): Promise<MemoryStore> {
 
 export type DistillRunner = (systemPrompt: string, userContent: string, model: string) => Promise<DistillObservation[]>;
 
-/**
- * Reads the call's facts, keeping each one that validates. Per-entry rather than per-call: the
- * batch carries every fact a turn established, so rejecting all of them over one bad field would
- * lose the turn's whole yield to a single formatting slip.
- */
+/** Reads the call's facts, keeping each one that validates, so one bad entry costs only itself. */
 export function parseObservationToolCall(call: Pick<LanguageModelV4ToolCall, "input">): DistillObservation[] {
   let entries: unknown[];
   try {
