@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
-import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { emptyImportLedger, type ImportLedger, readImportLedger, writeImportLedger } from "./import-ledger";
 import { createMemoryPolicy, type MemoryStore } from "./memory-contract";
@@ -291,4 +291,22 @@ describe("import ledger", () => {
     await expect(readImportLedger(path)).rejects.toThrow();
   });
 
+  test("each write replaces the ledger whole", async () => {
+    const dir = createDir("acolyte-ledger-");
+    const path = join(dir, "ledger.json");
+    const entry = (exchanges: number) => ({
+      version: 1 as const,
+      sessions: { [`${CLAUDE_CODE_SOURCE}:aaa`]: { importedAt: new Date().toISOString(), exchanges } },
+    });
+
+    await writeImportLedger(path, entry(1));
+    const first = statSync(path).ino;
+    await writeImportLedger(path, entry(2));
+
+    expect(statSync(path).ino).not.toBe(first);
+    expect(readdirSync(dir)).toEqual(["ledger.json"]);
+    expect(await readImportLedger(path)).toMatchObject({
+      sessions: { [`${CLAUDE_CODE_SOURCE}:aaa`]: { exchanges: 2 } },
+    });
+  });
 });

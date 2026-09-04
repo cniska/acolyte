@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
 import { isoDateTimeSchema, nowIso } from "./datetime";
@@ -60,5 +60,9 @@ export async function readImportLedger(path: string): Promise<ImportLedger> {
 
 export async function writeImportLedger(path: string, ledger: ImportLedger): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(ledger, null, 2)}\n`, "utf8");
+  // Write + rename so a run killed mid-write leaves the last complete ledger rather than a
+  // truncated one: this is rewritten after every turn, so the window is open for most of a run.
+  const tmp = `${path}.${process.pid}.tmp`;
+  await writeFile(tmp, `${JSON.stringify(ledger, null, 2)}\n`, "utf8");
+  await rename(tmp, path);
 }
