@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { stdout } from "node:process";
-import { printDim, printOutput, setUiSink, tokenizeStreamContent } from "./ui";
+import { BRAND_WORDMARK_GAP, BRAND_WORDMARK_WIDTH } from "./brand-mark";
+import { formatCliBanner, printDim, printOutput, setUiSink, tokenizeStreamContent } from "./ui";
 
 describe("ui stream helpers", () => {
   test("tokenizeStreamContent preserves whitespace tokens including newlines", () => {
@@ -51,5 +52,36 @@ describe("ui color suppression", () => {
   test("printOutput never colors its content", () => {
     const written = captureWith(true, undefined, () => printOutput('{"event":"lifecycle.start"}'));
     expect(written).toBe('{"event":"lifecycle.start"}\n');
+  });
+});
+
+describe("cli banner", () => {
+  const CARET_WIDTH = 4;
+  const lastLine = (version: string): string => {
+    const lines = formatCliBanner(version).split("\n");
+    return lines[lines.length - 1] ?? "";
+  };
+
+  test("the version ends flush with the lettering's right edge whatever its length", () => {
+    const edge = CARET_WIDTH + BRAND_WORDMARK_GAP.length + BRAND_WORDMARK_WIDTH;
+    for (const version of ["1.0.0", "0.27.2", "0.100.0", "1.2.3-rc.4"]) {
+      expect(lastLine(version).length).toBe(edge);
+    }
+  });
+
+  test("a version wider than the mark still renders rather than padding negatively", () => {
+    expect(lastLine("0.0.0-a-very-long-prerelease-tag")).toEndWith("v0.0.0-a-very-long-prerelease-tag");
+  });
+
+  test("a terminal gets the monochrome sweep, brightest on the top row", () => {
+    const written = captureWith(true, undefined, () => printOutput(formatCliBanner("0.27.2")));
+    const rows = written.trimEnd().split("\n");
+    expect(rows[0]).toContain(`${ESC}[38;2;245;245;245m`);
+    expect(rows.at(-1)).toContain(`${ESC}[38;2;163;163;163m`);
+  });
+
+  test("a redirected stream gets bare cells", () => {
+    const plain = captureWith(false, undefined, () => printOutput(formatCliBanner("0.27.2")));
+    expect(plain).not.toContain(ESC);
   });
 });
