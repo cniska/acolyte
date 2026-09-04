@@ -79,8 +79,12 @@ export async function gitCommitsSince(workspace: string, sinceIso: string): Prom
   const args = ["git", "rev-list", "--count", "--ignore-missing", `--since=${sinceIso}`, "HEAD"];
   const { code, stdout, stderr } = await runCommand(args, workspace);
   if (code !== 0) throw new Error(stderr.trim() || "git rev-list failed");
-  const count = Number(stdout.trim());
-  if (!Number.isInteger(count) || count < 0) throw new Error(`git rev-list counted ${stdout.trim() || "nothing"}`);
+  const counted = stdout.trim();
+  const count = Number(counted);
+  // Empty output is its own case: `Number("")` is 0, which would pass for a real count of zero.
+  if (counted === "" || !Number.isInteger(count) || count < 0) {
+    throw new Error(`git rev-list counted ${counted || "nothing"}`);
+  }
   return count;
 }
 
