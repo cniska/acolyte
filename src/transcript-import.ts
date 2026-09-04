@@ -1,3 +1,4 @@
+import type { Stats } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { DistillScope } from "./distill-ops";
@@ -35,6 +36,20 @@ export type ImportReader = {
 };
 
 /**
+ * A file the listing named and that is now gone was deleted between the two calls, which is a
+ * transcript the run genuinely has no claim on. Any other failure to read it is not that, and the
+ * plan has no way to account for a file it silently skipped, so the caller has to see it.
+ */
+async function statOrMissing(path: string): Promise<Stats | null> {
+  try {
+    return await stat(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+/**
  * The window selects whole session files by last activity, so a session still open at the boundary
  * arrives complete rather than clipped, and the ledger is what keeps its earlier half from being
  * distilled twice.
@@ -52,7 +67,7 @@ async function listTranscripts(dir: string, since: Date): Promise<TranscriptSour
   for (const name of names) {
     if (!name.endsWith(".jsonl")) continue;
     const path = join(dir, name);
-    const info = await stat(path).catch(() => null);
+    const info = await statOrMissing(path);
     if (!info?.isFile() || info.mtime < since) continue;
     files.push({ path, modifiedAt: info.mtime });
   }
