@@ -22,7 +22,7 @@ import { toolMode } from "./cli-tool";
 import { traceMode } from "./cli-trace";
 import { updateMode } from "./cli-update";
 import { createClient } from "./client-factory";
-import { createVerifier, exchangeAuthCode } from "./cloud-auth-code";
+import { exchangeAuthCode } from "./cloud-auth-code";
 import { checkCloudCredential, runCloudMigration, runUserScopeMerge } from "./cloud-migrate-runner";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 import {
@@ -40,6 +40,7 @@ import { readOAuthTokensSync, removeOAuthTokens, writeOAuthTokens } from "./oaut
 import { openBrowser } from "./open-browser";
 import { exchangeCode } from "./openai-oauth";
 import { startOAuthCallbackServer } from "./openai-oauth-server";
+import { createPkce } from "./pkce";
 import { startServer } from "./server-app";
 import {
   apiUrlForPort,
@@ -178,7 +179,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
               commandError,
               commandHelp,
               createId,
-              createVerifier,
+              createPkce,
               exchangeAuthCode,
               startCallbackServer,
               openBrowser,

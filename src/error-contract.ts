@@ -38,6 +38,7 @@ export const MEMORY_ERROR_CODES = {
 export type MemoryErrorCode = (typeof MEMORY_ERROR_CODES)[keyof typeof MEMORY_ERROR_CODES];
 
 export const LOGIN_ERROR_CODES = {
+  callbackTimeout: "E_LOGIN_CALLBACK_TIMEOUT",
   codeMissing: "E_LOGIN_CODE_MISSING",
   exchangeUnsupported: "E_LOGIN_EXCHANGE_UNSUPPORTED",
   exchangeRefused: "E_LOGIN_EXCHANGE_REFUSED",

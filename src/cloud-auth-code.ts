@@ -1,4 +1,3 @@
-import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { CodedError } from "./coded-error";
 import { LOGIN_ERROR_CODES } from "./error-contract";
@@ -12,15 +11,6 @@ const exchangeResponseSchema = z.object({
 });
 
 export type CloudTokens = z.infer<typeof exchangeResponseSchema>;
-
-/** The secret half of the handoff. It never leaves this process, so a code alone buys nobody anything. */
-export function createVerifier(): string {
-  return randomBytes(32).toString("base64url");
-}
-
-export function challengeFor(verifier: string): string {
-  return createHash("sha256").update(verifier).digest("base64url");
-}
 
 /**
  * Trades the code the browser carried back for the account's tokens. A cloud with no exchange route

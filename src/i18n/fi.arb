@@ -160,6 +160,8 @@
   "cli.login.migrate.start": "Kopioidaan paikallinen muisti ja istunnot pilveen.",
   "cli.login.saved": "Kirjauduttu sisään.",
   "cli.login.exchange_refused": "Pilvipalvelu hylkäsi tämän kirjautumisen. Yritä uudelleen komennolla `acolyte login`.",
+  "cli.login.failed": "Kirjautuminen ei valmistunut: {reason}",
+  "cli.login.no_code": "Selain palasi ilman kirjautumiskoodia. Yritä uudelleen komennolla `acolyte login`.",
   "cli.login.no_exchange": "Tämä pilvipalvelu on vanhempi kuin nykyinen kirjautuminen. Päivitä pilvipalvelu ja kirjaudu sitten uudelleen.",
   "cli.login.timeout": "Tunnistautuminen aikakatkaistiin. Yritä uudelleen.",
   "cli.login.url.insecure": "Pilven osoitteen on käytettävä HTTPS:ää, ellei se osoita localhostiin.",

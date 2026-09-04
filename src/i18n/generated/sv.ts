@@ -421,6 +421,13 @@ export const SV_MESSAGES = {
   "cli.login.exchange_refused": [
     { kind: "text", value: "Molntjänsten avvisade den här inloggningen. Kör `acolyte login` för att försöka igen." },
   ],
+  "cli.login.failed": [
+    { kind: "text", value: "Inloggningen slutfördes inte: " },
+    { kind: "arg", name: "reason" },
+  ],
+  "cli.login.no_code": [
+    { kind: "text", value: "Webbläsaren kom tillbaka utan inloggningskod. Kör `acolyte login` för att försöka igen." },
+  ],
   "cli.login.no_exchange": [
     {
       kind: "text",

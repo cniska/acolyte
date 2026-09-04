@@ -970,8 +970,17 @@
     "description": "Confirmation that credentials were stored and the user is signed in."
   },
   "cli.login.exchange_refused": "The cloud refused this sign-in. Run `acolyte login` to try again.",
+  "cli.login.failed": "Sign-in did not finish: {reason}",
+  "@cli.login.failed": {
+    "description": "Shown when the browser handoff fails for a reason with no guidance of its own — an unreachable cloud, an unwritable credentials file. Carries the underlying reason.",
+    "placeholders": { "reason": { "type": "String" } }
+  },
   "@cli.login.exchange_refused": {
     "description": "Shown when the code exchange reaches the cloud and is turned down. 'acolyte login' is a literal command and must not be translated; keep the backticks."
+  },
+  "cli.login.no_code": "The browser came back without a sign-in code. Run `acolyte login` to try again.",
+  "@cli.login.no_code": {
+    "description": "Shown when the callback carries no code — a cancelled or failed authorization. 'acolyte login' is a literal command and must not be translated; keep the backticks."
   },
   "cli.login.no_exchange": "This cloud is running a version that predates the current sign-in. Update the cloud service, then sign in again.",
   "@cli.login.no_exchange": {

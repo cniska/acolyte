@@ -30,7 +30,7 @@ export function startCallbackServer(expectedState: string): Promise<{ port: numb
     });
 
     const timeout = setTimeout(() => {
-      rejectResult(new Error("timeout"));
+      rejectResult(new CodedError(LOGIN_ERROR_CODES.callbackTimeout, "the browser did not come back in time"));
       server.stop();
     }, TIMEOUT_MS);
 

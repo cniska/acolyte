@@ -43,9 +43,9 @@ A scope key is a hash of what it names — a repository's `owner/repo`, or the a
 
 EdDSA JWT tokens (Ed25519) with a `sub` claim identifying the user. All data is isolated by `owner_id` derived from the token subject.
 
-Sign-in never carries a credential through the browser. The CLI keeps a random verifier, sends its SHA-256 as the `challenge`, and the browser hands back a one-minute code bound to that challenge; the CLI trades code and verifier at `/api/v1/auth/cli-token/exchange` for the tokens. A code read out of browser history is worth nothing without the verifier, which never leaves the CLI process.
+Sign-in never carries a credential through the browser. The CLI keeps a random verifier, sends its SHA-256 as the `challenge`, and the browser hands back a short-lived code bound to that challenge; the CLI then trades code and verifier at `/api/v1/auth/cli-token/exchange` for the tokens. The verifier goes to the cloud in that exchange and never through the browser, so a code read out of browser history cannot be spent.
 
-The API token lasts a day. The CLI trades the stored refresh token for a new one as the old nears expiry or when the cloud rejects it — once per rejection, then the answer stands. The refresh token lasts 90 days, is not rotated by an exchange, and buys nothing but API tokens: presented to a data route, the cloud refuses it. A token pasted with `--token` comes with no refresh token, so it stands until it expires; `acolyte logout` removes both.
+The API token lasts a day. The CLI trades the stored refresh token for a new API token as the old one nears expiry or when the cloud rejects it — once per rejection, then the answer stands. The refresh token lasts 90 days, is not rotated by an exchange, and buys nothing but API tokens: presented to a data route, the cloud refuses it. A token pasted with `--token` comes with no refresh token, so it stands until it expires; `acolyte logout` removes both.
 
 The account page on the dashboard signs out everywhere, which withdraws every token the account holds — the remedy when a machine or a credential is lost. The machines still in use sign in again.
 
@@ -89,7 +89,8 @@ See [acolyte-cloud](https://github.com/cniska/acolyte-cloud) for setup and deplo
 
 - `src/cloud-client.ts` — cloud client with `MemoryStore` and `SessionStore` implementations
 - `src/cloud-session.ts` — holds the API token and renews it from the refresh token
-- `src/cloud-auth-code.ts` — the sign-in verifier, its challenge, and the code exchange
+- `src/cloud-auth-code.ts` — the sign-in code exchange
+- `src/pkce.ts` — the verifier and challenge pair every browser handoff uses
 - `src/cloud-migrate.ts` — one-time copy of local memory and sessions into an account
 - `src/cloud-migrate-runner.ts` — opens the local stores the copy reads from
 - `src/credentials.ts` — credentials file read/write

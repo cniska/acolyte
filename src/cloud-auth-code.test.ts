@@ -1,6 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
-import { createHash } from "node:crypto";
-import { challengeFor, createVerifier, exchangeAuthCode } from "./cloud-auth-code";
+import { exchangeAuthCode } from "./cloud-auth-code";
 import { errorCode } from "./error-contract";
 
 const BASE = "https://cloud.example.com";
@@ -8,19 +7,6 @@ const BASE = "https://cloud.example.com";
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 }
-
-describe("the handoff secret", () => {
-  test("a verifier is unguessable and never repeats", () => {
-    const first = createVerifier();
-    expect(first).not.toBe(createVerifier());
-    expect(first.length).toBeGreaterThanOrEqual(43);
-  });
-
-  test("the challenge is the verifier's sha-256, so the cloud can check it without holding it", () => {
-    const verifier = createVerifier();
-    expect(challengeFor(verifier)).toBe(createHash("sha256").update(verifier).digest("base64url"));
-  });
-});
 
 describe("exchanging the code", () => {
   test("sends the code with its verifier and returns the account's tokens", async () => {

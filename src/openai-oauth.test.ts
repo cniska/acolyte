@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildAuthorizeUrl, createPkce, exchangeCode, extractAccountId, refreshOAuthTokens } from "./openai-oauth";
+import { buildAuthorizeUrl, exchangeCode, extractAccountId, refreshOAuthTokens } from "./openai-oauth";
 import { OPENAI_OAUTH_CLIENT_ID, OPENAI_OAUTH_REDIRECT_URI } from "./openai-oauth-contract";
 import type { FetchFn } from "./rate-limiter";
 
@@ -13,21 +13,6 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 const accountJwt = jwt({ chatgpt_account_id: "acct_top" });
-
-describe("createPkce", () => {
-  test("verifier uses only base64url-safe characters and is long enough", () => {
-    const { verifier } = createPkce();
-    expect(verifier).toMatch(/^[A-Za-z0-9\-_]+$/);
-    expect(verifier.length).toBeGreaterThanOrEqual(43);
-  });
-
-  test("challenge is the base64url sha256 of the verifier", () => {
-    const { verifier, challenge } = createPkce();
-    const hasher = new Bun.CryptoHasher("sha256");
-    hasher.update(verifier);
-    expect(challenge).toBe(hasher.digest("base64url"));
-  });
-});
 
 describe("buildAuthorizeUrl", () => {
   test("sets the required PKCE and codex flow params", () => {

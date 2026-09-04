@@ -160,6 +160,8 @@
   "cli.login.migrate.start": "Kopierar lokalt minne och sessioner till molnet.",
   "cli.login.saved": "Inloggad.",
   "cli.login.exchange_refused": "Molntjänsten avvisade den här inloggningen. Kör `acolyte login` för att försöka igen.",
+  "cli.login.failed": "Inloggningen slutfördes inte: {reason}",
+  "cli.login.no_code": "Webbläsaren kom tillbaka utan inloggningskod. Kör `acolyte login` för att försöka igen.",
   "cli.login.no_exchange": "Den här molntjänsten är äldre än den nuvarande inloggningen. Uppdatera molntjänsten och logga in igen.",
   "cli.login.timeout": "Autentiseringen tog för lång tid. Försök igen.",
   "cli.login.url.insecure": "Molnadressen måste använda HTTPS om den inte pekar på localhost.",

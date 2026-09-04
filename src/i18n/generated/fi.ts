@@ -420,6 +420,13 @@ export const FI_MESSAGES = {
   "cli.login.exchange_refused": [
     { kind: "text", value: "Pilvipalvelu hylkäsi tämän kirjautumisen. Yritä uudelleen komennolla `acolyte login`." },
   ],
+  "cli.login.failed": [
+    { kind: "text", value: "Kirjautuminen ei valmistunut: " },
+    { kind: "arg", name: "reason" },
+  ],
+  "cli.login.no_code": [
+    { kind: "text", value: "Selain palasi ilman kirjautumiskoodia. Yritä uudelleen komennolla `acolyte login`." },
+  ],
   "cli.login.no_exchange": [
     {
       kind: "text",

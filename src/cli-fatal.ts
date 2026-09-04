@@ -22,6 +22,7 @@ const FATAL_GUIDANCE: Record<ErrorCode, PlainTranslationKey | null> = {
   [CLOUD_ERROR_CODES.forbidden]: "fatal.cloud.forbidden",
   [CLOUD_ERROR_CODES.requestFailed]: "fatal.cloud.request_failed",
   [MEMORY_ERROR_CODES.embeddingUnavailable]: "fatal.memory.embedding_unavailable",
+  [LOGIN_ERROR_CODES.callbackTimeout]: null,
   [LOGIN_ERROR_CODES.codeMissing]: null,
   [LOGIN_ERROR_CODES.exchangeUnsupported]: null,
   [LOGIN_ERROR_CODES.exchangeRefused]: null,

@@ -413,6 +413,13 @@ export const EN_MESSAGES = {
   "cli.login.exchange_refused": [
     { kind: "text", value: "The cloud refused this sign-in. Run `acolyte login` to try again." },
   ],
+  "cli.login.failed": [
+    { kind: "text", value: "Sign-in did not finish: " },
+    { kind: "arg", name: "reason" },
+  ],
+  "cli.login.no_code": [
+    { kind: "text", value: "The browser came back without a sign-in code. Run `acolyte login` to try again." },
+  ],
   "cli.login.no_exchange": [
     {
       kind: "text",

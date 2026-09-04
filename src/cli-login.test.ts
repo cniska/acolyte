@@ -3,6 +3,7 @@ import { loginMode, logoutMode } from "./cli-login";
 import { CloudApiError } from "./cloud-client";
 import { CodedError } from "./coded-error";
 import { LOGIN_ERROR_CODES } from "./error-contract";
+import { challengeFor } from "./pkce";
 import { userResourceIdForSubject } from "./resource-id";
 
 const SUBJECT = "012627e3-1df9-476a-919d-f208a6bb9830";
@@ -50,7 +51,7 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
       calls.push(`commandHelp:${name}`);
     },
     createId: () => "test_state",
-    createVerifier: () => "test_verifier",
+    createPkce: () => ({ verifier: "test_verifier", challenge: challengeFor("test_verifier") }),
     exchangeAuthCode: async () => {
       calls.push("exchangeAuthCode");
       return { token: TOKEN, refresh: REFRESH_TOKEN, email: "test@example.com" };
@@ -170,7 +171,7 @@ describe("loginMode", () => {
     expect(output()).toContain("empty");
   });
 
-  test("a cloud too old for the code handoff says so instead of timing out", async () => {
+  test("a callback carrying no code is reported as that, not as an outdated cloud", async () => {
     const { deps, calls, output } = createLoginDeps({
       prompt: () => "",
       startCallbackServer: async () => ({
@@ -181,9 +182,39 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(output()).toContain("predates the current sign-in");
+    expect(output()).toContain("without a sign-in code");
     expect(output()).not.toContain("timed out");
     expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("an unreachable cloud carries its reason instead of claiming a timeout", async () => {
+    const { deps, output } = createLoginDeps({
+      prompt: () => "",
+      exchangeAuthCode: async () => {
+        throw new TypeError("fetch failed");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("fetch failed");
+    expect(output()).not.toContain("timed out");
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("only a wait that ran out is called a timeout", async () => {
+    const { deps, output } = createLoginDeps({
+      prompt: () => "",
+      startCallbackServer: async () => ({
+        port: 9999,
+        result: Promise.reject(new CodedError(LOGIN_ERROR_CODES.callbackTimeout, "timeout")),
+      }),
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("timed out");
     expect(process.exitCode).toBe(1);
   });
 
@@ -216,7 +247,7 @@ describe("loginMode", () => {
     expect(process.exitCode).toBe(1);
   });
 
-  test("the handoff carries a challenge, and the verifier never leaves the process", async () => {
+  test("the handoff carries the verifier's challenge, and never the verifier", async () => {
     let authUrl = "";
     const { deps } = createLoginDeps({
       prompt: () => "",
@@ -227,21 +258,22 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(authUrl).toContain("challenge=");
+    expect(authUrl).toContain(`challenge=${encodeURIComponent(challengeFor("test_verifier"))}`);
     expect(authUrl).not.toContain("test_verifier");
   });
 
-  test("oauth timeout sets exit code", async () => {
+  test("a credentials file that cannot be written says so, and does not claim a timeout", async () => {
     const { deps, output } = createLoginDeps({
       prompt: () => "",
-      startCallbackServer: async () => ({
-        port: 9999,
-        result: Promise.reject(new Error("timeout")),
-      }),
+      writeCredential: async () => {
+        throw new Error("EROFS: read-only file system");
+      },
     });
+
     await loginMode([], deps);
-    expect(process.exitCode).toBe(1);
-    expect(output()).toContain("timed out");
+
+    expect(output()).toContain("EROFS");
+    expect(output()).not.toContain("timed out");
   });
 
   test("refuses a plaintext cloud url before storing anything", async () => {
