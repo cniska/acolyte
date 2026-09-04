@@ -9,7 +9,6 @@ const STATUS_KEY_LABELS = {
   cloud_url: "status.label.cloud_url",
   cloud_user: "status.label.cloud_user",
   memory: "status.label.memory",
-  model: "status.label.model",
   protocol_version: "status.label.protocol_version",
   provider_auth: "status.label.providers",
   rpc_queue_length: "status.label.rpc_queue_length",

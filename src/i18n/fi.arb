@@ -272,7 +272,6 @@
   "status.label.cloud_url": "Pilven URL",
   "status.label.cloud_user": "Käyttäjä",
   "status.label.memory": "Muisti",
-  "status.label.model": "Malli",
   "status.label.protocol_version": "Protokollan versio",
   "status.label.providers": "Palveluntarjoajat",
   "status.label.resources.config.collisions": "Asetustiedostojen päällekkäisyydet",

@@ -290,7 +290,6 @@ export type MessageArgs = {
   "status.label.cloud_url": never;
   "status.label.cloud_user": never;
   "status.label.memory": never;
-  "status.label.model": never;
   "status.label.protocol_version": never;
   "status.label.providers": never;
   "status.label.resources.config.collisions": never;

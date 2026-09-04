@@ -1694,10 +1694,6 @@
   "@status.label.memory": {
     "description": "Row label in the status report for memory storage and size. Its value comes from status.memory.summary."
   },
-  "status.label.model": "Model",
-  "@status.label.model": {
-    "description": "Row label in the status report for the active model. Distinct from the picker label and the trace column, which may translate differently."
-  },
   "status.label.protocol_version": "Protocol version",
   "@status.label.protocol_version": {
     "description": "Row label in the status report for the client/server protocol version."

@@ -944,7 +944,6 @@ export const SV_MESSAGES = {
   "status.label.cloud_url": [{ kind: "text", value: "Moln-URL" }],
   "status.label.cloud_user": [{ kind: "text", value: "Användare" }],
   "status.label.memory": [{ kind: "text", value: "Minne" }],
-  "status.label.model": [{ kind: "text", value: "Modell" }],
   "status.label.protocol_version": [{ kind: "text", value: "Protokollversion" }],
   "status.label.providers": [{ kind: "text", value: "Leverantörer" }],
   "status.label.resources.config.collisions": [{ kind: "text", value: "Krockar mellan inställningsfiler" }],

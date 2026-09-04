@@ -942,7 +942,6 @@ export const FI_MESSAGES = {
   "status.label.cloud_url": [{ kind: "text", value: "Pilven URL" }],
   "status.label.cloud_user": [{ kind: "text", value: "Käyttäjä" }],
   "status.label.memory": [{ kind: "text", value: "Muisti" }],
-  "status.label.model": [{ kind: "text", value: "Malli" }],
   "status.label.protocol_version": [{ kind: "text", value: "Protokollan versio" }],
   "status.label.providers": [{ kind: "text", value: "Palveluntarjoajat" }],
   "status.label.resources.config.collisions": [{ kind: "text", value: "Asetustiedostojen päällekkäisyydet" }],

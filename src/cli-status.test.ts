@@ -20,7 +20,6 @@ function createStatusDeps(): {
       ({
         status: async () => ({
           providers: ["openai"],
-          model: "gpt-5-mini",
           service: "http://127.0.0.1:6767",
           memory: "off",
         }),

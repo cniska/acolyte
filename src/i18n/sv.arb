@@ -272,7 +272,6 @@
   "status.label.cloud_url": "Moln-URL",
   "status.label.cloud_user": "Användare",
   "status.label.memory": "Minne",
-  "status.label.model": "Modell",
   "status.label.protocol_version": "Protokollversion",
   "status.label.providers": "Leverantörer",
   "status.label.resources.config.collisions": "Krockar mellan inställningsfiler",

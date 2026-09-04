@@ -913,7 +913,6 @@ export const EN_MESSAGES = {
   "status.label.cloud_url": [{ kind: "text", value: "Cloud URL" }],
   "status.label.cloud_user": [{ kind: "text", value: "User" }],
   "status.label.memory": [{ kind: "text", value: "Memory" }],
-  "status.label.model": [{ kind: "text", value: "Model" }],
   "status.label.protocol_version": [{ kind: "text", value: "Protocol version" }],
   "status.label.providers": [{ kind: "text", value: "Providers" }],
   "status.label.resources.config.collisions": [{ kind: "text", value: "Config file collisions" }],

@@ -104,7 +104,6 @@ async function createStatusPayload(): Promise<StatusPayload> {
     openaiApiKey: Boolean(OPENAI_API_KEY),
     vercelApiKey: Boolean(appConfig.vercel.apiKey),
   });
-  const model = appConfig.model;
   const taskSummary = taskRegistry.summary();
   const resourceDiagnostics = collectResourceDiagnostics();
   const memory = await memoryStatusSummary();
@@ -115,7 +114,6 @@ async function createStatusPayload(): Promise<StatusPayload> {
     ok: true,
     providers,
     provider_auth: providerAuth,
-    ...(model ? { model } : {}),
     ...(memory ? { memory } : {}),
     protocol_version: PROTOCOL_VERSION,
     build: formatVersionWithCommit(resolveCliVersion(), resolveCliCommitShort()),

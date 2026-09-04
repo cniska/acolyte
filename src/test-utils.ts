@@ -333,7 +333,7 @@ export function createClient(overrides?: {
     });
   return {
     replyStream,
-    status: overrides?.status ?? (async () => ({ providers: ["openai"], model: "gpt-5-mini" })),
+    status: overrides?.status ?? (async () => ({ providers: ["openai"] })),
     taskStatus: overrides?.taskStatus ?? (async () => null),
     close: () => {},
   };
