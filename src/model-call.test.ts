@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { getEventListeners } from "node:events";
 import type { LanguageModelV4, LanguageModelV4StreamPart } from "@ai-sdk/provider";
 import { LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { embedModelCall, streamModelCall } from "./model-call";
@@ -169,6 +170,19 @@ describe("streamModelCall", () => {
     });
 
     expect(seen?.aborted).toBe(true);
+  });
+
+  test("a shared turn signal collects no listeners across its calls", async () => {
+    const controller = new AbortController();
+    const { client } = flakyModel([], []);
+    const limit = limiter();
+
+    for (let i = 0; i < 25; i++) {
+      await streamModelCall({ client, limiter: limit, request: { prompt: [] }, abortSignal: controller.signal });
+    }
+
+    // Node counts listeners per event; a hand-forwarded abort would leave one behind per call.
+    expect(getEventListeners(controller.signal, "abort").length).toBeLessThan(3);
   });
 
   test("gives up on a stream that never opens, rather than hanging on the connect", async () => {

@@ -101,15 +101,16 @@ async function openStream(
   abortSignal: AbortSignal | undefined,
   connectTimeoutMs: number,
 ): Promise<Awaited<ReturnType<LanguageModelV4["doStream"]>>> {
-  const controller = new AbortController();
-  abortSignal?.addEventListener("abort", () => controller.abort(abortSignal.reason), { once: true });
-  if (abortSignal?.aborted) controller.abort(abortSignal.reason);
+  const connect = new AbortController();
   const timer = setTimeout(
-    () => controller.abort(timeoutError(`model stream did not open within ${connectTimeoutMs}ms`)),
+    () => connect.abort(timeoutError(`model stream did not open within ${connectTimeoutMs}ms`)),
     connectTimeoutMs,
   );
+  // Composed rather than forwarded by hand: the caller's signal outlives this call and must still
+  // reach the provider mid-answer, so a listener added here would never be safe to remove.
+  const signal = abortSignal ? AbortSignal.any([abortSignal, connect.signal]) : connect.signal;
   try {
-    return await client.doStream({ ...request, abortSignal: controller.signal });
+    return await client.doStream({ ...request, abortSignal: signal });
   } finally {
     clearTimeout(timer);
   }
