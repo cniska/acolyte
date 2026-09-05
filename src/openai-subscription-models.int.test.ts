@@ -137,6 +137,32 @@ describe("resolveAuthRoute", () => {
     expect(await resolveAuthRoute("anthropic/claude-sonnet-5", { openai: { oauth: true } }, stub, env)).toBe("api_key");
   });
 
+  test("an unreachable subscription spends the key the user configured", async () => {
+    const env = { HOME: dirs.createDir("sm-") };
+    await writeOAuthTokens("openai", fresh, env);
+    const failing: FetchFn = async (input) =>
+      String(input).includes("api.github.com")
+        ? new Response(JSON.stringify({ tag_name: "rust-v0.150.0" }))
+        : new Response("", { status: 500 });
+
+    expect(await resolveAuthRoute("openai/gpt-5.5", { openai: { oauth: true, apiKey: "sk" } }, failing, env)).toBe(
+      "api_key",
+    );
+  });
+
+  test("an unreachable subscription with no key to spend fails rather than guessing", async () => {
+    const env = { HOME: dirs.createDir("sm-") };
+    await writeOAuthTokens("openai", fresh, env);
+    const failing: FetchFn = async (input) =>
+      String(input).includes("api.github.com")
+        ? new Response(JSON.stringify({ tag_name: "rust-v0.150.0" }))
+        : new Response("", { status: 500 });
+
+    await expect(resolveAuthRoute("openai/gpt-5.5", { openai: { oauth: true } }, failing, env)).rejects.toMatchObject({
+      code: PROVIDER_ERROR_CODES.subscriptionDiscoveryFailed,
+    });
+  });
+
   test("an unserved model with no key to fall back on fails by name", async () => {
     const env = { HOME: dirs.createDir("sm-") };
     await writeOAuthTokens("openai", fresh, env);

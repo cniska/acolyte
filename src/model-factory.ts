@@ -6,6 +6,7 @@ import { defaultCredentials, type ProviderCredentialsMap } from "./agent-model";
 import { unreachable } from "./assert";
 import { CodedError } from "./coded-error";
 import { ERROR_KINDS, PROVIDER_ERROR_CODES } from "./error-contract";
+import { log } from "./log";
 import { withChatGPTAuthFetch } from "./openai-chatgpt-fetch";
 import { subscriptionModels } from "./openai-subscription-models";
 import type { Env } from "./paths";
@@ -27,7 +28,18 @@ export async function resolveAuthRoute(
   if (providerFromModel(qualifiedModel) !== "openai") return "api_key";
   const openai = (credentials ?? defaultCredentials()).openai ?? {};
   if (!openai.oauth) return "api_key";
-  const served = await subscriptionModels(fetchFn, env);
+
+  let served: ReadonlySet<string>;
+  try {
+    served = await subscriptionModels(fetchFn, env);
+  } catch (error) {
+    // Chosen degradation: an API key is the fallback the user configured, so an unreachable
+    // subscription spends it rather than failing the turn. Said out loud, because it costs money.
+    if (!openai.apiKey) throw error;
+    log.warn("model.route.subscription_unreachable", { model: bareModelId(qualifiedModel) });
+    return "api_key";
+  }
+
   if (served.has(bareModelId(qualifiedModel))) return "subscription";
   if (openai.apiKey) return "api_key";
   throw new CodedError(
