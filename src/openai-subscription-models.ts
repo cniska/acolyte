@@ -36,10 +36,14 @@ export function subscriptionModels(fetchFn: FetchFn, env?: Env): Promise<Readonl
     (slugs) => new Set(slugs) as ReadonlySet<string>,
     (cause) => {
       discovery = undefined;
-      throw new CodedError(PROVIDER_ERROR_CODES.subscriptionDiscoveryFailed, "Could not read your OpenAI subscription", {
-        kind: ERROR_KINDS.subscriptionDiscoveryFailed,
-        cause,
-      });
+      throw new CodedError(
+        PROVIDER_ERROR_CODES.subscriptionDiscoveryFailed,
+        "Could not read your OpenAI subscription",
+        {
+          kind: ERROR_KINDS.subscriptionDiscoveryFailed,
+          cause,
+        },
+      );
     },
   );
   discovery = { models, fetchedAt: now };
@@ -87,5 +91,3 @@ export async function fetchSubscriptionModels(fetchFn: FetchFn, env?: Env): Prom
   const models = parsed.data.models ?? [];
   return models.filter((m) => m.visibility === "list" && m.tool_mode !== "code_mode_only").map((m) => m.slug);
 }
-
-

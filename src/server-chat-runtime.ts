@@ -12,7 +12,7 @@ import { VERBOSE_ONLY_EVENTS } from "./lifecycle-constants";
 import { errorToLogFields, log } from "./log";
 import { resolveAuthRoute } from "./model-factory";
 import { loadProjectRulesPrompt } from "./project-rules";
-import { type AuthRoute, bareModelId, isProviderAvailable, providerFromModel } from "./provider-config";
+import { type AuthRoute, isProviderAvailable, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
 import { parseResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import { publishProjectLabel } from "./scope-label-sync";

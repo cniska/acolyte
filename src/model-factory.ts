@@ -10,7 +10,7 @@ import { withChatGPTAuthFetch } from "./openai-chatgpt-fetch";
 import { subscriptionModels } from "./openai-subscription-models";
 import type { Env } from "./paths";
 import { mergeProviderOptions, withVercelPromptCacheFetch } from "./prompt-cache";
-import { type AuthRoute, bareModelId, type ProviderCredentials, providerFromModel } from "./provider-config";
+import { type AuthRoute, bareModelId, providerFromModel } from "./provider-config";
 import { OPENAI_SUBSCRIPTION_BASE_URL } from "./provider-constants";
 import { createRateLimitFetch, type FetchFn, type RateLimiter } from "./rate-limiter";
 
