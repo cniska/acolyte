@@ -1,6 +1,6 @@
 import { stderr, stdout } from "node:process";
-import { BRAILLE_BLANK, gradientRgb, MONO_CARET_STOPS, MONO_STOPS, type Rgb, verticalPosition } from "./brand-gradient";
-import { BRAND_WORDMARK_GAP, BRAND_WORDMARK_ROWS, BRAND_WORDMARK_WIDTH } from "./brand-mark";
+import { gradientRgb, MONO_CARET_STOPS, MONO_STOPS, type Rgb, verticalPosition } from "./brand-gradient";
+import { BRAILLE_BLANK, BRAND_WORDMARK_GAP, BRAND_WORDMARK_ROWS, BRAND_WORDMARK_WIDTH } from "./brand-mark";
 import { palette } from "./palette";
 import { ansi } from "./tui/styles";
 

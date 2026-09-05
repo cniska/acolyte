@@ -37,5 +37,3 @@ export function gradientRgb(t: number, stops: ReadonlyArray<Rgb>): Rgb {
 export function verticalPosition(y: number, height: number): number {
   return y / Math.max(1, height - 1);
 }
-
-export const BRAILLE_BLANK = "⠀";

@@ -4,6 +4,8 @@
  * because each takes its own color, as they do in the lockup at app.acolyte.sh.
  */
 
+export const BRAILLE_BLANK = "⠀";
+
 /** The `❯` caret, spanning the 16-pixel x-height band; both marks draw it from here. */
 const BRAND_CARET_ROWS: ReadonlyArray<string> = ["⠹⣿⣆⠀", "⠀⠹⣿⣆", "⠀⣰⣿⠏", "⣰⣿⠏⠀"];
 
