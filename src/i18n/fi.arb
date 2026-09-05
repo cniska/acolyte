@@ -158,6 +158,7 @@
   "cli.import.no_model": "Mallia ei ole saatavilla: {model}. Yhdistä palveluntarjoaja komennolla acolyte auth tai katso tuotavat tiedot valitsimella --dry-run.",
   "cli.import.none": "Ei uutta luettavaa projektille {project} viimeisen {since} ajalta.",
   "cli.import.no_project": "Tällä kansiolla ei ole projektia. Tuonti lukee sen repositorion tallenteet, jossa olet, ja tunnistaa sen owner/repo-etävarastosta, joten aja komento sellaisen sisällä.",
+  "cli.import.already_running": "Tuonti on jo käynnissä. Odota sen valmistumista tai pysäytä se ja aja tämä uudelleen.",
   "cli.import.plan": "{count, plural, one {# vuoro} other {# vuoroa}} luettavaksi, noin {low}–{high} tokenia.",
   "cli.import.stale": "{count, plural, one {Ohitettiin # istunto: projektissa on {commits} committia sen päättymisen jälkeen} other {Ohitettiin # istuntoa: projektissa on enintään {commits} committia niiden päättymisen jälkeen}}. Lisää --include-stale lukeaksesi ne silti.",
   "cli.import.undated": "{count, plural, one {Ohitettiin # istunto: siitä puuttuu aika, joten ikää ei voi tarkistaa} other {Ohitettiin # istuntoa: niistä puuttuu aika, joten ikää ei voi tarkistaa}}. Lisää --include-stale lukeaksesi ne silti.",

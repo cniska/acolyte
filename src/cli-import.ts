@@ -14,6 +14,7 @@ const DEFAULT_SINCE = "24h";
 // context they give later ones, and the plan's own call count is what the token band is built on.
 const DEFAULT_MAX_TURNS = 25;
 const STORE_FILE = "memory.db";
+const IMPORT_LOCK = "import";
 const LEDGER_FILE = "ledger.json";
 
 export type PlanImportRequest = {
@@ -46,6 +47,8 @@ export type ImportModeDeps = {
   readLedger: (path: string) => Promise<ImportLedger>;
   writeLedger: (path: string, ledger: ImportLedger) => Promise<void>;
   removeDir: (path: string) => Promise<void>;
+  acquireLock: (resource: string) => { ok: boolean };
+  releaseLock: (resource: string) => void;
   printDim: (message: string) => void;
   printOutput: (message: string) => void;
   commandError: (name: string, message?: string) => void;
@@ -201,6 +204,31 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
     return;
   }
 
+  // One run at a time: two would each hold a stale ledger and overwrite the other's progress, so
+  // turns one of them already paid for would be distilled again on the next run.
+  if (!deps.acquireLock(IMPORT_LOCK).ok) {
+    deps.commandError("import", t("cli.import.already_running"));
+    return;
+  }
+  try {
+    await importPlanned(deps, { project, sinceRaw, since, maxTurns, includeStale, json, chosen });
+  } finally {
+    deps.releaseLock(IMPORT_LOCK);
+  }
+}
+
+type RunInputs = {
+  project: string;
+  sinceRaw: string;
+  since: Date;
+  maxTurns: number;
+  includeStale: boolean;
+  json: boolean;
+  chosen: { kind: "ready"; model: string } | null;
+};
+
+async function importPlanned(deps: ImportModeDeps, input: RunInputs): Promise<void> {
+  const { project, sinceRaw, since, maxTurns, includeStale, json, chosen } = input;
   const ledgerPath = join(deps.scratchDir, LEDGER_FILE);
   const ledger = await deps.readLedger(ledgerPath);
   const plan = await deps.planImport({

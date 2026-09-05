@@ -25,6 +25,7 @@ function samplePlan(overrides: Partial<ImportSessionPlan> = {}): ImportSessionPl
 
 type Harness = {
   deps: ImportModeDeps;
+  releases: () => number;
   dim: string[];
   out: string[];
   errors: { name: string; message?: string }[];
@@ -41,6 +42,7 @@ type HarnessOptions = {
   model?: null;
   project?: string | null;
   runFails?: string;
+  locked?: boolean;
   stale?: StaleSessionRef[];
   unattributable?: number;
 };
@@ -52,6 +54,7 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
   const removed: string[] = [];
   const saved: ImportLedger[] = [];
   const runs: RunImportOptions[] = [];
+  let released = 0;
   const state = { closed: 0 };
   const store = { close: () => state.closed++ } as unknown as MemoryStore;
   const ledger = options.ledger ?? emptyImportLedger();
@@ -94,6 +97,10 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
     writeLedger: async (_path, next) => {
       saved.push(next);
     },
+    acquireLock: () => ({ ok: options.locked !== true }),
+    releaseLock: () => {
+      released++;
+    },
     removeDir: async (path) => {
       removed.push(path);
     },
@@ -105,6 +112,7 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
 
   return {
     deps,
+    releases: () => released,
     dim,
     out,
     errors,
@@ -301,6 +309,21 @@ describe("importMode", () => {
     expect(h.dim.at(-1)).toContain("6 memories");
     expect(h.dim.at(-1)).toContain("2 replaced");
     expect(h.dim.at(-1)).toContain("1.0k tokens");
+  });
+
+  test("refuses to start while another run holds the import", async () => {
+    const h = harness([samplePlan()], { locked: true });
+    await importMode([], h.deps);
+
+    expect(h.errors[0]?.message).toContain("already running");
+    expect(h.runs).toEqual([]);
+  });
+
+  test("releases the import when a run fails partway", async () => {
+    const h = harness([samplePlan()], { runFails: "provider exploded" });
+    await importMode([], h.deps);
+
+    expect(h.releases()).toBe(1);
   });
 
   test("--dry-run spends nothing", async () => {

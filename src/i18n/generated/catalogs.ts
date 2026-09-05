@@ -170,6 +170,7 @@ export type MessageArgs = {
   "cli.import.no_model": { model: string | number };
   "cli.import.none": { project: string | number; since: string | number };
   "cli.import.no_project": never;
+  "cli.import.already_running": never;
   "cli.import.plan": { count: number; high: string | number; low: string | number };
   "cli.import.stale": { commits: number; count: number };
   "cli.import.undated": { count: number };

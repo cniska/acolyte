@@ -947,6 +947,10 @@
     }
   },
   "cli.import.no_project": "This folder has no project. Import reads the transcripts of the repository you are standing in and identifies it by an owner/repo remote, so run it from inside one.",
+  "cli.import.already_running": "An import is already running. Wait for it to finish, or stop it and run this again.",
+  "@cli.import.already_running": {
+    "description": "Shown when 'import' finds another import run already holding the lock, so only one run writes the ledger."
+  },
   "@cli.import.no_project": {
     "description": "Shown when 'import' runs somewhere that is not a repository, or whose remotes name no owner/repo. There is no flag for naming a project from outside its checkout."
   },

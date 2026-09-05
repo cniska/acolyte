@@ -49,6 +49,7 @@ import { startOAuthCallbackServer } from "./openai-oauth-server";
 import { createHandoffState, createPkce } from "./pkce";
 import { normalizeModel } from "./provider-config";
 import { projectLabelFromWorkspace } from "./resource-id";
+import { acquireLock, releaseLock } from "./resource-lock";
 import { startServer } from "./server-app";
 import {
   apiUrlForPort,
@@ -378,6 +379,8 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         readLedger: readImportLedger,
         writeLedger: writeImportLedger,
         removeDir: (path) => rm(path, { recursive: true, force: true }),
+        acquireLock,
+        releaseLock,
         printDim,
         printOutput,
         commandError,

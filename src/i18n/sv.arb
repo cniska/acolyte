@@ -158,6 +158,7 @@
   "cli.import.no_model": "Ingen modell tillgänglig: {model}. Anslut en leverantör med acolyte auth, eller använd --dry-run för att se vad som skulle importeras.",
   "cli.import.none": "Inget nytt att läsa för {project} de senaste {since}.",
   "cli.import.no_project": "Den här mappen har inget projekt. Import läser transkripten för det repository du står i och identifierar det med en owner/repo-fjärr, så kör kommandot inifrån ett sådant.",
+  "cli.import.already_running": "En import körs redan. Vänta tills den är klar, eller stoppa den och kör det här igen.",
   "cli.import.plan": "{count, plural, one {# tur} other {# turer}} att läsa, ungefär {low}–{high} tokens.",
   "cli.import.stale": "{count, plural, one {Hoppade över # session: projektet har {commits} commits sedan den avslutades} other {Hoppade över # sessioner: projektet har upp till {commits} commits sedan de avslutades}}. Lägg till --include-stale för att läsa dem ändå.",
   "cli.import.undated": "{count, plural, one {Hoppade över # session: den saknar tid, så åldern kan inte kontrolleras} other {Hoppade över # sessioner: de saknar tid, så åldern kan inte kontrolleras}}. Lägg till --include-stale för att läsa dem ändå.",

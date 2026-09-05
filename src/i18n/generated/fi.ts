@@ -426,6 +426,9 @@ export const FI_MESSAGES = {
         "Tällä kansiolla ei ole projektia. Tuonti lukee sen repositorion tallenteet, jossa olet, ja tunnistaa sen owner/repo-etävarastosta, joten aja komento sellaisen sisällä.",
     },
   ],
+  "cli.import.already_running": [
+    { kind: "text", value: "Tuonti on jo käynnissä. Odota sen valmistumista tai pysäytä se ja aja tämä uudelleen." },
+  ],
   "cli.import.plan": [
     {
       kind: "plural",

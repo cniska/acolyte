@@ -430,6 +430,9 @@ export const SV_MESSAGES = {
         "Den här mappen har inget projekt. Import läser transkripten för det repository du står i och identifierar det med en owner/repo-fjärr, så kör kommandot inifrån ett sådant.",
     },
   ],
+  "cli.import.already_running": [
+    { kind: "text", value: "En import körs redan. Vänta tills den är klar, eller stoppa den och kör det här igen." },
+  ],
   "cli.import.plan": [
     {
       kind: "plural",

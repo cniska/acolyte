@@ -419,6 +419,9 @@ export const EN_MESSAGES = {
         "This folder has no project. Import reads the transcripts of the repository you are standing in and identifies it by an owner/repo remote, so run it from inside one.",
     },
   ],
+  "cli.import.already_running": [
+    { kind: "text", value: "An import is already running. Wait for it to finish, or stop it and run this again." },
+  ],
   "cli.import.plan": [
     {
       kind: "plural",

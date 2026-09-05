@@ -8,10 +8,10 @@ import { createClient } from "./client-factory";
 import { nowIso } from "./datetime";
 import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
+import { acquireLock, releaseLock } from "./resource-lock";
 import { apiUrlForPort, ensureLocalServer } from "./server-daemon";
 import { serverSpawnCommand } from "./server-spawn";
 import type { Session, SessionState, SessionStore } from "./session-contract";
-import { acquireSessionLock, releaseSessionLock } from "./session-lock";
 import { createSession, getSessionStore } from "./session-store";
 import { clearScreen, printDim, printError } from "./ui";
 
@@ -114,7 +114,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     state.sessions.unshift(session);
   }
   state.activeSessionId = session.id;
-  const lock = acquireSessionLock(session.id);
+  const lock = acquireLock(session.id);
   if (!lock.ok) {
     printError(t("chat.session.locked", { pid: lock.ownerPid ?? "unknown" }));
     printDim(t("chat.resume.use_command", { command: formatResumeCommand(session.id) }));
@@ -142,7 +142,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
   // Runs after the renderer has restored the terminal, so the error prints cleanly.
   // process.exit skips the finally below, so release the session lock here too.
   const onFatalError = createFatalErrorHandler({
-    releaseLock: () => releaseSessionLock(session.id),
+    releaseLock: () => releaseLock(session.id),
     print: printError,
     exit: () => process.exit(1),
   });
@@ -165,6 +165,6 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     const resumeId = state.activeSessionId ?? session.id;
     printDim(t("chat.resume.with_command", { command: formatResumeCommand(resumeId) }));
   } finally {
-    releaseSessionLock(session.id);
+    releaseLock(session.id);
   }
 }
