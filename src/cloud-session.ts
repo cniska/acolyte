@@ -85,9 +85,10 @@ export class CloudSession {
       return false;
     }
 
-    // A refused refresh token stays refused, so one dead credential does not put a failed exchange
-    // in front of every later call. A network failure is not an answer and is left to be retried.
-    if (response.status === 401 || response.status === 403) {
+    // Only the cloud's own verdict on the credential is final. A 403 comes from whatever stands in
+    // front of the route — a firewall rule, a proxy — and says nothing about the refresh token, so
+    // latching on it would retire a live credential for the life of the process.
+    if (response.status === 401) {
       this.refreshTokenRefused = true;
       return false;
     }
