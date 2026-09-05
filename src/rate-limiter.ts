@@ -37,12 +37,31 @@ function isRateLimitError(error: unknown): boolean {
 
 const OVERLOADED_CODES: ReadonlySet<string> = new Set(["overloaded_error", "service_unavailable"]);
 
+// An exhausted balance arrives as a 429 the provider SDK marks retryable, but no wait refills it.
+const EXHAUSTED_CODES: ReadonlySet<string> = new Set([
+  "insufficient_quota",
+  "credit_balance_exhausted",
+  "billing_hard_limit_reached",
+]);
+
+function errorCodes(error: unknown): string[] {
+  const inner = field(field(error, "data"), "error");
+  return [field(error, "code"), field(error, "type"), field(inner, "code"), field(inner, "type")]
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.toLowerCase());
+}
+
+function isExhaustedError(error: unknown): boolean {
+  return errorCodes(error).some((code) => EXHAUSTED_CODES.has(code));
+}
+
 function statusOf(error: unknown): unknown {
   return field(error, "status") ?? field(error, "statusCode");
 }
 
 /** Whether calling again could plausibly succeed: the provider failed, not the request. */
 export function isRetryableProviderError(error: unknown): boolean {
+  if (isExhaustedError(error)) return false;
   if (isRateLimitError(error)) return true;
   if (field(error, "isRetryable") === true) return true;
   const status = statusOf(error);

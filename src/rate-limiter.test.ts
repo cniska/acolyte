@@ -60,6 +60,17 @@ describe("isRetryableProviderError", () => {
     expect(isRetryableProviderError({ statusCode: 409, isRetryable: true })).toBe(true);
   });
 
+  test("an exhausted balance is not retryable, since waiting cannot refill it", () => {
+    expect(isRetryableProviderError({ status: 429, code: "insufficient_quota" })).toBe(false);
+    expect(
+      isRetryableProviderError({
+        status: 429,
+        isRetryable: true,
+        data: { error: { code: "credit_balance_exhausted" } },
+      }),
+    ).toBe(false);
+  });
+
   test("a wrong request is not retryable, since repeating it cannot help", () => {
     expect(isRetryableProviderError({ status: 400 })).toBe(false);
     expect(isRetryableProviderError({ status: 401 })).toBe(false);
