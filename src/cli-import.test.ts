@@ -40,6 +40,7 @@ type HarnessOptions = {
   /** `null` means no model is configured at all. */
   model?: null;
   project?: string | null;
+  runFails?: string;
   stale?: StaleSessionRef[];
   unattributable?: number;
 };
@@ -69,6 +70,7 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
     }),
     runImport: async (runOptions) => {
       runs.push(runOptions);
+      if (options.runFails) throw new Error(options.runFails);
       const results: ImportSessionResult[] = runOptions.plans.map((plan) => ({
         plan,
         distilled: 2,
@@ -281,6 +283,14 @@ describe("importMode", () => {
     expect(h.dim.filter((line) => line.startsWith("first000"))).toHaveLength(1);
     expect(h.dim.filter((line) => line.startsWith("second00"))).toHaveLength(1);
     expect(h.dim.join("\n")).toContain("3 memories, 1 replaced, 500 tokens");
+  });
+
+  test("a run that fails partway says why instead of crashing", async () => {
+    const h = harness([samplePlan()], { runFails: "You have no credits remaining." });
+    await importMode([], h.deps);
+
+    expect(h.errors[0]).toMatchObject({ name: "import", message: "You have no credits remaining." });
+    expect(h.closed).toBe(1);
   });
 
   test("--dry-run spends nothing", async () => {

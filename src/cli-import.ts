@@ -248,6 +248,9 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
       path: deps.scratchDir,
     });
     if (!json) deps.printDim(summary);
+  } catch (error) {
+    // The ledger holds every turn already paid for, so the run stops where it stands and says why.
+    deps.commandError("import", error instanceof Error ? error.message : String(error));
   } finally {
     store.close();
   }
