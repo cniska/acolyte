@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { stdout } from "node:process";
-import { BRAND_WORDMARK_GAP, BRAND_WORDMARK_WIDTH } from "./brand-mark";
+import { BRAILLE_BLANK, BRAND_WORDMARK_GAP, BRAND_WORDMARK_WIDTH } from "./brand-mark";
 import { formatCliBanner, printDim, printOutput, setUiSink, tokenizeStreamContent } from "./ui";
 
 describe("ui stream helpers", () => {
@@ -82,6 +82,11 @@ describe("cli banner", () => {
     const rows = written.trimEnd().split("\n");
     expect(rows[0]).toContain(`${ESC}[38;2;245;245;245m`);
     expect(rows.at(-1)).toContain(`${ESC}[38;2;163;163;163m`);
+  });
+
+  test("an all-blank run stays unpainted, so the caret's empty rows carry no escapes", () => {
+    const written = captureWith(true, undefined, () => printOutput(formatCliBanner("0.27.2")));
+    expect(written.split("\n")[0]).toStartWith(BRAILLE_BLANK);
   });
 
   test("a redirected stream gets bare cells", () => {

@@ -4,14 +4,7 @@ import { terminalTheme } from "./terminal-theme";
 
 test("semantic header layout reproduces mark physical lines", () => {
   const scene = layoutHeader({ title: "Acolyte", version: "0.1.0", sessionId: "sess_demo1234", storage: "local" });
-  expect(
-    scene.lines.map((line) =>
-      line.spans
-        .map((span) => span.text)
-        .join("")
-        .trimEnd(),
-    ),
-  ).toEqual([
+  expect(scene.lines.map((line) => line.spans.map((span) => span.text).join(""))).toEqual([
     "  ⠹⣿⣆⠀⠀⠀⠀⢠⣶⡿⠿⢿⣶⡄   Acolyte",
     "  ⠀⠹⣿⣆⠀⠀⠀⢀⣠⣤⣤⣤⣿⣿   version 0.1.0",
     "  ⠀⣰⣿⠏⠀⠀⠀⣿⣿⠋⠉⢉⣿⣿   session sess_demo1234",
