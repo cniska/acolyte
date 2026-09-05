@@ -874,6 +874,11 @@
   "@cli.login.opening.browser": {
     "description": "Progress line shown just before a browser window is opened for sign-in."
   },
+  "cli.login.open.manually": "If no browser opens, visit: {url}",
+  "@cli.login.open.manually": {
+    "description": "Shown with the sign-in URL so a machine without a browser can still complete the handoff.",
+    "placeholders": { "url": { "type": "String" } }
+  },
   "cli.login.prompt.token": "Cloud token: ",
   "@cli.login.prompt.token": {
     "description": "Interactive prompt asking for the cloud token (cli-login.ts:62). Ends with a colon and a trailing space because the user types on the same line; keep both."

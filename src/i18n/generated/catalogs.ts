@@ -158,6 +158,7 @@ export type MessageArgs = {
   "cli.help.section.usage": never;
   "cli.history.none": never;
   "cli.login.opening.browser": never;
+  "cli.login.open.manually": { url: string | number };
   "cli.login.prompt.token": never;
   "cli.login.prompt.url": never;
   "cli.login.merge.done": { merged: string | number };

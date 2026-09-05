@@ -371,6 +371,10 @@ export const FI_MESSAGES = {
   "cli.help.section.usage": [{ kind: "text", value: "Käyttö" }],
   "cli.history.none": [{ kind: "text", value: "Ei tallennettuja istuntoja." }],
   "cli.login.opening.browser": [{ kind: "text", value: "Avataan selain kirjautumista varten…" }],
+  "cli.login.open.manually": [
+    { kind: "text", value: "Jos selain ei aukea, siirry osoitteeseen: " },
+    { kind: "arg", name: "url" },
+  ],
   "cli.login.prompt.token": [{ kind: "text", value: "Pilvitunnus: " }],
   "cli.login.prompt.url": [{ kind: "text", value: "Pilven osoite (https://app.acolyte.sh):" }],
   "cli.login.merge.done": [

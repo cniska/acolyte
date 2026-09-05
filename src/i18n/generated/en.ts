@@ -364,6 +364,10 @@ export const EN_MESSAGES = {
   "cli.help.section.usage": [{ kind: "text", value: "Usage" }],
   "cli.history.none": [{ kind: "text", value: "No saved sessions." }],
   "cli.login.opening.browser": [{ kind: "text", value: "Opening browser to sign in…" }],
+  "cli.login.open.manually": [
+    { kind: "text", value: "If no browser opens, visit: " },
+    { kind: "arg", name: "url" },
+  ],
   "cli.login.prompt.token": [{ kind: "text", value: "Cloud token: " }],
   "cli.login.prompt.url": [{ kind: "text", value: "Cloud URL (https://app.acolyte.sh):" }],
   "cli.login.merge.done": [

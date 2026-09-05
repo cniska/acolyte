@@ -146,6 +146,7 @@
   "cli.help.section.usage": "Användning",
   "cli.history.none": "Inga sparade sessioner.",
   "cli.login.opening.browser": "Öppnar webbläsaren för inloggning…",
+  "cli.login.open.manually": "Om ingen webbläsare öppnas, gå till: {url}",
   "cli.login.prompt.token": "Molntoken: ",
   "cli.login.prompt.url": "Molnadress (https://app.acolyte.sh):",
   "cli.login.merge.done": "Slog samman {merged} lokala minnen med ditt konto.",

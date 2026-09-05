@@ -375,6 +375,10 @@ export const SV_MESSAGES = {
   "cli.help.section.usage": [{ kind: "text", value: "Användning" }],
   "cli.history.none": [{ kind: "text", value: "Inga sparade sessioner." }],
   "cli.login.opening.browser": [{ kind: "text", value: "Öppnar webbläsaren för inloggning…" }],
+  "cli.login.open.manually": [
+    { kind: "text", value: "Om ingen webbläsare öppnas, gå till: " },
+    { kind: "arg", name: "url" },
+  ],
   "cli.login.prompt.token": [{ kind: "text", value: "Molntoken: " }],
   "cli.login.prompt.url": [{ kind: "text", value: "Molnadress (https://app.acolyte.sh):" }],
   "cli.login.merge.done": [

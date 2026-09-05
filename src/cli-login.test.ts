@@ -59,6 +59,7 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     startCallbackServer: async () => ({
       port: 9999,
       result: Promise.resolve({ code: "code_1" }),
+      stop: () => calls.push("stopCallbackServer"),
     }),
     openBrowser: () => {
       calls.push("openBrowser");
@@ -177,6 +178,7 @@ describe("loginMode", () => {
       startCallbackServer: async () => ({
         port: 9999,
         result: Promise.reject(new CodedError(LOGIN_ERROR_CODES.codeMissing, "no code")),
+        stop: () => calls.push("stopCallbackServer"),
       }),
     });
 
@@ -203,12 +205,42 @@ describe("loginMode", () => {
     expect(process.exitCode).toBe(1);
   });
 
+  test("a browser that cannot be opened ends the wait instead of holding the process", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      prompt: () => "",
+      openBrowser: () => {
+        throw new Error("spawn xdg-open ENOENT");
+      },
+      // Never settles, as the real one does not when the browser never comes back.
+      startCallbackServer: async () => ({
+        port: 9999,
+        result: new Promise<{ code: string }>(() => {}),
+        stop: () => calls.push("stopCallbackServer"),
+      }),
+    });
+
+    await loginMode([], deps);
+
+    expect(calls).toContain("stopCallbackServer");
+    expect(output()).toContain("xdg-open");
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("the sign-in url is printed before the browser is opened, so a headless machine can use it", async () => {
+    const { deps, output } = createLoginDeps({ prompt: () => "" });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("/auth/cli?port=9999&state=test_state&challenge=");
+  });
+
   test("only a wait that ran out is called a timeout", async () => {
     const { deps, output } = createLoginDeps({
       prompt: () => "",
       startCallbackServer: async () => ({
         port: 9999,
         result: Promise.reject(new CodedError(LOGIN_ERROR_CODES.callbackTimeout, "timeout")),
+        stop: () => {},
       }),
     });
 

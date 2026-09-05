@@ -1,4 +1,4 @@
-import { type CallbackResult, DEFAULT_CLOUD_URL } from "./cli-callback-server";
+import { type CallbackHandoff, DEFAULT_CLOUD_URL } from "./cli-callback-server";
 import type { CloudTokens } from "./cloud-auth-code";
 import { type CloudMigrationSummary, isCredentialRejection } from "./cloud-migrate";
 import { isSecureUrl } from "./config-contract";
@@ -24,7 +24,7 @@ type LoginModeDeps = {
   createState: () => string;
   createPkce: () => PkceCodes;
   exchangeAuthCode: (baseUrl: string, code: string, verifier: string) => Promise<CloudTokens>;
-  startCallbackServer: (state: string) => Promise<{ port: number; result: Promise<CallbackResult> }>;
+  startCallbackServer: (state: string) => Promise<CallbackHandoff>;
   openBrowser: (url: string) => void;
   migrateToCloud: (url: string, token: string, accountKey: UserResourceId) => Promise<CloudMigrationSummary>;
   mergeUserScope: (url: string, token: string, accountKey: UserResourceId) => Promise<UserScopeMergeSummary>;
@@ -153,18 +153,22 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
     // browser history cannot be spent.
     const { verifier, challenge } = deps.createPkce();
     const state = deps.createState();
-    const { port, result } = await deps.startCallbackServer(state);
+    const { port, result, stop } = await deps.startCallbackServer(state);
     const authUrl = `${url}/auth/cli?port=${port}&state=${state}&challenge=${encodeURIComponent(challenge)}`;
 
     deps.printDim(t("cli.login.opening.browser"));
-    deps.openBrowser(authUrl);
-    deps.printDim(t("cli.login.waiting"));
+    // The URL goes out before the opener runs: on a machine with no browser to open — a server over
+    // SSH — this line is the whole sign-in, and it has to be there whether or not the opener works.
+    deps.printDim(t("cli.login.open.manually", { url: authUrl }));
 
     try {
+      deps.openBrowser(authUrl);
+      deps.printDim(t("cli.login.waiting"));
       const { code } = await result;
       const tokens = await deps.exchangeAuthCode(url, code, verifier);
       await completeLogin(deps, url, tokens.token, t("cli.login.welcome", { email: tokens.email }), tokens.refresh);
     } catch (error) {
+      stop();
       reportHandoffFailure(deps, error);
     }
   } else {
