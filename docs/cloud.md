@@ -47,7 +47,7 @@ Sign-in never carries a credential through the browser. The CLI keeps a random v
 
 The API token lasts a day. The CLI trades the stored refresh token for a new API token as the old one nears expiry or when the cloud rejects it — once per rejection, then the answer stands. The refresh token lasts 90 days, is not rotated by an exchange, and buys nothing but API tokens: presented to a data route, the cloud refuses it. A token pasted with `--token` comes with no refresh token, so it stands until it expires; `acolyte logout` removes both.
 
-The account page on the dashboard signs out everywhere, which withdraws every token the account holds — the remedy when a machine or a credential is lost. The machines still in use sign in again.
+The account page on the dashboard signs out everywhere, which withdraws every token the account holds and every dashboard session it has open — the remedy when a machine or a credential is lost. Nothing issued before that moment can sign in on its own again, so the machines still in use run `acolyte login`.
 
 ## API
 
