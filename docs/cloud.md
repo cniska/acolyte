@@ -51,7 +51,7 @@ The account page on the dashboard signs out everywhere, which withdraws every to
 
 ## API
 
-The cloud API is versioned at `/api/v1/`. Every endpoint requires `Authorization: Bearer <token>`, except the refresh exchange, where the refresh token in the body is the credential.
+The cloud API is versioned at `/api/v1/`. Every endpoint requires `Authorization: Bearer <token>`, except the two sign-in exchanges: the refresh exchange takes the refresh token in the body, and the code exchange the code and its verifier.
 
 | Domain | Method | Route | Description |
 |--------|--------|-------|-------------|
