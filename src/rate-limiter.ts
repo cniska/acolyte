@@ -10,6 +10,9 @@ export type RateLimiterConfig = {
 
 const DEFAULT_RATE_LIMITER_CONFIG: RateLimiterConfig = { backoffBaseMs: 1_000, backoffMaxMs: 60_000 };
 
+// The longest a provider's own retry-after is worth waiting out inside one call.
+const MAX_SERVER_DELAY_MS = 60_000;
+
 const sharedLimiters = new Map<Provider, RateLimiter>();
 
 export function sharedRateLimiter(provider: Provider): RateLimiter {
@@ -173,8 +176,11 @@ export function createRateLimiter(config: RateLimiterConfig): RateLimiter {
 
     onError(error: unknown): { shouldRetry: boolean; delayMs: number } {
       if (!isRetryableProviderError(error)) return { shouldRetry: false, delayMs: 0 };
-      consecutiveFailures += 1;
       const serverDelay = retryAfterMs(error);
+      // A provider asking for longer than this is telling us to come back later, not to hold the
+      // turn open: honoring it verbatim would stall a run for as long as the header says.
+      if (serverDelay !== undefined && serverDelay > MAX_SERVER_DELAY_MS) return { shouldRetry: false, delayMs: 0 };
+      consecutiveFailures += 1;
       const backoff = Math.min(config.backoffMaxMs, config.backoffBaseMs * 2 ** (consecutiveFailures - 1));
       return { shouldRetry: true, delayMs: serverDelay ?? jitter(backoff) };
     },

@@ -258,12 +258,17 @@ export async function defaultRunner(
   });
   const observations: DistillObservation[] = [];
   const reader = stream.getReader();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value.type === "error") throw value.error instanceof Error ? value.error : new Error(String(value.error));
-    if (value.type !== "tool-call" || value.toolName !== OBSERVE_FUNCTION_NAME) continue;
-    observations.push(...parseObservationToolCall(value));
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value.type === "error") throw value.error instanceof Error ? value.error : new Error(String(value.error));
+      if (value.type !== "tool-call" || value.toolName !== OBSERVE_FUNCTION_NAME) continue;
+      observations.push(...parseObservationToolCall(value));
+    }
+  } finally {
+    // Leaving early on an error part would otherwise hold the provider connection open.
+    reader.cancel().catch(() => {});
   }
   return observations;
 }

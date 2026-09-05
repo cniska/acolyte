@@ -196,6 +196,13 @@ describe("createRateLimiter", () => {
     expect(result.delayMs).toBe(0);
   });
 
+  test("onError refuses a retry-after longer than the backoff ceiling", () => {
+    const limiter = createRateLimiter(FAST);
+    const result = limiter.onError({ status: 429, headers: { "retry-after": "3600" } });
+    expect(result.shouldRetry).toBe(false);
+    expect(result.delayMs).toBe(0);
+  });
+
   test("onError uses retry-after header when available", () => {
     const limiter = createRateLimiter(FAST);
     const result = limiter.onError({ status: 429, headers: { "retry-after": "5" } });
