@@ -37,6 +37,16 @@ describe("the sign-in callback", () => {
     expect(errorCode(await settled)).toBe("E_LOGIN_CODE_MISSING");
   });
 
+  test("stopping releases the port, so a sign-in that gives up does not hold the process", async () => {
+    const { port, stop } = await startCallbackServer("st_1");
+    expect((await fetch(`http://127.0.0.1:${port}/`)).status).toBe(404);
+
+    stop();
+
+    // The listener is gone rather than idle: a request finds nothing to answer it.
+    await expect(callback(port, "code=code_1&state=st_1")).rejects.toThrow();
+  });
+
   test("another path is not the callback", async () => {
     const { port, result } = await startCallbackServer("st_1");
 

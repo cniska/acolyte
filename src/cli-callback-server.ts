@@ -41,7 +41,9 @@ export function startCallbackServer(expectedState: string): Promise<CallbackHand
     // result is left unsettled on purpose — whoever stops the server already holds its own failure.
     const stop = () => {
       clearTimeout(timeout);
-      server.stop();
+      // Forced: an abandoned sign-in has no request worth draining, and a socket left open holds
+      // the process after the command that started it has already reported its failure.
+      server.stop(true);
     };
 
     const server = Bun.serve({
