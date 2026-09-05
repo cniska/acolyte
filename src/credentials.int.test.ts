@@ -64,6 +64,24 @@ describe("credentials", () => {
     expect(readdirSync(configDir(env)).filter((name) => name.includes(".tmp"))).toEqual([]);
   });
 
+  test("two writes that overlap both survive, so a renewal cannot drop what logout just wrote", async () => {
+    const env = { HOME: createTempHome() };
+    await writeCredential("cloudUrl", "https://app.acolyte.sh", env);
+
+    // Started together, as renewal and a command touching credentials do inside one process: each
+    // reads, edits and writes, so without ordering the second write is made from a stale read.
+    await Promise.all([
+      writeCredential("cloudToken", "tok_renewed", env),
+      writeCredential("cloudRefreshToken", "ref_stored", env),
+    ]);
+
+    expect(readCredentialsSync(env)).toEqual({
+      cloudUrl: "https://app.acolyte.sh",
+      cloudToken: "tok_renewed",
+      cloudRefreshToken: "ref_stored",
+    });
+  });
+
   test("removeCredentials drops every named key and leaves no staging file behind", async () => {
     const env = { HOME: createTempHome() };
     await writeCredential("cloudUrl", "https://app.acolyte.sh", env);

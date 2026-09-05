@@ -73,29 +73,46 @@ async function writeCredentialsFile(next: string, env?: Env): Promise<void> {
   }
 }
 
+/**
+ * Runs credential mutations one after another. Each is a read, an edit and a write, and renewal now
+ * makes them from whatever turn is running — including while the user runs `logout`. Two that
+ * overlap both read the same file and the second write drops whatever the first had just made.
+ */
+let pendingMutation: Promise<unknown> = Promise.resolve();
+
+function serialized<T>(work: () => Promise<T>): Promise<T> {
+  const next = pendingMutation.then(work, work);
+  pendingMutation = next.catch(() => {});
+  return next;
+}
+
 async function upsertCredentialsEntry(envKey: string, value: string, env?: Env): Promise<void> {
-  let content = "";
-  try {
-    content = await readFile(credentialsPath(env), "utf8");
-  } catch {}
-  await writeCredentialsFile(upsertDotenvValue(content, envKey, value), env);
+  await serialized(async () => {
+    let content = "";
+    try {
+      content = await readFile(credentialsPath(env), "utf8");
+    } catch {}
+    await writeCredentialsFile(upsertDotenvValue(content, envKey, value), env);
+  });
 }
 
 /** Drops every named key in one write, so a concurrent renewal cannot land between two removals. */
 async function removeCredentialsEntries(envKeys: string[], env?: Env): Promise<void> {
-  const path = credentialsPath(env);
-  let content = "";
-  try {
-    content = await readFile(path, "utf8");
-  } catch {
-    return;
-  }
-  const next = envKeys.reduce((text, key) => removeDotenvKey(text, key), content);
-  if (next.length === 0) {
-    await unlink(path).catch(() => {});
-    return;
-  }
-  await writeCredentialsFile(next, env);
+  await serialized(async () => {
+    const path = credentialsPath(env);
+    let content = "";
+    try {
+      content = await readFile(path, "utf8");
+    } catch {
+      return;
+    }
+    const next = envKeys.reduce((text, key) => removeDotenvKey(text, key), content);
+    if (next.length === 0) {
+      await unlink(path).catch(() => {});
+      return;
+    }
+    await writeCredentialsFile(next, env);
+  });
 }
 
 export async function writeCredential(key: keyof Credentials, value: string, env?: Env): Promise<void> {
