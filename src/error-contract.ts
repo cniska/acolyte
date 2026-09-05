@@ -45,6 +45,12 @@ export const LOGIN_ERROR_CODES = {
 } as const;
 export type LoginErrorCode = (typeof LOGIN_ERROR_CODES)[keyof typeof LOGIN_ERROR_CODES];
 
+export const PROVIDER_ERROR_CODES = {
+  subscriptionDiscoveryFailed: "E_SUBSCRIPTION_DISCOVERY_FAILED",
+  modelNotOnSubscription: "E_MODEL_NOT_ON_SUBSCRIPTION",
+} as const;
+export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
+
 export const TRANSPORT_ERROR_CODES = {
   daemonLost: "E_DAEMON_LOST",
 } as const;
@@ -56,6 +62,7 @@ export type ErrorCode =
   | CloudErrorCode
   | LoginErrorCode
   | MemoryErrorCode
+  | ProviderErrorCode
   | TransportErrorCode;
 
 export const ERROR_KINDS = {
@@ -71,6 +78,8 @@ export const ERROR_KINDS = {
   tooLarge: "too_large",
   unsupportedFile: "unsupported_file",
   invalidRequest: "invalid_request",
+  subscriptionDiscoveryFailed: "subscription_discovery_failed",
+  modelNotOnSubscription: "model_not_on_subscription",
   unknown: "unknown",
 } as const;
 export type ErrorKind = (typeof ERROR_KINDS)[keyof typeof ERROR_KINDS];

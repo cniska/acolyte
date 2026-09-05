@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defaultCredentials } from "../src/agent-model";
 import { streamModelCall } from "../src/model-call";
-import { createModel } from "../src/model-factory";
+import { createModel, resolveAuthRoute } from "../src/model-factory";
 import { normalizeModel, providerFromModel } from "../src/provider-config";
 import { sharedRateLimiter } from "../src/rate-limiter";
 
@@ -46,8 +46,8 @@ export function createJudgeRunner(model: string, baseUrl?: string): JudgeRunner 
   const credentials = baseUrl
     ? { ...defaultCredentials(), [provider]: { ...defaultCredentials()[provider], baseUrl } }
     : undefined;
-  const client = createModel(qualified, limiter, credentials);
   return async (system, user) => {
+    const client = createModel(qualified, limiter, await resolveAuthRoute(qualified, credentials), credentials);
     const { stream } = await streamModelCall({
       client,
       limiter,

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { CodedError } from "./coded-error";
+import { ERROR_KINDS, PROVIDER_ERROR_CODES } from "./error-contract";
 import { withChatGPTAuthFetch } from "./openai-chatgpt-fetch";
 import type { Env } from "./paths";
 import { OPENAI_SUBSCRIPTION_BASE_URL } from "./provider-constants";
@@ -11,20 +13,37 @@ const CODEX_VERSION_FALLBACK = "0.144.6";
 const CODEX_LATEST_RELEASE_URL = "https://api.github.com/repos/openai/codex/releases/latest";
 const CLIENT_VERSION_TTL_MS = 6 * 60 * 60 * 1000;
 
-let servedModels = new Set<string>();
-let clientVersion: { value: string; fetchedAt: number } | undefined;
-let discovery: Promise<void> | undefined;
+// Entitlements change without the process restarting, and a set held forever would route a newly
+// served model to the API key for the life of a daemon.
+const SERVED_MODELS_TTL_MS = 6 * 60 * 60 * 1000;
 
-// The live served set is the single source of truth for routing; a model is on the subscription only
-// if discovery has confirmed it. Callers await ensureSubscriptionModelsLoaded first.
-export function isOpenAiSubscriptionModel(modelId: string): boolean {
-  return servedModels.has(modelId);
-}
+let clientVersion: { value: string; fetchedAt: number } | undefined;
+let discovery: { models: Promise<ReadonlySet<string>>; fetchedAt: number } | undefined;
 
 export function resetSubscriptionModelsCache(): void {
-  servedModels = new Set();
   clientVersion = undefined;
   discovery = undefined;
+}
+
+/**
+ * The models the subscription serves. Awaiting is the only way to read the set, so no caller can
+ * route on an answer discovery has not given yet — the state that used to read as "not served".
+ */
+export function subscriptionModels(fetchFn: FetchFn, env?: Env): Promise<ReadonlySet<string>> {
+  const now = Date.now();
+  if (discovery && now - discovery.fetchedAt < SERVED_MODELS_TTL_MS) return discovery.models;
+  const models = fetchSubscriptionModels(fetchFn, env).then(
+    (slugs) => new Set(slugs) as ReadonlySet<string>,
+    (cause) => {
+      discovery = undefined;
+      throw new CodedError(PROVIDER_ERROR_CODES.subscriptionDiscoveryFailed, "Could not read your OpenAI subscription", {
+        kind: ERROR_KINDS.subscriptionDiscoveryFailed,
+        cause,
+      });
+    },
+  );
+  discovery = { models, fetchedAt: now };
+  return models;
 }
 
 async function codexClientVersion(fetchFn: FetchFn): Promise<string> {
@@ -66,22 +85,7 @@ export async function fetchSubscriptionModels(fetchFn: FetchFn, env?: Env): Prom
   const parsed = codexModelsResponseSchema.safeParse(await res.json());
   if (!parsed.success) throw new Error("Codex models response failed validation");
   const models = parsed.data.models ?? [];
-  const slugs = models.filter((m) => m.visibility === "list" && m.tool_mode !== "code_mode_only").map((m) => m.slug);
-  servedModels = new Set(slugs);
-  return slugs;
+  return models.filter((m) => m.visibility === "list" && m.tool_mode !== "code_mode_only").map((m) => m.slug);
 }
 
-// Populate the served set once per process before routing decides subscription vs API key. Memoized
-// so concurrent requests share one discovery; a failed discovery routes to the API key for that
-// request but is not cached, so a transient failure doesn't disable the subscription for the process.
-export function ensureSubscriptionModelsLoaded(fetchFn: FetchFn, env?: Env): Promise<void> {
-  if (!discovery) {
-    discovery = fetchSubscriptionModels(fetchFn, env).then(
-      () => undefined,
-      () => {
-        discovery = undefined;
-      },
-    );
-  }
-  return discovery;
-}
+

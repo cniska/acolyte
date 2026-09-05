@@ -19,7 +19,7 @@ import { addObservation, resolveScopeKey, retireMemories, type ScopeContext } fr
 import { searchMemories } from "./memory-recall";
 import { getMemoryStore } from "./memory-store";
 import { streamModelCall } from "./model-call";
-import { createModel } from "./model-factory";
+import { createModel, resolveAuthRoute } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
 import { renderTaskActivity, type TaskActivity } from "./task-activity";
@@ -241,7 +241,7 @@ export async function defaultRunner(
 ): Promise<DistillObservation[]> {
   const qualifiedModel = normalizeModel(model);
   const limiter = sharedRateLimiter(providerFromModel(qualifiedModel));
-  const client = createModel(qualifiedModel, limiter);
+  const client = createModel(qualifiedModel, limiter, await resolveAuthRoute(qualifiedModel));
   // The subscription backend rejects non-streaming requests ("Stream must be set to true"), so distill over doStream.
   const { stream } = await streamModelCall({
     client,

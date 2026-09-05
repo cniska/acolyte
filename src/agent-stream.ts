@@ -18,7 +18,7 @@ import { streamModelCall } from "./model-call";
 import { createModel } from "./model-factory";
 import { applyPromptCacheMarkers } from "./prompt-cache";
 import { estimatePromptSize, promptBudgetError } from "./prompt-size";
-import { normalizeModel, providerFromModel } from "./provider-config";
+import { type AuthRoute, normalizeModel, providerFromModel } from "./provider-config";
 import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
 import { type ToolDefinition, toFunctionTools } from "./tool-contract";
 import { truncateMiddle } from "./truncate-text";
@@ -418,6 +418,7 @@ function safeParseJSON(value: unknown): Record<string, unknown> {
 
 export function createAgent(input: {
   model: string;
+  authRoute: AuthRoute | undefined;
   instructions: Agent["instructions"];
   id?: string;
   name?: string;
@@ -426,7 +427,7 @@ export function createAgent(input: {
   const qualifiedModel = normalizeModel(input.model);
   const provider = providerFromModel(qualifiedModel);
   const rateLimiter = sharedRateLimiter(provider);
-  const modelInstance = createModel(qualifiedModel, rateLimiter);
+  const modelInstance = createModel(qualifiedModel, rateLimiter, input.authRoute ?? "api_key");
   const tools = input.tools ?? {};
   const stream = createAgentStream(modelInstance, input.instructions, tools, rateLimiter, provider);
   return {

@@ -106,6 +106,7 @@ function createRunContext(
     projectRulesPrompt: input.projectRulesPrompt,
     workspace: input.workspace,
     model: params.model,
+    authRoute: input.authRoute,
     tools: params.prepared.tools,
     activeSkills: params.prepared.skillsForPrompt,
     locale: input.locale,

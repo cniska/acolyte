@@ -31,7 +31,7 @@ import {
   type RunContext,
 } from "./lifecycle-contract";
 import { createPromptCacheKey, promptCacheProviderOptions } from "./prompt-cache";
-import { providerFromModel } from "./provider-config";
+import { type AuthRoute, providerFromModel } from "./provider-config";
 import type { ActiveSkill } from "./skill-contract";
 import type { StreamError } from "./stream-error";
 import { estimateTokens } from "./token-estimate";
@@ -115,12 +115,14 @@ export function createRunAgent(input: {
   projectRulesPrompt?: string;
   workspace: string | undefined;
   model: string;
+  authRoute: AuthRoute | undefined;
   tools: Toolset;
   activeSkills: ActiveSkill[];
   locale: TranslationLocale;
 }): Agent {
   return createAgent({
     model: input.model,
+    authRoute: input.authRoute,
     instructions: createInstructions(
       input.soulPrompt,
       input.workspace,

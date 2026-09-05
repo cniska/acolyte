@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { LanguageModelV4, LanguageModelV4CallOptions, LanguageModelV4Message } from "@ai-sdk/provider";
 import type { ProviderCredentialsMap } from "./agent-model";
-import { authRouteForModel, createModel, usesOpenAiSubscription, withUnstoredResponses } from "./model-factory";
+import { createModel, resolveAuthRoute, withUnstoredResponses } from "./model-factory";
 import { sharedRateLimiter } from "./rate-limiter";
 
 describe("withUnstoredResponses", () => {
@@ -30,23 +30,16 @@ describe("withUnstoredResponses", () => {
   });
 });
 
-describe("usesOpenAiSubscription", () => {
-  // Positive routing (a served model with oauth) is covered in openai-subscription-models.int.test.ts,
-  // where discovery populates the served set. Here we cover the oauth gate, which short-circuits first.
-  test("never uses the subscription backend without a subscription", () => {
-    expect(usesOpenAiSubscription("gpt-5.5", { apiKey: "sk" })).toBe(false);
-    expect(usesOpenAiSubscription("gpt-5.5", {})).toBe(false);
-  });
-});
-
-describe("authRouteForModel", () => {
-  test("non-openai providers always route via api_key", () => {
-    expect(authRouteForModel("anthropic/claude-opus-4-8", { openai: { oauth: true } })).toBe("api_key");
+// Routing that needs the served set is covered in openai-subscription-models.int.test.ts; these are
+// the branches that answer before discovery is reached, so they make no network call.
+describe("resolveAuthRoute", () => {
+  test("non-openai providers always route via api_key", async () => {
+    expect(await resolveAuthRoute("anthropic/claude-opus-4-8", { openai: { oauth: true } })).toBe("api_key");
   });
 
-  test("openai without a subscription routes via api_key", () => {
-    expect(authRouteForModel("openai/gpt-5.5", { openai: { apiKey: "sk" } })).toBe("api_key");
-    expect(authRouteForModel("openai/gpt-5.5", {})).toBe("api_key");
+  test("openai without a subscription routes via api_key", async () => {
+    expect(await resolveAuthRoute("openai/gpt-5.5", { openai: { apiKey: "sk" } })).toBe("api_key");
+    expect(await resolveAuthRoute("openai/gpt-5.5", {})).toBe("api_key");
   });
 });
 
@@ -72,7 +65,7 @@ describe("createModel anthropic reasoning", () => {
 
     try {
       const credentials: ProviderCredentialsMap = { anthropic: { apiKey: "test-key" } };
-      const model = createModel(modelId, sharedRateLimiter("anthropic"), credentials);
+      const model = createModel(modelId, sharedRateLimiter("anthropic"), "api_key", credentials);
       const { stream } = await model.doStream({
         prompt: [{ role: "user", content: [{ type: "text", text: "hi" }] }] as LanguageModelV4Message[],
         reasoning,
