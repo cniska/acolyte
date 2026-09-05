@@ -67,6 +67,9 @@ const HARNESS_PROMPT_PREFIXES: readonly string[] = [
   "<command-args>",
   "<local-command-stdout>",
   "<local-command-stderr>",
+  "<bash-input>",
+  "<bash-stdout>",
+  "<bash-stderr>",
   "<task-notification>",
   "[Request interrupted",
 ];
