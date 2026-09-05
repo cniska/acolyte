@@ -127,7 +127,7 @@ export type LifecycleInput = {
   features: ResolvedFeatureFlags;
   reasoning?: ReasoningLevel;
   locale: TranslationLocale;
-  authRoute?: AuthRoute;
+  authRoute: AuthRoute;
   lifecyclePolicy?: Partial<LifecyclePolicy>;
   runControl?: RunControl;
   onEvent?: (event: StreamEvent) => void;
@@ -164,5 +164,5 @@ export type RunContext = {
   toolCallStartedAt: Map<string, ToolCallStart>;
   sideEffectSink: SideEffectSink | null;
   reasoning?: ReasoningLevel;
-  readonly authRoute?: AuthRoute;
+  readonly authRoute: AuthRoute;
 };

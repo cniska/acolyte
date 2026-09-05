@@ -418,7 +418,7 @@ function safeParseJSON(value: unknown): Record<string, unknown> {
 
 export function createAgent(input: {
   model: string;
-  authRoute: AuthRoute | undefined;
+  authRoute: AuthRoute;
   instructions: Agent["instructions"];
   id?: string;
   name?: string;
@@ -427,7 +427,7 @@ export function createAgent(input: {
   const qualifiedModel = normalizeModel(input.model);
   const provider = providerFromModel(qualifiedModel);
   const rateLimiter = sharedRateLimiter(provider);
-  const modelInstance = createModel(qualifiedModel, rateLimiter, input.authRoute ?? "api_key");
+  const modelInstance = createModel(qualifiedModel, rateLimiter, input.authRoute);
   const tools = input.tools ?? {};
   const stream = createAgentStream(modelInstance, input.instructions, tools, rateLimiter, provider);
   return {

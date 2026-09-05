@@ -115,7 +115,7 @@ export function createRunAgent(input: {
   projectRulesPrompt?: string;
   workspace: string | undefined;
   model: string;
-  authRoute: AuthRoute | undefined;
+  authRoute: AuthRoute;
   tools: Toolset;
   activeSkills: ActiveSkill[];
   locale: TranslationLocale;
@@ -162,7 +162,7 @@ export async function phaseGenerate(ctx: RunContext, opts: GenerateOptions): Pro
   });
   ctx.debug("lifecycle.generate.start", {
     model: ctx.model,
-    ...(ctx.authRoute ? { auth_route: ctx.authRoute } : {}),
+    auth_route: ctx.authRoute,
   });
 
   try {
