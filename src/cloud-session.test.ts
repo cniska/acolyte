@@ -135,6 +135,24 @@ describe("cloud session", () => {
     expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 
+  test("a 403 from something in front of the route leaves the refresh token usable", async () => {
+    let blocked = true;
+    const { session, fetchFn } = createSession({
+      token: tokenExpiringIn(-1),
+      refreshToken: "refresh-1",
+      respond: () => {
+        if (blocked) return jsonResponse({ error: "Forbidden" }, 403);
+        return jsonResponse({ token: "renewed-token" });
+      },
+    });
+
+    expect(await session.renew()).toBe(false);
+    blocked = false;
+
+    expect(await session.renew()).toBe(true);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
   test("a network failure leaves the refresh token usable, unlike a refusal", async () => {
     let fail = true;
     const { session, fetchFn } = createSession({
