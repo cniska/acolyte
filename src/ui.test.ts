@@ -57,9 +57,13 @@ describe("ui color suppression", () => {
 
 describe("cli banner", () => {
   const CARET_WIDTH = 4;
+  // The banner reads the ambient `stdout.isTTY`, so the width these tests measure would pick up
+  // the escapes a real terminal gets unless the capture pins it.
   const lastLine = (version: string): string => {
-    const lines = formatCliBanner(version).split("\n");
-    return lines[lines.length - 1] ?? "";
+    const written = captureWith(false, undefined, () => printOutput(formatCliBanner(version)));
+    const rows = written.split("\n");
+    rows.pop();
+    return rows.at(-1) ?? "";
   };
 
   test("the version ends flush with the lettering's right edge whatever its length", () => {
