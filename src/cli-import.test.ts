@@ -247,7 +247,7 @@ describe("importMode", () => {
 
   test("--json prints one record per session and no summary prose", async () => {
     const h = harness([samplePlan()]);
-    await importMode(["--json", "--yes"], h.deps);
+    await importMode(["--json"], h.deps);
 
     expect(h.dim).toEqual([]);
     expect(JSON.parse(h.out.join("\n"))).toMatchObject({
@@ -291,6 +291,16 @@ describe("importMode", () => {
 
     expect(h.errors[0]).toMatchObject({ name: "import", message: "You have no credits remaining." });
     expect(h.closed).toBe(1);
+  });
+
+  test("the closing summary totals every session, not just the last", async () => {
+    const h = harness([samplePlan({ sourceSessionId: "first00000" }), samplePlan({ sourceSessionId: "second0000" })]);
+    await importMode([], h.deps);
+
+    // Two sessions at 3 memories / 1 replaced / 500 tokens each.
+    expect(h.dim.at(-1)).toContain("6 memories");
+    expect(h.dim.at(-1)).toContain("2 replaced");
+    expect(h.dim.at(-1)).toContain("1.0k tokens");
   });
 
   test("--dry-run spends nothing", async () => {
