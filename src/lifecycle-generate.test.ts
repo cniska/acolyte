@@ -136,10 +136,10 @@ describe("phaseGenerate", () => {
     expect(start?.fields?.auth_route).toBe("subscription");
   });
 
-  test("omits the auth route on generate start when unset", async () => {
+  test("traces which credential the turn ran on", async () => {
     const debugEvents: LifecycleDebugEvent[] = [];
     const ctx = createRunContext({
-      authRoute: undefined,
+      authRoute: "subscription",
       debug: (event, fields) => debugEvents.push({ event, fields, sequence: debugEvents.length + 1, ts: "" }),
       agent: silentAgent(),
     });
@@ -147,7 +147,7 @@ describe("phaseGenerate", () => {
     await phaseGenerate(ctx, { timeoutMs: 1000 });
 
     const start = debugEvents.find((event) => event.event === "lifecycle.generate.start");
-    expect(start?.fields).not.toHaveProperty("auth_route");
+    expect(start?.fields).toMatchObject({ auth_route: "subscription" });
   });
 
   test("forwards the reasoning level as a call option", async () => {
