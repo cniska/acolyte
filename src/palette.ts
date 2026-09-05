@@ -1,7 +1,6 @@
 export const palette = {
   // Brand
   brand: "#A56EFF",
-  brandDeep: "#6745A4",
 
   // The monochrome lockup, taken from the site: app.acolyte.sh's `--foreground` for the
   // lettering, acolyte-logo.svg's chevron fill for the caret.

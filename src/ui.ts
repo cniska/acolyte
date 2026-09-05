@@ -1,7 +1,6 @@
 import { stderr, stdout } from "node:process";
 import { gradientRgb, MONO_CARET_STOPS, MONO_STOPS, type Rgb, verticalPosition } from "./brand-gradient";
 import { BRAILLE_BLANK, BRAND_WORDMARK_GAP, BRAND_WORDMARK_ROWS, BRAND_WORDMARK_WIDTH } from "./brand-mark";
-import { palette } from "./palette";
 import { ansi } from "./tui/styles";
 
 let uiSink: ((chunk: string) => void) | null = null;
@@ -46,7 +45,6 @@ export const dimText = paint((value) => `\x1b[2m${value}\x1b[22m`);
 
 const color = {
   dim: dimText,
-  brand: paint((value) => `${hexToAnsi(palette.brand)}${value}\x1b[39m`),
   white: paint((value) => `\x1b[37m${value}\x1b[39m`),
   green: paint((value) => `\x1b[32m${value}\x1b[39m`),
   yellow: paint((value) => `\x1b[33m${value}\x1b[39m`),
