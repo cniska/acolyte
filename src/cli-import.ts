@@ -9,8 +9,9 @@ import { formatCompactNumber } from "./number-format";
 import type { ImportPlan, ImportSessionPlan, ImportSessionResult, RunImportOptions } from "./transcript-import";
 
 const DEFAULT_SINCE = "24h";
-// One distill call per turn, so this is the run's model-call budget. A day of transcripts is
-// hundreds of turns; the ledger makes a bounded first bite resumable rather than a partial import.
+// A day of transcripts is hundreds of turns; the ledger makes a bounded first bite resumable rather
+// than a partial import. Calls are fewer than turns: a session's opening turns are read for the
+// context they give later ones, and the plan's own call count is what the token band is built on.
 const DEFAULT_MAX_TURNS = 25;
 const STORE_FILE = "memory.db";
 const LEDGER_FILE = "ledger.json";
