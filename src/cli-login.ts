@@ -21,7 +21,7 @@ type LoginModeDeps = {
   checkCloudCredential: (url: string, token: string) => Promise<void>;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
-  createId: () => string;
+  createState: () => string;
   createPkce: () => PkceCodes;
   exchangeAuthCode: (baseUrl: string, code: string, verifier: string) => Promise<CloudTokens>;
   startCallbackServer: (state: string) => Promise<{ port: number; result: Promise<CallbackResult> }>;
@@ -152,7 +152,7 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
     // itself travels to the cloud in the exchange, never through the browser, so a code read out of
     // browser history cannot be spent.
     const { verifier, challenge } = deps.createPkce();
-    const state = deps.createId();
+    const state = deps.createState();
     const { port, result } = await deps.startCallbackServer(state);
     const authUrl = `${url}/auth/cli?port=${port}&state=${state}&challenge=${encodeURIComponent(challenge)}`;
 
@@ -183,7 +183,7 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
 type LogoutModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   printDim: (message: string) => void;
-  removeCredential: (key: keyof Credentials) => Promise<void>;
+  removeCredentials: (keys: (keyof Credentials)[]) => Promise<void>;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };
@@ -198,8 +198,6 @@ export async function logoutMode(args: string[], deps: LogoutModeDeps): Promise<
     return;
   }
 
-  await deps.removeCredential("cloudToken");
-  await deps.removeCredential("cloudRefreshToken");
-  await deps.removeCredential("cloudUrl");
+  await deps.removeCredentials(["cloudToken", "cloudRefreshToken", "cloudUrl"]);
   deps.printDim(t("cli.logout.done"));
 }

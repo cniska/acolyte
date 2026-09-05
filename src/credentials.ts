@@ -1,5 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { chmod, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { getDotenvValue, parseDotenv, removeDotenvKey, upsertDotenvValue } from "./dotenv";
@@ -51,16 +52,50 @@ export function readCredentialsSync(env?: Env): Credentials {
   }
 }
 
+/**
+ * Replaces the file in one step: a reader either sees the whole previous version or the whole next
+ * one, never the empty window a truncating write leaves open. Renewal writes this file from every
+ * running process, so that window would otherwise be reached by any process starting alongside one.
+ */
+async function writeCredentialsFile(next: string, env?: Env): Promise<void> {
+  const path = credentialsPath(env);
+  // Unique per write, not just per process: renewal can have two writes in flight at once, and a
+  // shared staging path would let one rename the other's file out from under it.
+  const staging = `${path}.${process.pid}.${randomUUID()}.tmp`;
+  await mkdir(configDir(env), { recursive: true });
+  await writeFile(staging, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
+  await chmod(staging, PRIVATE_FILE_MODE);
+  try {
+    await rename(staging, path);
+  } catch (error) {
+    await unlink(staging).catch(() => {});
+    throw error;
+  }
+}
+
 async function upsertCredentialsEntry(envKey: string, value: string, env?: Env): Promise<void> {
+  let content = "";
+  try {
+    content = await readFile(credentialsPath(env), "utf8");
+  } catch {}
+  await writeCredentialsFile(upsertDotenvValue(content, envKey, value), env);
+}
+
+/** Drops every named key in one write, so a concurrent renewal cannot land between two removals. */
+async function removeCredentialsEntries(envKeys: string[], env?: Env): Promise<void> {
   const path = credentialsPath(env);
   let content = "";
   try {
     content = await readFile(path, "utf8");
-  } catch {}
-  const next = upsertDotenvValue(content, envKey, value);
-  await mkdir(configDir(env), { recursive: true });
-  await writeFile(path, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
-  await chmod(path, PRIVATE_FILE_MODE);
+  } catch {
+    return;
+  }
+  const next = envKeys.reduce((text, key) => removeDotenvKey(text, key), content);
+  if (next.length === 0) {
+    await unlink(path).catch(() => {});
+    return;
+  }
+  await writeCredentialsFile(next, env);
 }
 
 export async function writeCredential(key: keyof Credentials, value: string, env?: Env): Promise<void> {
@@ -92,22 +127,7 @@ export async function writeProviderApiKey(envKey: ProviderApiEnvKey, value: stri
 }
 
 export async function removeProviderApiKey(envKey: ProviderApiEnvKey, env?: Env): Promise<void> {
-  const path = credentialsPath(env);
-  let content = "";
-  try {
-    content = await readFile(path, "utf8");
-  } catch {
-    return;
-  }
-  const next = removeDotenvKey(content, envKey);
-  if (next.length === 0) {
-    try {
-      await unlink(path);
-    } catch {}
-    return;
-  }
-  await writeFile(path, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
-  await chmod(path, PRIVATE_FILE_MODE);
+  await removeCredentialsEntries([envKey], env);
 }
 
 // The subject decides the user memory scope and gates sign-in, so the claim is validated rather than
@@ -136,20 +156,12 @@ export function decodeTokenExpiry(token: string): number | undefined {
 }
 
 export async function removeCredential(key: keyof Credentials, env?: Env): Promise<void> {
-  const path = credentialsPath(env);
-  let content = "";
-  try {
-    content = await readFile(path, "utf8");
-  } catch {
-    return;
-  }
-  const next = removeDotenvKey(content, KEY_MAP[key]);
-  if (next.length === 0) {
-    try {
-      await unlink(path);
-    } catch {}
-    return;
-  }
-  await writeFile(path, next, { encoding: "utf8", mode: PRIVATE_FILE_MODE });
-  await chmod(path, PRIVATE_FILE_MODE);
+  await removeCredentialsEntries([KEY_MAP[key]], env);
+}
+
+export async function removeCredentials(keys: (keyof Credentials)[], env?: Env): Promise<void> {
+  await removeCredentialsEntries(
+    keys.map((key) => KEY_MAP[key]),
+    env,
+  );
 }

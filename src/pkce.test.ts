@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { challengeFor, createPkce } from "./pkce";
+import { challengeFor, createHandoffState, createPkce } from "./pkce";
 
 describe("pkce", () => {
   test("a verifier uses only base64url-safe characters and is long enough", () => {
@@ -19,5 +19,17 @@ describe("pkce", () => {
     const { verifier, challenge } = createPkce();
     expect(challenge).toBe(createHash("sha256").update(verifier).digest("base64url"));
     expect(challengeFor(verifier)).toBe(challenge);
+  });
+});
+
+describe("createHandoffState", () => {
+  test("draws 256 bits from the same source as the verifier", () => {
+    const state = createHandoffState();
+    expect(state).toMatch(/^[A-Za-z0-9_-]{43}$/);
+  });
+
+  test("gives every handoff its own value", () => {
+    const states = new Set(Array.from({ length: 100 }, () => createHandoffState()));
+    expect(states.size).toBe(100);
   });
 });

@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
   decodeTokenSubject,
   readCredentialsSync,
   readProviderApiKeysSync,
   removeCredential,
+  removeCredentials,
   removeProviderApiKey,
   writeCredential,
   writeProviderApiKey,
@@ -46,6 +47,34 @@ describe("credentials", () => {
     await writeCredential("cloudToken", "new", env);
     const creds = readCredentialsSync(env);
     expect(creds).toEqual({ cloudToken: "new" });
+  });
+
+  test("a write replaces the file instead of rewriting it in place, so no reader sees it empty", async () => {
+    const env = { HOME: createTempHome() };
+    await writeCredential("cloudToken", "tok_initial", env);
+    const path = join(configDir(env), "credentials");
+    const before = statSync(path).ino;
+
+    await writeCredential("cloudToken", "tok_renewed", env);
+
+    // A truncating write keeps the inode and empties the file first; a rename swaps a finished file
+    // in, which is what leaves a concurrent reader with either the old contents or the new.
+    expect(statSync(path).ino).not.toBe(before);
+    expect(readCredentialsSync(env).cloudToken).toBe("tok_renewed");
+    expect(readdirSync(configDir(env)).filter((name) => name.includes(".tmp"))).toEqual([]);
+  });
+
+  test("removeCredentials drops every named key and leaves no staging file behind", async () => {
+    const env = { HOME: createTempHome() };
+    await writeCredential("cloudUrl", "https://app.acolyte.sh", env);
+    await writeCredential("cloudToken", "tok_abc", env);
+    await writeCredential("cloudRefreshToken", "ref_abc", env);
+    await writeCredential("embeddingApiKey", "emb_abc", env);
+
+    await removeCredentials(["cloudToken", "cloudRefreshToken", "cloudUrl"], env);
+
+    expect(readCredentialsSync(env)).toEqual({ embeddingApiKey: "emb_abc" });
+    expect(readdirSync(configDir(env)).filter((name) => name.includes(".tmp"))).toEqual([]);
   });
 
   test("removeCredential removes a single credential", async () => {

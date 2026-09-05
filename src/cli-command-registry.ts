@@ -29,6 +29,7 @@ import {
   providerCredentialsPath,
   readProviderApiKeysSync,
   removeCredential,
+  removeCredentials,
   removeProviderApiKey,
   writeCredential,
   writeProviderApiKey,
@@ -40,7 +41,7 @@ import { readOAuthTokensSync, removeOAuthTokens, writeOAuthTokens } from "./oaut
 import { openBrowser } from "./open-browser";
 import { exchangeCode } from "./openai-oauth";
 import { startOAuthCallbackServer } from "./openai-oauth-server";
-import { createPkce } from "./pkce";
+import { createHandoffState, createPkce } from "./pkce";
 import { startServer } from "./server-app";
 import {
   apiUrlForPort,
@@ -52,7 +53,6 @@ import {
 } from "./server-daemon";
 import { SERVE_COMMAND, serverSpawnCommand } from "./server-spawn";
 import { createSession, getSessionStore } from "./session-store";
-import { createId } from "./short-id";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skill-ops";
 import { formatStatus } from "./status-format";
 import { openTraceStore } from "./trace-store";
@@ -136,7 +136,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         printDim,
         printError,
         openBrowser,
-        createState: createId,
+        createState: createHandoffState,
         startCallbackServer: startOAuthCallbackServer,
         exchangeCode: (input) => exchangeCode(input, globalThis.fetch),
         writeOAuthTokens,
@@ -178,7 +178,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
               checkCloudCredential,
               commandError,
               commandHelp,
-              createId,
+              createState: createHandoffState,
               createPkce,
               exchangeAuthCode,
               startCallbackServer,
@@ -198,7 +198,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
             logoutMode(args, {
               hasHelpFlag,
               printDim,
-              removeCredential,
+              removeCredentials,
               commandError,
               commandHelp,
             }),

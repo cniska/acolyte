@@ -50,7 +50,7 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     commandHelp: (name) => {
       calls.push(`commandHelp:${name}`);
     },
-    createId: () => "test_state",
+    createState: () => "test_state",
     createPkce: () => ({ verifier: "test_verifier", challenge: challengeFor("test_verifier") }),
     exchangeAuthCode: async () => {
       calls.push("exchangeAuthCode");
@@ -86,8 +86,8 @@ function createLogoutDeps(overrides?: Partial<LogoutDeps>): {
   const deps: LogoutDeps = {
     hasHelpFlag: () => false,
     printDim: (message) => lines.push(message),
-    removeCredential: async (key) => {
-      calls.push(`removeCredential:${key}`);
+    removeCredentials: async (keys) => {
+      calls.push(`removeCredentials:${keys.join(",")}`);
     },
     commandError: (name) => {
       calls.push(`commandError:${name}`);
@@ -521,14 +521,10 @@ describe("logoutMode", () => {
     expect(calls).toEqual(["commandError:logout"]);
   });
 
-  test("removes every stored cloud credential and confirms", async () => {
+  test("drops every stored cloud credential in one write, so a renewal cannot land between two", async () => {
     const { deps, calls, output } = createLogoutDeps();
     await logoutMode([], deps);
-    expect(calls).toEqual([
-      "removeCredential:cloudToken",
-      "removeCredential:cloudRefreshToken",
-      "removeCredential:cloudUrl",
-    ]);
+    expect(calls).toEqual(["removeCredentials:cloudToken,cloudRefreshToken,cloudUrl"]);
     expect(output()).toContain("Logged out");
   });
 });
