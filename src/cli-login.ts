@@ -1,5 +1,5 @@
 import { type CallbackResult, DEFAULT_CLOUD_URL } from "./cli-callback-server";
-import { challengeFor, type CloudTokens } from "./cloud-auth-code";
+import { type CloudTokens, challengeFor } from "./cloud-auth-code";
 import { type CloudMigrationSummary, isCredentialRejection } from "./cloud-migrate";
 import { isSecureUrl } from "./config-contract";
 import { type Credentials, decodeTokenSubject } from "./credentials";
