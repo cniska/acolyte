@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { stdout } from "node:process";
-import { BRAILLE_BLANK, BRAND_WORDMARK_GAP, BRAND_WORDMARK_WIDTH } from "./brand-mark";
+import {
+  BRAILLE_BLANK,
+  BRAND_MARK_GAP,
+  BRAND_MARK_ROWS,
+  BRAND_WORDMARK_GAP,
+  BRAND_WORDMARK_LOCKUP_WIDTH,
+  BRAND_WORDMARK_ROWS,
+  BRAND_WORDMARK_WIDTH,
+} from "./brand-mark";
 import { formatCliBanner, printDim, printOutput, setUiSink, tokenizeStreamContent } from "./ui";
 
 describe("ui stream helpers", () => {
@@ -12,11 +20,15 @@ describe("ui stream helpers", () => {
 
 const ESC = String.fromCharCode(27);
 
-function captureWith(isTty: boolean, noColor: string | undefined, write: () => void): string {
+const WIDE_TERMINAL = 120;
+
+function captureWith(isTty: boolean, noColor: string | undefined, write: () => void, columns = WIDE_TERMINAL): string {
   const chunks: string[] = [];
   const originalIsTty = stdout.isTTY;
+  const originalColumns = stdout.columns;
   const originalNoColor = process.env.NO_COLOR;
   Object.defineProperty(stdout, "isTTY", { value: isTty, configurable: true });
+  Object.defineProperty(stdout, "columns", { value: columns, configurable: true });
   if (noColor === undefined) delete process.env.NO_COLOR;
   else process.env.NO_COLOR = noColor;
   setUiSink((chunk) => chunks.push(chunk));
@@ -25,6 +37,7 @@ function captureWith(isTty: boolean, noColor: string | undefined, write: () => v
   } finally {
     setUiSink(null);
     Object.defineProperty(stdout, "isTTY", { value: originalIsTty, configurable: true });
+    Object.defineProperty(stdout, "columns", { value: originalColumns, configurable: true });
     if (originalNoColor === undefined) delete process.env.NO_COLOR;
     else process.env.NO_COLOR = originalNoColor;
   }
@@ -57,20 +70,41 @@ describe("ui color suppression", () => {
 
 describe("cli banner", () => {
   const CARET_WIDTH = 4;
-  // The banner reads the ambient `stdout.isTTY`, so the width these tests measure would pick up
-  // the escapes a real terminal gets unless the capture pins it.
-  const lastLine = (version: string): string => {
-    const written = captureWith(false, undefined, () => printOutput(formatCliBanner(version)));
+  const edge = CARET_WIDTH + BRAND_WORDMARK_GAP.length + BRAND_WORDMARK_WIDTH;
+  // The banner reads the ambient terminal, so without the capture pinning width and tty these
+  // tests would pick up the escapes a real terminal gets and the shape a narrow one falls to.
+  const rowsOf = (version: string, columns?: number): string[] => {
+    const written = captureWith(false, undefined, () => printOutput(formatCliBanner(version)), columns);
     const rows = written.split("\n");
     rows.pop();
-    return rows.at(-1) ?? "";
+    return rows;
   };
+  const lastLine = (version: string): string => rowsOf(version).at(-1) ?? "";
+
+  test("the width the narrow fallback triggers on is the caret, the gap and the lettering", () => {
+    expect(BRAND_WORDMARK_LOCKUP_WIDTH).toBe(edge);
+  });
 
   test("the version ends flush with the lettering's right edge whatever its length", () => {
-    const edge = CARET_WIDTH + BRAND_WORDMARK_GAP.length + BRAND_WORDMARK_WIDTH;
     for (const version of ["1.0.0", "0.27.2", "0.100.0", "1.2.3-rc.4"]) {
       expect(lastLine(version).length).toBe(edge);
     }
+  });
+
+  test("a terminal exactly as wide as the lockup still gets the wordmark", () => {
+    expect(rowsOf("0.27.2", BRAND_WORDMARK_LOCKUP_WIDTH)).toHaveLength(BRAND_WORDMARK_ROWS.length);
+  });
+
+  test("a narrower terminal gets the square mark, naming itself in text beside it", () => {
+    const rows = rowsOf("0.27.2", BRAND_WORDMARK_LOCKUP_WIDTH - 1);
+    expect(rows).toHaveLength(BRAND_MARK_ROWS.length);
+    expect(rows[0]).toBe(`${BRAND_MARK_ROWS[0].chevron}${BRAND_MARK_GAP}${BRAND_MARK_ROWS[0].letter}   Acolyte`);
+    expect(rows[1]).toEndWith("v0.27.2");
+  });
+
+  test("the square mark fits a terminal far narrower than the wordmark", () => {
+    const rows = rowsOf("0.27.2", 30);
+    expect(Math.max(...rows.map((row) => row.length))).toBeLessThanOrEqual(30);
   });
 
   test("a version wider than the mark still renders rather than padding negatively", () => {

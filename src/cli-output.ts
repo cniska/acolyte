@@ -4,7 +4,7 @@ import { truncateToWidth } from "./truncate-text";
 const TABLE_GAP = 2;
 const MIN_FLEX_COLUMN = 16;
 
-function terminalColumns(fallback = 80): number {
+export function terminalColumns(fallback = 80): number {
   const columns = process.stdout.columns;
   return typeof columns === "number" && columns > 0 ? columns : fallback;
 }

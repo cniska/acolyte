@@ -51,3 +51,7 @@ export const BRAND_WORDMARK_WIDTH = Math.max(...BRAND_WORDMARK_WORD_ROWS.map((ro
 export const BRAND_WORDMARK_ROWS: ReadonlyArray<{ chevron: string; word: string }> = BRAND_WORDMARK_WORD_ROWS.map(
   (word, row) => ({ chevron: BRAND_WORDMARK_CARET_ROWS[row] ?? BRAND_CARET_BLANK_ROW, word }),
 );
+
+/** Caret, gap and lettering together; a terminal narrower than this gets the square mark instead. */
+export const BRAND_WORDMARK_LOCKUP_WIDTH =
+  BRAND_CARET_BLANK_ROW.length + BRAND_WORDMARK_GAP.length + BRAND_WORDMARK_WIDTH;
