@@ -10,7 +10,9 @@ on:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Only a superseded pull request run is worth cancelling. A push to `main` shares this group with
+  # the scheduled build, so cancelling would let a routine build discard the run verifying a merge.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # Change detection: gate verify so a docs-only commit spends no verify minutes.
