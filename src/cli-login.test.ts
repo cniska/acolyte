@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { loginMode, logoutMode } from "./cli-login";
 import { CloudApiError } from "./cloud-client";
+import { CodedError } from "./coded-error";
+import { LOGIN_ERROR_CODES } from "./error-contract";
+import { challengeFor } from "./pkce";
 import { userResourceIdForSubject } from "./resource-id";
 
 const SUBJECT = "012627e3-1df9-476a-919d-f208a6bb9830";
@@ -13,6 +16,7 @@ function tokenFor(sub: string | undefined): string {
 }
 
 const TOKEN = tokenFor(SUBJECT);
+const REFRESH_TOKEN = "refresh-token";
 
 afterEach(() => {
   process.exitCode = 0;
@@ -31,8 +35,11 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     printDim: (message) => lines.push(message),
     printError: (message) => lines.push(message),
     promptHidden: async () => undefined,
-    writeCredential: async () => {
-      calls.push("writeCredential");
+    writeCredential: async (key) => {
+      calls.push(`writeCredential:${key}`);
+    },
+    removeCredential: async (key) => {
+      calls.push(`removeCredential:${key}`);
     },
     checkCloudCredential: async () => {
       calls.push("checkCloudCredential");
@@ -43,10 +50,16 @@ function createLoginDeps(overrides?: Partial<LoginDeps>): { deps: LoginDeps; out
     commandHelp: (name) => {
       calls.push(`commandHelp:${name}`);
     },
-    createId: () => "test_state",
+    createState: () => "test_state",
+    createPkce: () => ({ verifier: "test_verifier", challenge: challengeFor("test_verifier") }),
+    exchangeAuthCode: async () => {
+      calls.push("exchangeAuthCode");
+      return { token: TOKEN, refresh: REFRESH_TOKEN, email: "test@example.com" };
+    },
     startCallbackServer: async () => ({
       port: 9999,
-      result: Promise.resolve({ token: TOKEN, email: "test@example.com" }),
+      result: Promise.resolve({ code: "code_1" }),
+      stop: () => calls.push("stopCallbackServer"),
     }),
     openBrowser: () => {
       calls.push("openBrowser");
@@ -74,8 +87,8 @@ function createLogoutDeps(overrides?: Partial<LogoutDeps>): {
   const deps: LogoutDeps = {
     hasHelpFlag: () => false,
     printDim: (message) => lines.push(message),
-    removeCredential: async () => {
-      calls.push("removeCredential");
+    removeCredentials: async (keys) => {
+      calls.push(`removeCredentials:${keys.join(",")}`);
     },
     commandError: (name) => {
       calls.push(`commandError:${name}`);
@@ -99,7 +112,8 @@ describe("loginMode", () => {
     const flags: Record<string, string> = { "--token": TOKEN, "--url": "https://cloud.example.com" };
     const { deps, calls, output } = createLoginDeps({ parseFlag: (_args, flag) => flags[flag] });
     await loginMode(["--token", TOKEN, "--url", "https://cloud.example.com"], deps);
-    expect(calls.filter((c) => c === "writeCredential")).toHaveLength(2);
+    expect(calls).toContain("writeCredential:cloudToken");
+    expect(calls).toContain("writeCredential:cloudUrl");
     expect(calls).not.toContain("openBrowser");
     expect(output()).toContain("Logged in");
   });
@@ -110,8 +124,30 @@ describe("loginMode", () => {
     });
     await loginMode([], deps);
     expect(calls).toContain("openBrowser");
-    expect(calls.filter((c) => c === "writeCredential")).toHaveLength(2);
+    expect(calls).toContain("writeCredential:cloudToken");
+    expect(calls).toContain("writeCredential:cloudUrl");
     expect(output()).toContain("test@example.com");
+  });
+
+  test("the oauth handoff stores the refresh token the browser returned", async () => {
+    const { deps, calls } = createLoginDeps({ prompt: () => "" });
+
+    await loginMode([], deps);
+
+    expect(calls).toContain("writeCredential:cloudRefreshToken");
+    expect(calls).not.toContain("removeCredential:cloudRefreshToken");
+  });
+
+  test("a hand-pasted token drops the refresh token of the account it replaces", async () => {
+    const { deps, calls } = createLoginDeps({
+      prompt: () => "https://custom.example.com",
+      promptHidden: async () => TOKEN,
+    });
+
+    await loginMode([], deps);
+
+    expect(calls).toContain("removeCredential:cloudRefreshToken");
+    expect(calls).not.toContain("writeCredential:cloudRefreshToken");
   });
 
   test("custom url falls back to manual token", async () => {
@@ -121,7 +157,8 @@ describe("loginMode", () => {
     });
     await loginMode([], deps);
     expect(calls).not.toContain("openBrowser");
-    expect(calls.filter((c) => c === "writeCredential")).toHaveLength(2);
+    expect(calls).toContain("writeCredential:cloudToken");
+    expect(calls).toContain("writeCredential:cloudUrl");
     expect(output()).toContain("Logged in");
   });
 
@@ -135,17 +172,140 @@ describe("loginMode", () => {
     expect(output()).toContain("empty");
   });
 
-  test("oauth timeout sets exit code", async () => {
+  test("a callback carrying no code is reported as that, not as an outdated cloud", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      prompt: () => "",
+      startCallbackServer: async () => ({
+        port: 9999,
+        result: Promise.reject(new CodedError(LOGIN_ERROR_CODES.codeMissing, "no code")),
+        stop: () => calls.push("stopCallbackServer"),
+      }),
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("without a sign-in code");
+    expect(output()).not.toContain("timed out");
+    expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("an unreachable cloud carries its reason instead of claiming a timeout", async () => {
+    const { deps, output } = createLoginDeps({
+      prompt: () => "",
+      exchangeAuthCode: async () => {
+        throw new TypeError("fetch failed");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("fetch failed");
+    expect(output()).not.toContain("timed out");
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("a browser that cannot be opened ends the wait instead of holding the process", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      prompt: () => "",
+      openBrowser: () => {
+        throw new Error("spawn xdg-open ENOENT");
+      },
+      // Never settles, as the real one does not when the browser never comes back.
+      startCallbackServer: async () => ({
+        port: 9999,
+        result: new Promise<{ code: string }>(() => {}),
+        stop: () => calls.push("stopCallbackServer"),
+      }),
+    });
+
+    await loginMode([], deps);
+
+    expect(calls).toContain("stopCallbackServer");
+    expect(output()).toContain("xdg-open");
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("the sign-in url is printed before the browser is opened, so a headless machine can use it", async () => {
+    const { deps, output } = createLoginDeps({ prompt: () => "" });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("/auth/cli?port=9999&state=test_state&challenge=");
+  });
+
+  test("only a wait that ran out is called a timeout", async () => {
     const { deps, output } = createLoginDeps({
       prompt: () => "",
       startCallbackServer: async () => ({
         port: 9999,
-        result: Promise.reject(new Error("timeout")),
+        result: Promise.reject(new CodedError(LOGIN_ERROR_CODES.callbackTimeout, "timeout")),
+        stop: () => {},
       }),
     });
+
     await loginMode([], deps);
-    expect(process.exitCode).toBe(1);
+
     expect(output()).toContain("timed out");
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("a cloud with no exchange route says so", async () => {
+    const { deps, output } = createLoginDeps({
+      prompt: () => "",
+      exchangeAuthCode: async () => {
+        throw new CodedError(LOGIN_ERROR_CODES.exchangeUnsupported, "no exchange");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("predates the current sign-in");
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("an exchange the cloud turns down is reported as a refusal, not a timeout", async () => {
+    const { deps, calls, output } = createLoginDeps({
+      prompt: () => "",
+      exchangeAuthCode: async () => {
+        throw new CodedError(LOGIN_ERROR_CODES.exchangeRefused, "refused");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("refused this sign-in");
+    expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("the handoff carries the verifier's challenge, and never the verifier", async () => {
+    let authUrl = "";
+    const { deps } = createLoginDeps({
+      prompt: () => "",
+      openBrowser: (url: string) => {
+        authUrl = url;
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(authUrl).toContain(`challenge=${encodeURIComponent(challengeFor("test_verifier"))}`);
+    expect(authUrl).not.toContain("test_verifier");
+  });
+
+  test("a credentials file that cannot be written says so, and does not claim a timeout", async () => {
+    const { deps, output } = createLoginDeps({
+      prompt: () => "",
+      writeCredential: async () => {
+        throw new Error("EROFS: read-only file system");
+      },
+    });
+
+    await loginMode([], deps);
+
+    expect(output()).toContain("EROFS");
+    expect(output()).not.toContain("timed out");
   });
 
   test("refuses a plaintext cloud url before storing anything", async () => {
@@ -155,7 +315,7 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls).not.toContain("writeCredential");
+    expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
     expect(calls).not.toContain("migrateToCloud");
     expect(process.exitCode).toBe(1);
     expect(output()).toContain("must use HTTPS");
@@ -168,7 +328,8 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls.filter((call) => call === "writeCredential")).toHaveLength(2);
+    expect(calls).toContain("writeCredential:cloudToken");
+    expect(calls).toContain("writeCredential:cloudUrl");
     expect(process.exitCode).toBe(0);
   });
 
@@ -179,7 +340,7 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls).not.toContain("writeCredential");
+    expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
     expect(calls).not.toContain("migrateToCloud");
     expect(calls).not.toContain("mergeUserScope");
     expect(process.exitCode).toBe(1);
@@ -196,7 +357,7 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls).not.toContain("writeCredential");
+    expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
     expect(calls).not.toContain("migrateToCloud");
     expect(calls).not.toContain("mergeUserScope");
     expect(process.exitCode).toBe(1);
@@ -213,7 +374,7 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls).not.toContain("writeCredential");
+    expect(calls.some((call) => call.startsWith("writeCredential"))).toBe(false);
     expect(process.exitCode).toBe(1);
     expect(output()).toContain("ECONNREFUSED");
   });
@@ -225,7 +386,7 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls.indexOf("checkCloudCredential")).toBeLessThan(calls.indexOf("writeCredential"));
+    expect(calls.indexOf("checkCloudCredential")).toBeLessThan(calls.indexOf("writeCredential:cloudToken"));
   });
 
   test("merges the local user scope into the account after the copy", async () => {
@@ -349,7 +510,8 @@ describe("loginMode", () => {
 
     await loginMode([], deps);
 
-    expect(calls.filter((call) => call === "writeCredential")).toHaveLength(2);
+    expect(calls).toContain("writeCredential:cloudToken");
+    expect(calls).toContain("writeCredential:cloudUrl");
     expect(process.exitCode).toBe(1);
     expect(output()).toContain("cloud unreachable");
   });
@@ -391,10 +553,10 @@ describe("logoutMode", () => {
     expect(calls).toEqual(["commandError:logout"]);
   });
 
-  test("removes both credentials and confirms", async () => {
+  test("drops every stored cloud credential in one write, so a renewal cannot land between two", async () => {
     const { deps, calls, output } = createLogoutDeps();
     await logoutMode([], deps);
-    expect(calls.filter((c) => c === "removeCredential")).toHaveLength(2);
+    expect(calls).toEqual(["removeCredentials:cloudToken,cloudRefreshToken,cloudUrl"]);
     expect(output()).toContain("Logged out");
   });
 });

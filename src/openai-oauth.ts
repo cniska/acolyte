@@ -10,20 +10,6 @@ import {
 } from "./openai-oauth-contract";
 import type { FetchFn } from "./rate-limiter";
 
-export type PkceCodes = { verifier: string; challenge: string };
-
-function base64UrlEncode(bytes: Uint8Array): string {
-  return Buffer.from(bytes).toString("base64url");
-}
-
-export function createPkce(): PkceCodes {
-  const verifier = base64UrlEncode(crypto.getRandomValues(new Uint8Array(32)));
-  const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(verifier);
-  const challenge = hasher.digest("base64url");
-  return { verifier, challenge };
-}
-
 export function buildAuthorizeUrl(input: { challenge: string; state: string }): string {
   const url = new URL(`${OPENAI_OAUTH_ISSUER}/oauth/authorize`);
   url.searchParams.set("response_type", "code");

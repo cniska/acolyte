@@ -5,8 +5,9 @@ import { errorMessage } from "./error-contract";
 import { t } from "./i18n";
 import type { OAuthProvider, OAuthTokenSet } from "./oauth-store-contract";
 import { oauthProviderSchema } from "./oauth-store-contract";
-import { buildAuthorizeUrl, createPkce } from "./openai-oauth";
+import { buildAuthorizeUrl } from "./openai-oauth";
 import type { OAuthCallbackServer, OAuthServerErrorKind } from "./openai-oauth-server";
+import { createPkce } from "./pkce";
 import {
   type Provider,
   type ProviderApiEnvKey,

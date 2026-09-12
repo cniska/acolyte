@@ -22,6 +22,18 @@ Lifecycle counts tool errors in the coarse categories and records the precise co
 
 A turn whose transport dies mid-flight fails with `E_DAEMON_LOST` and kind `daemon_lost`, carrying the task id when one was assigned. The message states that the session survived and the turn can be sent again; the turn itself is never rebuilt from partial output.
 
+## CLI boundary
+
+An error that reaches the top of the CLI prints one line on stderr and the process exits non-zero.
+
+A guidance table keyed by every error code decides that line. A code mapped to a catalog key prints the guidance; a code mapped to `null` prints the thrown message, which its call site already wrote for a person. The table is exhaustive over `ErrorCode`, so a new code does not compile until it declares which of the two it is.
+
+Guidance replaces the thrown message rather than joining it. The message, any server response body, and the stack are all gated behind `ACOLYTE_DEBUG=cli`. A response body never becomes the first line: it is unbounded text from outside the process.
+
+The table is the last resort for errors nobody caught. A call site that can handle a failure with more context than a code carries prints its own message and never reaches here.
+
+The chat renderer's fatal exit uses the same table: an error that kills a chat session releases the session lock, prints the guidance line, and exits non-zero.
+
 ## Design rule
 
 Keep error contracts minimal. Error messages should be descriptive enough for the model to act on. Keep runtime error classes separate from parsing/normalization logic.
@@ -32,3 +44,4 @@ Keep error contracts minimal. Error messages should be descriptive enough for th
 - `src/coded-error.ts` — generic runtime base for coded errors
 - `src/tool-error.ts` — tool-specific runtime error
 - `src/error-handling.ts` — generic parsing and normalization of runtime errors
+- `src/cli-fatal.ts` — formatting for errors that reach the CLI boundary

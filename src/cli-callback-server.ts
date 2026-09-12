@@ -1,6 +1,8 @@
+import { CodedError } from "./coded-error";
+import { LOGIN_ERROR_CODES } from "./error-contract";
+
 export type CallbackResult = {
-  token: string;
-  email: string;
+  code: string;
 };
 
 const TIMEOUT_MS = 120_000;
@@ -17,7 +19,9 @@ const ERROR_HTML = `<!DOCTYPE html>
 .card{text-align:center}h1{font-size:2.25rem;font-weight:600;margin:0 0 12px}p{color:#737373;margin:8px 0;line-height:1.5}code{font-family:ui-monospace,monospace;font-size:13px;background:#171717;padding:2px 6px;border-radius:4px;color:#d4d4d4}</style></head>
 <body><div class="card"><h1>Something went wrong</h1><p>The login session expired or was invalid.</p><p>Run <code>acolyte login</code> to try again.</p></div></body></html>`;
 
-export function startCallbackServer(expectedState: string): Promise<{ port: number; result: Promise<CallbackResult> }> {
+export type CallbackHandoff = { port: number; result: Promise<CallbackResult>; stop: () => void };
+
+export function startCallbackServer(expectedState: string): Promise<CallbackHandoff> {
   return new Promise((resolveStart) => {
     let resolveResult: (value: CallbackResult) => void;
     let rejectResult: (reason: Error) => void;
@@ -28,9 +32,19 @@ export function startCallbackServer(expectedState: string): Promise<{ port: numb
     });
 
     const timeout = setTimeout(() => {
-      rejectResult(new Error("timeout"));
+      rejectResult(new CodedError(LOGIN_ERROR_CODES.callbackTimeout, "the browser did not come back in time"));
       server.stop();
     }, TIMEOUT_MS);
+
+    // Nothing else releases the process: the listener and the timer above both hold the event loop
+    // open, so a caller that gives up before the browser answers has to be able to close them. The
+    // result is left unsettled on purpose — whoever stops the server already holds its own failure.
+    const stop = () => {
+      clearTimeout(timeout);
+      // Forced: an abandoned sign-in has no request worth draining, and a socket left open holds
+      // the process after the command that started it has already reported its failure.
+      server.stop(true);
+    };
 
     const server = Bun.serve({
       port: 0,
@@ -41,16 +55,24 @@ export function startCallbackServer(expectedState: string): Promise<{ port: numb
           return new Response("Not found", { status: 404 });
         }
 
-        const token = url.searchParams.get("token");
+        const code = url.searchParams.get("code");
         const state = url.searchParams.get("state");
 
-        if (!token || !state || state !== expectedState) {
+        if (!state || state !== expectedState) {
+          return new Response(ERROR_HTML, { status: 400, headers: { "Content-Type": "text/html" } });
+        }
+
+        // A cloud that predates the code handoff redirects a token instead, and no code will ever
+        // arrive: say so now rather than leaving the CLI waiting out its timeout.
+        if (!code) {
+          clearTimeout(timeout);
+          rejectResult(new CodedError(LOGIN_ERROR_CODES.codeMissing, "the cloud returned no authorization code"));
+          setTimeout(() => server.stop(), 100);
           return new Response(ERROR_HTML, { status: 400, headers: { "Content-Type": "text/html" } });
         }
 
         clearTimeout(timeout);
-        const email = url.searchParams.get("email");
-        resolveResult({ token, email: email || "unknown" });
+        resolveResult({ code });
 
         // Shut down after response is sent
         setTimeout(() => server.stop(), 100);
@@ -59,6 +81,6 @@ export function startCallbackServer(expectedState: string): Promise<{ port: numb
       },
     });
 
-    resolveStart({ port: server.port as number, result });
+    resolveStart({ port: server.port as number, result, stop });
   });
 }

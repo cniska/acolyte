@@ -371,6 +371,10 @@ export const FI_MESSAGES = {
   "cli.help.section.usage": [{ kind: "text", value: "Käyttö" }],
   "cli.history.none": [{ kind: "text", value: "Ei tallennettuja istuntoja." }],
   "cli.login.opening.browser": [{ kind: "text", value: "Avataan selain kirjautumista varten…" }],
+  "cli.login.open.manually": [
+    { kind: "text", value: "Jos selain ei aukea, siirry osoitteeseen: " },
+    { kind: "arg", name: "url" },
+  ],
   "cli.login.prompt.token": [{ kind: "text", value: "Pilvitunnus: " }],
   "cli.login.prompt.url": [{ kind: "text", value: "Pilven osoite (https://app.acolyte.sh):" }],
   "cli.login.merge.done": [
@@ -417,6 +421,23 @@ export const FI_MESSAGES = {
   ],
   "cli.login.migrate.start": [{ kind: "text", value: "Kopioidaan paikallinen muisti ja istunnot pilveen." }],
   "cli.login.saved": [{ kind: "text", value: "Kirjauduttu sisään." }],
+  "cli.login.exchange_refused": [
+    { kind: "text", value: "Pilvipalvelu hylkäsi tämän kirjautumisen. Yritä uudelleen komennolla `acolyte login`." },
+  ],
+  "cli.login.failed": [
+    { kind: "text", value: "Kirjautuminen ei valmistunut: " },
+    { kind: "arg", name: "reason" },
+  ],
+  "cli.login.no_code": [
+    { kind: "text", value: "Selain palasi ilman kirjautumiskoodia. Yritä uudelleen komennolla `acolyte login`." },
+  ],
+  "cli.login.no_exchange": [
+    {
+      kind: "text",
+      value:
+        "Tämä pilvipalvelu on vanhempi kuin nykyinen kirjautuminen. Päivitä pilvipalvelu ja kirjaudu sitten uudelleen.",
+    },
+  ],
   "cli.login.timeout": [{ kind: "text", value: "Tunnistautuminen aikakatkaistiin. Yritä uudelleen." }],
   "cli.login.token.anonymous": [
     { kind: "text", value: "Tunnus ei nimeä tiliä, joten mitään ei tallennettu. Kirjaudu uudelleen." },
@@ -672,6 +693,32 @@ export const FI_MESSAGES = {
     { kind: "text", value: "Palvelin hylkäsi tämän yhteyden valtuuttamattomana. Tarkista määritetty API-avain." },
   ],
   "error.unknown": [{ kind: "text", value: "Tuntematon virhe" }],
+  "fatal.cloud.forbidden": [
+    {
+      kind: "text",
+      value:
+        "Tällä tilillä ei ole pääsyä Acolyte Cloudiin. Kirjaudu toisella tilillä komennolla `acolyte login` tai jatka paikallisesti komennolla `acolyte logout`.",
+    },
+  ],
+  "fatal.cloud.request_failed": [
+    {
+      kind: "text",
+      value: "Acolyte Cloud palautti virheen. Yritä uudelleen tai aseta ACOLYTE_DEBUG=cli nähdäksesi vastauksen.",
+    },
+  ],
+  "fatal.cloud.unauthorized": [
+    {
+      kind: "text",
+      value:
+        "Pilvi-istuntosi on vanhentunut. Kirjaudu uudelleen komennolla `acolyte login` tai jatka paikallisesti komennolla `acolyte logout`.",
+    },
+  ],
+  "fatal.memory.embedding_unavailable": [
+    {
+      kind: "text",
+      value: "Muistihaku tarvitsee upotuspalvelun. Aseta API-avain upotusmallille tai poista muistihaku käytöstä.",
+    },
+  ],
   "lifecycle.finish.content_filter": [{ kind: "text", value: "Sisältösuodatin pysäytti vastauksen." }],
   "lifecycle.finish.empty_answer": [
     { kind: "text", value: "Agentti lopetti kirjoittamatta vastausta. Yritä uudelleen tai muotoile pyyntö toisin." },

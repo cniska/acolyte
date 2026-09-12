@@ -364,6 +364,10 @@ export const EN_MESSAGES = {
   "cli.help.section.usage": [{ kind: "text", value: "Usage" }],
   "cli.history.none": [{ kind: "text", value: "No saved sessions." }],
   "cli.login.opening.browser": [{ kind: "text", value: "Opening browser to sign in…" }],
+  "cli.login.open.manually": [
+    { kind: "text", value: "If no browser opens, visit: " },
+    { kind: "arg", name: "url" },
+  ],
   "cli.login.prompt.token": [{ kind: "text", value: "Cloud token: " }],
   "cli.login.prompt.url": [{ kind: "text", value: "Cloud URL (https://app.acolyte.sh):" }],
   "cli.login.merge.done": [
@@ -410,6 +414,23 @@ export const EN_MESSAGES = {
   ],
   "cli.login.migrate.start": [{ kind: "text", value: "Copying local memory and sessions to the cloud." }],
   "cli.login.saved": [{ kind: "text", value: "Logged in." }],
+  "cli.login.exchange_refused": [
+    { kind: "text", value: "The cloud refused this sign-in. Run `acolyte login` to try again." },
+  ],
+  "cli.login.failed": [
+    { kind: "text", value: "Sign-in did not finish: " },
+    { kind: "arg", name: "reason" },
+  ],
+  "cli.login.no_code": [
+    { kind: "text", value: "The browser came back without a sign-in code. Run `acolyte login` to try again." },
+  ],
+  "cli.login.no_exchange": [
+    {
+      kind: "text",
+      value:
+        "This cloud is running a version that predates the current sign-in. Update the cloud service, then sign in again.",
+    },
+  ],
   "cli.login.timeout": [{ kind: "text", value: "Authentication timed out. Please try again." }],
   "cli.login.token.anonymous": [
     { kind: "text", value: "That token does not name an account, so nothing was stored. Sign in again." },
@@ -645,6 +666,33 @@ export const EN_MESSAGES = {
     { kind: "text", value: "The server rejected this connection as unauthorized. Check the configured API key." },
   ],
   "error.unknown": [{ kind: "text", value: "Unknown error" }],
+  "fatal.cloud.forbidden": [
+    {
+      kind: "text",
+      value:
+        "This account does not have access to Acolyte Cloud. Run `acolyte login` to sign in with a different account, or `acolyte logout` to keep working offline.",
+    },
+  ],
+  "fatal.cloud.request_failed": [
+    {
+      kind: "text",
+      value: "Acolyte Cloud returned an error. Try again, or set ACOLYTE_DEBUG=cli to see the response.",
+    },
+  ],
+  "fatal.cloud.unauthorized": [
+    {
+      kind: "text",
+      value:
+        "Your cloud session has expired. Run `acolyte login` to sign in again, or `acolyte logout` to keep working offline.",
+    },
+  ],
+  "fatal.memory.embedding_unavailable": [
+    {
+      kind: "text",
+      value:
+        "Memory search needs an embedding provider. Set an API key for the embedding model, or turn memory search off.",
+    },
+  ],
   "lifecycle.finish.content_filter": [{ kind: "text", value: "The response was stopped by a content filter." }],
   "lifecycle.finish.empty_answer": [
     { kind: "text", value: "The agent finished without writing a response. Retry or rephrase the request." },

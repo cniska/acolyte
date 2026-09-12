@@ -158,6 +158,7 @@ export type MessageArgs = {
   "cli.help.section.usage": never;
   "cli.history.none": never;
   "cli.login.opening.browser": never;
+  "cli.login.open.manually": { url: string | number };
   "cli.login.prompt.token": never;
   "cli.login.prompt.url": never;
   "cli.login.merge.done": { merged: string | number };
@@ -171,6 +172,10 @@ export type MessageArgs = {
   "cli.login.migrate.rejected": never;
   "cli.login.migrate.start": never;
   "cli.login.saved": never;
+  "cli.login.exchange_refused": never;
+  "cli.login.failed": { reason: string | number };
+  "cli.login.no_code": never;
+  "cli.login.no_exchange": never;
   "cli.login.timeout": never;
   "cli.login.token.anonymous": never;
   "cli.login.token.empty": never;
@@ -239,6 +244,10 @@ export type MessageArgs = {
   "error.reply_timeout": never;
   "error.unauthorized": never;
   "error.unknown": never;
+  "fatal.cloud.forbidden": never;
+  "fatal.cloud.request_failed": never;
+  "fatal.cloud.unauthorized": never;
+  "fatal.memory.embedding_unavailable": never;
   "lifecycle.finish.content_filter": never;
   "lifecycle.finish.empty_answer": never;
   "lifecycle.finish.provider_error": never;

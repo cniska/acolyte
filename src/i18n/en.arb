@@ -874,6 +874,11 @@
   "@cli.login.opening.browser": {
     "description": "Progress line shown just before a browser window is opened for sign-in."
   },
+  "cli.login.open.manually": "If no browser opens, visit: {url}",
+  "@cli.login.open.manually": {
+    "description": "Shown with the sign-in URL so a machine without a browser can still complete the handoff.",
+    "placeholders": { "url": { "type": "String" } }
+  },
   "cli.login.prompt.token": "Cloud token: ",
   "@cli.login.prompt.token": {
     "description": "Interactive prompt asking for the cloud token (cli-login.ts:62). Ends with a colon and a trailing space because the user types on the same line; keep both."
@@ -968,6 +973,23 @@
   "cli.login.saved": "Logged in.",
   "@cli.login.saved": {
     "description": "Confirmation that credentials were stored and the user is signed in."
+  },
+  "cli.login.exchange_refused": "The cloud refused this sign-in. Run `acolyte login` to try again.",
+  "cli.login.failed": "Sign-in did not finish: {reason}",
+  "@cli.login.failed": {
+    "description": "Shown when the browser handoff fails for a reason with no guidance of its own — an unreachable cloud, an unwritable credentials file. Carries the underlying reason.",
+    "placeholders": { "reason": { "type": "String" } }
+  },
+  "@cli.login.exchange_refused": {
+    "description": "Shown when the code exchange reaches the cloud and is turned down. 'acolyte login' is a literal command and must not be translated; keep the backticks."
+  },
+  "cli.login.no_code": "The browser came back without a sign-in code. Run `acolyte login` to try again.",
+  "@cli.login.no_code": {
+    "description": "Shown when the callback carries no code — a cancelled or failed authorization. 'acolyte login' is a literal command and must not be translated; keep the backticks."
+  },
+  "cli.login.no_exchange": "This cloud is running a version that predates the current sign-in. Update the cloud service, then sign in again.",
+  "@cli.login.no_exchange": {
+    "description": "Shown when the browser handoff or the code exchange shows the cloud service is older than the CLI. States the cause, then what fixes it."
   },
   "cli.login.timeout": "Authentication timed out. Please try again.",
   "@cli.login.timeout": {
@@ -1413,6 +1435,22 @@
   "error.unknown": "Unknown error",
   "@error.unknown": {
     "description": "Last-resort text used when a caught error carried no message of its own (cli-status.ts:70, cli-run.ts:122). No trailing period, because callers print it as a bare value."
+  },
+  "fatal.cloud.forbidden": "This account does not have access to Acolyte Cloud. Run `acolyte login` to sign in with a different account, or `acolyte logout` to keep working offline.",
+  "@fatal.cloud.forbidden": {
+    "description": "Shown at the CLI boundary when the cloud rejects the account with 403. States the cause, then the two commands that resolve it. 'acolyte login' and 'acolyte logout' are literal commands and must not be translated; keep the backticks."
+  },
+  "fatal.cloud.request_failed": "Acolyte Cloud returned an error. Try again, or set ACOLYTE_DEBUG=cli to see the response.",
+  "@fatal.cloud.request_failed": {
+    "description": "Shown at the CLI boundary for a cloud failure that is neither 401 nor 403. 'ACOLYTE_DEBUG=cli' is a literal environment variable and must not be translated."
+  },
+  "fatal.cloud.unauthorized": "Your cloud session has expired. Run `acolyte login` to sign in again, or `acolyte logout` to keep working offline.",
+  "@fatal.cloud.unauthorized": {
+    "description": "Shown at the CLI boundary when the cloud token is rejected with 401. States the cause, then the two commands that resolve it. 'acolyte login' and 'acolyte logout' are literal commands and must not be translated; keep the backticks."
+  },
+  "fatal.memory.embedding_unavailable": "Memory search needs an embedding provider. Set an API key for the embedding model, or turn memory search off.",
+  "@fatal.memory.embedding_unavailable": {
+    "description": "Shown at the CLI boundary when memory work cannot embed because no provider is configured. Two sentences: what is missing, then the two ways out."
   },
   "lifecycle.finish.content_filter": "The response was stopped by a content filter.",
   "@lifecycle.finish.content_filter": {

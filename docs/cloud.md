@@ -23,7 +23,7 @@ acolyte config set features.cloudSync true  # enable cloud sync (preview)
 acolyte login                               # store token and cloud URL
 ```
 
-A custom cloud URL must use HTTPS unless it targets localhost; `acolyte login` refuses a plaintext one before storing anything. It also refuses a token that names no account, and one the cloud does not accept, so a stored credential always names the account its memory is keyed to. Credentials are stored in the config directory as `credentials` (mode 0600). See [Paths](paths.md) for platform-specific locations. Environment variables `ACOLYTE_CLOUD_URL` and `ACOLYTE_CLOUD_TOKEN` take precedence over the credentials file.
+A custom cloud URL must use HTTPS unless it targets localhost; `acolyte login` refuses a plaintext one before storing anything. It also refuses a token that names no account, and one the cloud does not accept, so a stored credential always names the account its memory is keyed to. Credentials are stored in the config directory as `credentials` (mode 0600). See [Paths](paths.md) for platform-specific locations. Environment variables `ACOLYTE_CLOUD_URL`, `ACOLYTE_CLOUD_TOKEN`, and `ACOLYTE_CLOUD_REFRESH_TOKEN` take precedence over the credentials file.
 
 ## Migration
 
@@ -43,9 +43,15 @@ A scope key is a hash of what it names — a repository's `owner/repo`, or the a
 
 EdDSA JWT tokens (Ed25519) with a `sub` claim identifying the user. All data is isolated by `owner_id` derived from the token subject.
 
+Sign-in never carries a credential through the browser. The CLI keeps a random verifier, sends its SHA-256 as the `challenge`, and the browser hands back a short-lived code bound to that challenge; the CLI then trades code and verifier at `/api/v1/auth/cli-token/exchange` for the tokens. The verifier goes to the cloud in that exchange and never through the browser, so a code read out of browser history cannot be spent.
+
+The API token lasts a day. The CLI trades the stored refresh token for a new API token as the old one nears expiry or when the cloud rejects it — once per rejection, then the answer stands. Only the cloud refusing the refresh token itself retires it; a failure from anything standing in front of the route leaves it to be tried again. The refresh token lasts 90 days, is not rotated by an exchange, and buys nothing but API tokens: presented to a data route, the cloud refuses it. The browser handoff runs against `app.acolyte.sh` alone — a token pasted with `--token`, or given for any other cloud address, comes with no refresh token and stands until it expires. `acolyte logout` removes both.
+
+The account page on the dashboard signs out everywhere, which withdraws every token the account holds and every dashboard session it has open — the remedy when a machine or a credential is lost. Nothing issued before that moment can sign in on its own again, so the machines still in use run `acolyte login`.
+
 ## API
 
-The cloud API is versioned at `/api/v1/`. All endpoints require `Authorization: Bearer <token>`.
+The cloud API is versioned at `/api/v1/`. Every endpoint requires `Authorization: Bearer <token>`, except the two sign-in exchanges: the refresh exchange takes the refresh token in the body, and the code exchange the code and its verifier.
 
 | Domain | Method | Route | Description |
 |--------|--------|-------|-------------|
@@ -68,6 +74,8 @@ The cloud API is versioned at `/api/v1/`. All endpoints require `Authorization: 
 | | DELETE | `/api/v1/sessions/:id` | Delete session |
 | | GET | `/api/v1/sessions/active` | Get active session |
 | | PUT | `/api/v1/sessions/active` | Set active session |
+| Auth | POST | `/api/v1/auth/cli-token/exchange` | Exchange a sign-in code and verifier for tokens |
+| | POST | `/api/v1/auth/refresh` | Exchange a refresh token for a new API token |
 
 ## Data isolation
 
@@ -80,10 +88,13 @@ See [acolyte-cloud](https://github.com/cniska/acolyte-cloud) for setup and deplo
 ## Key files
 
 - `src/cloud-client.ts` — cloud client with `MemoryStore` and `SessionStore` implementations
+- `src/cloud-session.ts` — holds the API token and renews it from the refresh token
+- `src/cloud-auth-code.ts` — the sign-in code exchange
+- `src/pkce.ts` — the verifier and challenge pair every browser handoff uses
 - `src/cloud-migrate.ts` — one-time copy of local memory and sessions into an account
 - `src/cloud-migrate-runner.ts` — opens the local stores the copy reads from
 - `src/credentials.ts` — credentials file read/write
-- `src/app-config.ts` — `cloudUrl`, `cloudToken` (from env or credentials), and `cloudSync` feature flag
+- `src/app-config.ts` — `cloudUrl`, `cloudToken`, `cloudRefreshToken` (from env or credentials), and `cloudSync` feature flag
 
 ## Further reading
 

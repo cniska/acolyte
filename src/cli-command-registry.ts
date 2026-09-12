@@ -22,12 +22,14 @@ import { toolMode } from "./cli-tool";
 import { traceMode } from "./cli-trace";
 import { updateMode } from "./cli-update";
 import { createClient } from "./client-factory";
+import { exchangeAuthCode } from "./cloud-auth-code";
 import { checkCloudCredential, runCloudMigration, runUserScopeMerge } from "./cloud-migrate-runner";
 import { readConfig, readConfigForScope, readResolvedConfigSync, setConfigValue, unsetConfigValue } from "./config";
 import {
   providerCredentialsPath,
   readProviderApiKeysSync,
   removeCredential,
+  removeCredentials,
   removeProviderApiKey,
   writeCredential,
   writeProviderApiKey,
@@ -39,6 +41,7 @@ import { readOAuthTokensSync, removeOAuthTokens, writeOAuthTokens } from "./oaut
 import { openBrowser } from "./open-browser";
 import { exchangeCode } from "./openai-oauth";
 import { startOAuthCallbackServer } from "./openai-oauth-server";
+import { createHandoffState, createPkce } from "./pkce";
 import { startServer } from "./server-app";
 import {
   apiUrlForPort,
@@ -50,7 +53,6 @@ import {
 } from "./server-daemon";
 import { SERVE_COMMAND, serverSpawnCommand } from "./server-spawn";
 import { createSession, getSessionStore } from "./session-store";
-import { createId } from "./short-id";
 import { findSkillByName, loadSkills, readSkillInstructions } from "./skill-ops";
 import { formatStatus } from "./status-format";
 import { openTraceStore } from "./trace-store";
@@ -134,7 +136,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
         printDim,
         printError,
         openBrowser,
-        createState: createId,
+        createState: createHandoffState,
         startCallbackServer: startOAuthCallbackServer,
         exchangeCode: (input) => exchangeCode(input, globalThis.fetch),
         writeOAuthTokens,
@@ -172,10 +174,13 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
               printError,
               promptHidden,
               writeCredential,
+              removeCredential,
               checkCloudCredential,
               commandError,
               commandHelp,
-              createId,
+              createState: createHandoffState,
+              createPkce,
+              exchangeAuthCode,
               startCallbackServer,
               openBrowser,
               migrateToCloud: runCloudMigration,
@@ -193,7 +198,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
             logoutMode(args, {
               hasHelpFlag,
               printDim,
-              removeCredential,
+              removeCredentials,
               commandError,
               commandHelp,
             }),

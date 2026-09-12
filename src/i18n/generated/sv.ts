@@ -375,6 +375,10 @@ export const SV_MESSAGES = {
   "cli.help.section.usage": [{ kind: "text", value: "Användning" }],
   "cli.history.none": [{ kind: "text", value: "Inga sparade sessioner." }],
   "cli.login.opening.browser": [{ kind: "text", value: "Öppnar webbläsaren för inloggning…" }],
+  "cli.login.open.manually": [
+    { kind: "text", value: "Om ingen webbläsare öppnas, gå till: " },
+    { kind: "arg", name: "url" },
+  ],
   "cli.login.prompt.token": [{ kind: "text", value: "Molntoken: " }],
   "cli.login.prompt.url": [{ kind: "text", value: "Molnadress (https://app.acolyte.sh):" }],
   "cli.login.merge.done": [
@@ -418,6 +422,22 @@ export const SV_MESSAGES = {
   ],
   "cli.login.migrate.start": [{ kind: "text", value: "Kopierar lokalt minne och sessioner till molnet." }],
   "cli.login.saved": [{ kind: "text", value: "Inloggad." }],
+  "cli.login.exchange_refused": [
+    { kind: "text", value: "Molntjänsten avvisade den här inloggningen. Kör `acolyte login` för att försöka igen." },
+  ],
+  "cli.login.failed": [
+    { kind: "text", value: "Inloggningen slutfördes inte: " },
+    { kind: "arg", name: "reason" },
+  ],
+  "cli.login.no_code": [
+    { kind: "text", value: "Webbläsaren kom tillbaka utan inloggningskod. Kör `acolyte login` för att försöka igen." },
+  ],
+  "cli.login.no_exchange": [
+    {
+      kind: "text",
+      value: "Den här molntjänsten är äldre än den nuvarande inloggningen. Uppdatera molntjänsten och logga in igen.",
+    },
+  ],
   "cli.login.timeout": [{ kind: "text", value: "Autentiseringen tog för lång tid. Försök igen." }],
   "cli.login.token.anonymous": [
     { kind: "text", value: "Tokenen namnger inget konto, så ingenting sparades. Logga in igen." },
@@ -672,6 +692,33 @@ export const SV_MESSAGES = {
     { kind: "text", value: "Servern avvisade anslutningen som obehörig. Kontrollera den konfigurerade API-nyckeln." },
   ],
   "error.unknown": [{ kind: "text", value: "Okänt fel" }],
+  "fatal.cloud.forbidden": [
+    {
+      kind: "text",
+      value:
+        "Det här kontot har inte åtkomst till Acolyte Cloud. Kör `acolyte login` för att logga in med ett annat konto, eller `acolyte logout` för att arbeta vidare lokalt.",
+    },
+  ],
+  "fatal.cloud.request_failed": [
+    {
+      kind: "text",
+      value: "Acolyte Cloud svarade med ett fel. Försök igen, eller sätt ACOLYTE_DEBUG=cli för att se svaret.",
+    },
+  ],
+  "fatal.cloud.unauthorized": [
+    {
+      kind: "text",
+      value:
+        "Din molnsession har gått ut. Kör `acolyte login` för att logga in igen, eller `acolyte logout` för att arbeta vidare lokalt.",
+    },
+  ],
+  "fatal.memory.embedding_unavailable": [
+    {
+      kind: "text",
+      value:
+        "Minnessökning kräver en inbäddningsleverantör. Ange en API-nyckel för inbäddningsmodellen, eller stäng av minnessökning.",
+    },
+  ],
   "lifecycle.finish.content_filter": [{ kind: "text", value: "Svaret stoppades av ett innehållsfilter." }],
   "lifecycle.finish.empty_answer": [
     { kind: "text", value: "Agenten avslutade utan att skriva något svar. Försök igen eller formulera om begäran." },

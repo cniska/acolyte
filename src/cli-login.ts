@@ -1,9 +1,11 @@
-import { type CallbackResult, DEFAULT_CLOUD_URL } from "./cli-callback-server";
+import { type CallbackHandoff, DEFAULT_CLOUD_URL } from "./cli-callback-server";
+import type { CloudTokens } from "./cloud-auth-code";
 import { type CloudMigrationSummary, isCredentialRejection } from "./cloud-migrate";
 import { isSecureUrl } from "./config-contract";
 import { type Credentials, decodeTokenSubject } from "./credentials";
-import { errorMessage } from "./error-contract";
+import { errorCode, errorMessage, LOGIN_ERROR_CODES } from "./error-contract";
 import { t } from "./i18n";
+import type { PkceCodes } from "./pkce";
 import { type UserResourceId, userResourceIdForSubject } from "./resource-id";
 import type { UserScopeMergeSummary } from "./user-scope-merge";
 
@@ -15,11 +17,14 @@ type LoginModeDeps = {
   printError: (message: string) => void;
   promptHidden: (question: string) => Promise<string | undefined>;
   writeCredential: (key: keyof Credentials, value: string) => Promise<void>;
+  removeCredential: (key: keyof Credentials) => Promise<void>;
   checkCloudCredential: (url: string, token: string) => Promise<void>;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
-  createId: () => string;
-  startCallbackServer: (state: string) => Promise<{ port: number; result: Promise<CallbackResult> }>;
+  createState: () => string;
+  createPkce: () => PkceCodes;
+  exchangeAuthCode: (baseUrl: string, code: string, verifier: string) => Promise<CloudTokens>;
+  startCallbackServer: (state: string) => Promise<CallbackHandoff>;
   openBrowser: (url: string) => void;
   migrateToCloud: (url: string, token: string, accountKey: UserResourceId) => Promise<CloudMigrationSummary>;
   mergeUserScope: (url: string, token: string, accountKey: UserResourceId) => Promise<UserScopeMergeSummary>;
@@ -49,7 +54,13 @@ function reportMerge(deps: LoginModeDeps, merge: UserScopeMergeSummary): void {
  * and a token exist, and every cloud write upserts on the record id, so signing in again finishes
  * whatever a failed run left behind.
  */
-async function completeLogin(deps: LoginModeDeps, url: string, token: string, confirmation: string): Promise<void> {
+async function completeLogin(
+  deps: LoginModeDeps,
+  url: string,
+  token: string,
+  confirmation: string,
+  refreshToken?: string,
+): Promise<void> {
   if (!isSecureUrl(url)) {
     deps.printError(t("cli.login.url.insecure"));
     process.exitCode = 1;
@@ -81,6 +92,12 @@ async function completeLogin(deps: LoginModeDeps, url: string, token: string, co
 
   await deps.writeCredential("cloudToken", token);
   await deps.writeCredential("cloudUrl", url);
+
+  // A token pasted by hand comes with no way to renew it. Dropping any stored refresh token keeps
+  // this machine from renewing the new sign-in with the previous account's credential.
+  if (refreshToken) await deps.writeCredential("cloudRefreshToken", refreshToken);
+  else await deps.removeCredential("cloudRefreshToken");
+
   deps.printDim(confirmation);
 
   deps.printDim(t("cli.login.migrate.start"));
@@ -95,6 +112,20 @@ async function completeLogin(deps: LoginModeDeps, url: string, token: string, co
     );
     process.exitCode = 1;
   }
+}
+
+/**
+ * Only a wait that ran out is a timeout. Every other way the handoff ends says what happened, so a
+ * sign-in the browser completed is never reported as one the user never finished.
+ */
+function reportHandoffFailure(deps: LoginModeDeps, error: unknown): void {
+  const code = errorCode(error);
+  if (code === LOGIN_ERROR_CODES.codeMissing) deps.printError(t("cli.login.no_code"));
+  else if (code === LOGIN_ERROR_CODES.exchangeUnsupported) deps.printError(t("cli.login.no_exchange"));
+  else if (code === LOGIN_ERROR_CODES.exchangeRefused) deps.printError(t("cli.login.exchange_refused"));
+  else if (code === LOGIN_ERROR_CODES.callbackTimeout) deps.printError(t("cli.login.timeout"));
+  else deps.printError(t("cli.login.failed", { reason: errorMessage(error) }));
+  process.exitCode = 1;
 }
 
 export async function loginMode(args: string[], deps: LoginModeDeps): Promise<void> {
@@ -117,21 +148,28 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
   const url = urlInput || DEFAULT_CLOUD_URL;
 
   if (url === DEFAULT_CLOUD_URL) {
-    // OAuth flow
-    const state = deps.createId();
-    const { port, result } = await deps.startCallbackServer(state);
-    const authUrl = `${url}/auth/cli?port=${port}&state=${state}`;
+    // The browser carries back a code, and only the hash of the verifier goes with it. The verifier
+    // itself travels to the cloud in the exchange, never through the browser, so a code read out of
+    // browser history cannot be spent.
+    const { verifier, challenge } = deps.createPkce();
+    const state = deps.createState();
+    const { port, result, stop } = await deps.startCallbackServer(state);
+    const authUrl = `${url}/auth/cli?port=${port}&state=${state}&challenge=${encodeURIComponent(challenge)}`;
 
     deps.printDim(t("cli.login.opening.browser"));
-    deps.openBrowser(authUrl);
-    deps.printDim(t("cli.login.waiting"));
+    // The URL goes out before the opener runs: on a machine with no browser to open — a server over
+    // SSH — this line is the whole sign-in, and it has to be there whether or not the opener works.
+    deps.printDim(t("cli.login.open.manually", { url: authUrl }));
 
     try {
-      const { token, email } = await result;
-      await completeLogin(deps, url, token, t("cli.login.welcome", { email }));
-    } catch {
-      deps.printError(t("cli.login.timeout"));
-      process.exitCode = 1;
+      deps.openBrowser(authUrl);
+      deps.printDim(t("cli.login.waiting"));
+      const { code } = await result;
+      const tokens = await deps.exchangeAuthCode(url, code, verifier);
+      await completeLogin(deps, url, tokens.token, t("cli.login.welcome", { email: tokens.email }), tokens.refresh);
+    } catch (error) {
+      stop();
+      reportHandoffFailure(deps, error);
     }
   } else {
     // Manual token flow for custom URLs
@@ -149,7 +187,7 @@ export async function loginMode(args: string[], deps: LoginModeDeps): Promise<vo
 type LogoutModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   printDim: (message: string) => void;
-  removeCredential: (key: keyof Credentials) => Promise<void>;
+  removeCredentials: (keys: (keyof Credentials)[]) => Promise<void>;
   commandError: (name: string, message?: string) => void;
   commandHelp: (name: string) => void;
 };
@@ -164,7 +202,6 @@ export async function logoutMode(args: string[], deps: LogoutModeDeps): Promise<
     return;
   }
 
-  await deps.removeCredential("cloudToken");
-  await deps.removeCredential("cloudUrl");
+  await deps.removeCredentials(["cloudToken", "cloudRefreshToken", "cloudUrl"]);
   deps.printDim(t("cli.logout.done"));
 }
