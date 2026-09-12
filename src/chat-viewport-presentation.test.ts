@@ -3,7 +3,7 @@ import { createChatViewportPresentation } from "./chat-viewport-presentation";
 
 test("viewport presentation preserves active transcript and derives scene composer inputs", () => {
   const presentation = createChatViewportPresentation({
-    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1", storage: "local" },
     activeTranscript: [
       { id: "row_1", kind: "assistant", status: "complete", content: { kind: "message", text: "hello" } },
     ],

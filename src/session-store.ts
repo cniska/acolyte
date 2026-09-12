@@ -2,10 +2,11 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
+import type { appConfig as AppConfig } from "./app-config";
 import { legacyChatRowFromTranscript, transcriptRowSchema } from "./chat-transcript-contract";
 import { log } from "./log";
 import { dataDir } from "./paths";
-import type { SessionStore } from "./session-contract";
+import type { SessionStorageKind, SessionStore } from "./session-contract";
 import { type Session, type SessionId, type SessionState, sessionIdSchema, sessionSchema } from "./session-contract";
 import { searchMessages } from "./session-ops";
 import { createId } from "./short-id";
@@ -193,9 +194,14 @@ export function getSessionStore(): Promise<SessionStore> {
   return storePromise;
 }
 
+/** Where sessions land, so the chat header can name the backend `getSessionStore` will resolve to. */
+export function sessionStorageKind(config: typeof AppConfig): SessionStorageKind {
+  return config.features.cloudSync && config.cloudUrl && config.cloudToken ? "cloud" : "local";
+}
+
 async function resolveStore(): Promise<SessionStore> {
   const { appConfig } = await import("./app-config");
-  if (appConfig.features.cloudSync && appConfig.cloudUrl && appConfig.cloudToken) {
+  if (sessionStorageKind(appConfig) === "cloud") {
     const { getCloudClient } = await import("./cloud-client");
     return (await getCloudClient()).session;
   }

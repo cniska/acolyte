@@ -39,7 +39,7 @@ function finalizedById(
   held: ReadonlySet<string> = new Set(),
 ): Map<string, boolean> {
   const presentation = createChatViewportPresentation({
-    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1", storage: "local" },
     activeTranscript: rows,
     pending,
     composer: {

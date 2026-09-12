@@ -1,5 +1,17 @@
 import { describe, expect, test } from "bun:test";
-import { parseSessionState } from "./session-store";
+import { parseSessionState, sessionStorageKind } from "./session-store";
+
+describe("sessionStorageKind", () => {
+  const config = (overrides: Record<string, unknown>) =>
+    ({ features: { cloudSync: true }, cloudUrl: "https://app.acolyte.sh", cloudToken: "tok", ...overrides }) as never;
+
+  test("cloud needs the feature, a url, and a token together", () => {
+    expect(sessionStorageKind(config({}))).toBe("cloud");
+    expect(sessionStorageKind(config({ features: { cloudSync: false } }))).toBe("local");
+    expect(sessionStorageKind(config({ cloudUrl: undefined }))).toBe("local");
+    expect(sessionStorageKind(config({ cloudToken: undefined }))).toBe("local");
+  });
+});
 
 describe("storage", () => {
   test("parseSessionState drops sessions missing tokenUsage", () => {

@@ -36,7 +36,7 @@ const box = (interior: string[], columns = DEFAULT_TERMINAL_WIDTH): string =>
 
 function pickerScene(picker: PickerInput, columns: number) {
   const presentation = createChatViewportPresentation({
-    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1", storage: "local" },
     activeTranscript: [],
     pending: null,
     composer: {

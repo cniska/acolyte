@@ -29,6 +29,7 @@ import type { InputEditAction } from "./input-controller";
 import { log } from "./log";
 import { formatModel } from "./provider-config";
 import type { Session, SessionState, SessionTokenUsageEntry } from "./session-contract";
+import { sessionStorageKind } from "./session-store";
 import { loadSkills } from "./skill-ops";
 import { useAsyncEffect, useMountEffect, useSyncEffect } from "./tui/effects";
 import type { PromotedSceneSlice } from "./tui/scene-viewport";
@@ -157,7 +158,8 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
   const [git, setGit] = useState<GitStatus | null>(null);
   const [pr, setPr] = useState<PrInfo | null>(null);
 
-  const { promotedSlices, appendSlices, openSegment } = useScenePromotion({ version: props.version, session });
+  const storage = sessionStorageKind(appConfig);
+  const { promotedSlices, appendSlices, openSegment } = useScenePromotion({ version: props.version, session, storage });
 
   // Freeze the newly-scrolled-off slices and evict their rows from the active scene in one
   // commit, so no frame renders a row in both scrollback and the live tail.
@@ -215,7 +217,12 @@ export function useChatState(props: ChatAppProps, exit: () => void): ChatStateRe
     skills: currentSession.activeSkills?.map((s) => s.name) ?? [],
   };
   const presentationInput: ChatViewportPresentationInput = {
-    header: { title: "Acolyte", version: props.version, sessionId: currentSession.id },
+    header: {
+      title: "Acolyte",
+      version: props.version,
+      sessionId: currentSession.id,
+      storage,
+    },
     activeTranscript,
     pending: pendingState
       ? {

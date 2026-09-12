@@ -3,6 +3,7 @@ import { transcriptRowSchema } from "./chat-transcript-contract";
 import { pendingStateSchema } from "./client-contract";
 import { footerStatusSchema } from "./footer-status-contract";
 import { inputControllerStateSchema } from "./input-controller";
+import { sessionStorageKindSchema } from "./session-contract";
 import { skillMetaSchema, skillSourceSchema } from "./skill-contract";
 
 export const headerPresentationSchema = z.object({
@@ -10,6 +11,7 @@ export const headerPresentationSchema = z.object({
   titleSuffix: z.string().optional(),
   version: z.string(),
   sessionId: z.string(),
+  storage: sessionStorageKindSchema,
 });
 
 export const pendingPresentationSchema = z.object({

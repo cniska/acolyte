@@ -39,7 +39,7 @@ function sceneTail(input: {
   pending?: ReturnType<typeof createChatViewportPresentation>["pending"];
 }): string {
   const presentation = createChatViewportPresentation({
-    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1", storage: "local" },
     activeTranscript: input.activeTranscript,
     pending: input.pending ?? null,
     composer: {

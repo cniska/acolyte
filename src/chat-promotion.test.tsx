@@ -57,9 +57,11 @@ describe("resumeActiveTranscript", () => {
 
 describe("createHeaderSlice", () => {
   test("keeps the bare id for segment 0 and versions later segments", () => {
-    expect(createHeaderSlice("1.0", "sess_h", 0).id).toBe("header_sess_h");
-    expect(createHeaderSlice("1.0", "sess_h", 2).id).toBe("header_sess_h_2");
-    expect(createHeaderSlice("1.0", "sess_h", 0).lines.length).toBeGreaterThan(0);
+    const slice = (segment: number) =>
+      createHeaderSlice({ version: "1.0", sessionId: "sess_h", segment, storage: "local" });
+    expect(slice(0).id).toBe("header_sess_h");
+    expect(slice(2).id).toBe("header_sess_h_2");
+    expect(slice(0).lines.length).toBeGreaterThan(0);
   });
 });
 
@@ -79,14 +81,14 @@ describe("appendPromotedSlices", () => {
 describe("useScenePromotion", () => {
   test("seeds scrollback with the session's header slice", () => {
     const session = createSession({ id: "sess_seed" });
-    const { result, unmount } = renderHook(() => useScenePromotion({ version: "1.0", session }));
+    const { result, unmount } = renderHook(() => useScenePromotion({ version: "1.0", session, storage: "local" }));
     expect(result.current.promotedSlices.map((s) => s.id)).toEqual(["header_sess_seed"]);
     unmount();
   });
 
   test("appendSlices commits new slices and stays idempotent under repeats", async () => {
     const session = createSession({ id: "sess_seed" });
-    const { result, unmount } = renderHook(() => useScenePromotion({ version: "1.0", session }));
+    const { result, unmount } = renderHook(() => useScenePromotion({ version: "1.0", session, storage: "local" }));
     result.current.appendSlices([slice("row_1")]);
     await wait();
     result.current.appendSlices([slice("row_1")]);
@@ -97,7 +99,7 @@ describe("useScenePromotion", () => {
 
   test("openSegment appends a versioned header so a re-opened session never collides", async () => {
     const session = createSession({ id: "sess_a" });
-    const { result, unmount } = renderHook(() => useScenePromotion({ version: "1.0", session }));
+    const { result, unmount } = renderHook(() => useScenePromotion({ version: "1.0", session, storage: "local" }));
     result.current.openSegment("sess_b");
     await wait();
     result.current.openSegment("sess_a");

@@ -25,7 +25,7 @@ const footer = {
 function noticeTextRole(status: TranscriptStatus, text: string): TerminalStyleRole | undefined {
   const row: TranscriptRow = { id: "row_notice", kind: "system", status, content: { kind: "message", text } };
   const presentation = createChatViewportPresentation({
-    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1", storage: "local" },
     activeTranscript: [row],
     pending: null,
     composer: {

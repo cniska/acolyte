@@ -53,7 +53,7 @@ const footer = {
 // render-loop invariants hold against real layout output, not a hand-built stand-in.
 function transcriptScene(rows: ChatRow[]): TerminalScene {
   const presentation = createChatViewportPresentation({
-    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1", storage: "local" },
     activeTranscript: rows.map(migrateLegacyChatRow),
     pending: null,
     composer: {

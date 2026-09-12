@@ -28,7 +28,7 @@ const footer = {
 // then read only the transcript region (between the header and the composer).
 function renderTranscript(rows: ChatRow[], columns = DEFAULT_TERMINAL_WIDTH): string {
   const presentation = createChatViewportPresentation({
-    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1", storage: "local" },
     activeTranscript: rows.map(migrateLegacyChatRow),
     pending: null,
     composer: {

@@ -26,7 +26,7 @@ const columns = 60;
 
 function sceneFor(activeTranscript: TranscriptRow[]) {
   const presentation = createChatViewportPresentation({
-    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1", storage: "local" },
     activeTranscript,
     pending: null,
     composer: {

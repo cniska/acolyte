@@ -4,7 +4,7 @@ import { finalizeScene } from "./terminal-scene-contract";
 
 test("viewport contracts require semantic sections and renderer-independent composer state", () => {
   const parsed = chatViewportPresentationSchema.safeParse({
-    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1", storage: "local" },
     transcript: [],
     pending: null,
     composer: {

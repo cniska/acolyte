@@ -29,7 +29,7 @@ Each store tracks an active session ID — the most recently used session. Resum
 
 ## Storage
 
-Two backends, selected via the `cloudSync` feature flag (default: file):
+Two backends. Cloud is used when `cloudSync` is enabled *and* a cloud URL and token are present; anything short of all three falls to file. The chat header names the resolved backend on its `storage` row.
 
 - **File** (default): `sessions.json` in the data directory (see [Paths](paths.md)), entire state read/written as JSON
 - **Cloud** (feature-flagged): configured via `acolyte login`, backed by Postgres with JSONB messages. See [Cloud](cloud.md).

@@ -1,4 +1,15 @@
 import { stderr, stdout } from "node:process";
+import { gradientRgb, MONO_CARET_STOPS, MONO_STOPS, type Rgb, verticalPosition } from "./brand-gradient";
+import {
+  BRAILLE_BLANK,
+  BRAND_MARK_GAP,
+  BRAND_MARK_ROWS,
+  BRAND_WORDMARK_GAP,
+  BRAND_WORDMARK_LOCKUP_WIDTH,
+  BRAND_WORDMARK_ROWS,
+  BRAND_WORDMARK_WIDTH,
+} from "./brand-mark";
+import { terminalColumns } from "./cli-output";
 import { palette } from "./palette";
 import { ansi } from "./tui/styles";
 
@@ -44,7 +55,7 @@ export const dimText = paint((value) => `\x1b[2m${value}\x1b[22m`);
 
 const color = {
   dim: dimText,
-  brand: paint((value) => `${hexToAnsi(palette.brand)}${value}\x1b[39m`),
+  markInk: paint((value) => `${hexToAnsi(palette.markInk)}${value}\x1b[39m`),
   white: paint((value) => `\x1b[37m${value}\x1b[39m`),
   green: paint((value) => `\x1b[32m${value}\x1b[39m`),
   yellow: paint((value) => `\x1b[33m${value}\x1b[39m`),
@@ -52,8 +63,51 @@ const color = {
   bold: paint((value) => `\x1b[1m${value}\x1b[22m`),
 };
 
-export function formatCliTitle(version: string): string {
-  return `${color.brand("Acolyte")}${color.dim(color.white(` v${version}`))}`;
+/** Wraps inked braille cells in a foreground escape; all-blank runs stay unpainted. */
+function paintCells(cells: string, sgr: string): string {
+  if (![...cells].some((cell) => cell !== BRAILLE_BLANK)) return cells;
+  return `${sgr}${cells}\x1b[39m`;
+}
+
+function inked(cells: string, sgr: string): string {
+  return colorEnabled() ? paintCells(cells, sgr) : cells;
+}
+
+const MARK_GUTTER = "   ";
+
+/**
+ * The square mark, naming itself in text because there is no room for the lettering. Four rows are
+ * too short for a sweep to read as one, so each column takes a flat color.
+ */
+function formatCompactBanner(version: string): string {
+  const beside = [color.markInk("Acolyte"), color.dim(color.white(`v${version}`))];
+  return BRAND_MARK_ROWS.map((row, y) => {
+    const mark =
+      inked(row.chevron, hexToAnsi(palette.markMuted)) + BRAND_MARK_GAP + inked(row.letter, hexToAnsi(palette.markInk));
+    const text = beside[y];
+    return text === undefined ? mark : mark + MARK_GUTTER + text;
+  }).join("\n");
+}
+
+/**
+ * The full wordmark, with the version set flush to the lettering's right edge on the last row.
+ * The CLI wears the monochrome lockup from app.acolyte.sh rather than the brand purple, swept top
+ * to bottom, with the caret one stop deeper so it sits behind the name.
+ */
+export function formatCliBanner(version: string): string {
+  if (terminalColumns() < BRAND_WORDMARK_LOCKUP_WIDTH) return formatCompactBanner(version);
+  const versionText = `v${version}`;
+  const lastRow = BRAND_WORDMARK_ROWS.length - 1;
+  return BRAND_WORDMARK_ROWS.map((row, y) => {
+    const sweep = (stops: ReadonlyArray<Rgb>, cells: string): string => {
+      const [r, g, b] = gradientRgb(verticalPosition(y, BRAND_WORDMARK_ROWS.length), stops);
+      return inked(cells, ansi.fgRgb(r, g, b));
+    };
+    const line = sweep(MONO_CARET_STOPS, row.chevron) + BRAND_WORDMARK_GAP + sweep(MONO_STOPS, row.word);
+    if (y !== lastRow) return line;
+    const pad = BRAND_WORDMARK_WIDTH - row.word.length - versionText.length;
+    return line + BRAILLE_BLANK.repeat(Math.max(pad, 0)) + color.dim(color.white(versionText));
+  }).join("\n");
 }
 
 export function tokenizeStreamContent(content: string): string[] {

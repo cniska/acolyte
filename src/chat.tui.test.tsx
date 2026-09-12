@@ -5,7 +5,6 @@ import { createChatViewportPresentation } from "./chat-viewport-presentation";
 import { layoutChatViewport, layoutFooterStatus, layoutHeader } from "./terminal-chat-layout";
 import { TerminalSceneRender } from "./terminal-scene-render";
 import { terminalTheme } from "./terminal-theme";
-import { dedent } from "./test-utils";
 import { DEFAULT_TERMINAL_WIDTH } from "./tui/constants";
 import { renderPlain } from "./tui/test-utils";
 
@@ -84,7 +83,7 @@ function composerScene(overrides: InputPanelOverrides, columns: number) {
     : null;
 
   const presentation = createChatViewportPresentation({
-    header: { title: "Acolyte", version: "1", sessionId: "sess_1" },
+    header: { title: "Acolyte", version: "1", sessionId: "sess_1", storage: "local" },
     activeTranscript: [],
     pending: null,
     composer: {
@@ -114,17 +113,17 @@ function renderInputPanel(overrides: InputPanelOverrides = {}, columns = DEFAULT
 describe("chat tui visual regression: header", () => {
   test("renders stable header block", () => {
     const out = renderPlain(
-      <TerminalSceneRender scene={layoutHeader({ title: "Acolyte", version: "0.1.0", sessionId: "sess_demo1234" })} />,
+      <TerminalSceneRender
+        scene={layoutHeader({ title: "Acolyte", version: "0.1.0", sessionId: "sess_demo1234", storage: "local" })}
+      />,
     );
     expect(out).toBe(
-      dedent(
-        `
-     ▗█████▖   Acolyte
-    ▟█ ● ● █▙  version 0.1.0
-    ▜█▄▄▄▄▄█▛  session sess_demo1234
-    `,
-        2,
-      ),
+      [
+        "  ⠹⣿⣆⠀⠀⠀⠀⢠⣶⡿⠿⢿⣶⡄   Acolyte",
+        "  ⠀⠹⣿⣆⠀⠀⠀⢀⣠⣤⣤⣤⣿⣿   version 0.1.0",
+        "  ⠀⣰⣿⠏⠀⠀⠀⣿⣿⠋⠉⢉⣿⣿   session sess_demo1234",
+        "  ⣰⣿⠏⠀⠀⠀⠀⠻⢿⣷⣶⠟⣿⣿   storage local",
+      ].join("\n"),
     );
   });
 });
