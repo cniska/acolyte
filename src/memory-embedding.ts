@@ -234,7 +234,7 @@ export async function embedQuery(text: string): Promise<Float32Array> {
   try {
     const embeddings = await embedModelCall({
       client: model.model,
-      limiter: sharedRateLimiter(model.provider),
+      limiter: sharedRateLimiter(model.provider, "embeddings"),
       values: [text],
       label: "embed",
     });

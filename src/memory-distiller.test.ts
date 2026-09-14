@@ -236,9 +236,9 @@ describe("high-water mark", () => {
     let fail = true;
     const distiller = createMemoryDistiller({
       store: createMockStore(),
-      runner: async (systemPrompt, userContent, model) => {
+      runner: async (systemPrompt, userContent) => {
         if (fail) throw new Error("the distiller's answer was not readable");
-        return capture(systemPrompt, userContent, model);
+        return capture(systemPrompt, userContent);
       },
       policy: createMemoryPolicy({ messageThreshold: 1 }),
     });

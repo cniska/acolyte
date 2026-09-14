@@ -13,13 +13,19 @@ const DEFAULT_RATE_LIMITER_CONFIG: RateLimiterConfig = { backoffBaseMs: 1_000, b
 // The longest a provider's own retry-after is worth waiting out inside one call.
 const MAX_SERVER_DELAY_MS = 60_000;
 
-const sharedLimiters = new Map<Provider, RateLimiter>();
+/** The provider budget a call draws on. Completions and embeddings are metered separately. */
+export type RateLimitQuota = "completions" | "embeddings";
 
-export function sharedRateLimiter(provider: Provider): RateLimiter {
-  const existing = sharedLimiters.get(provider);
+const sharedLimiters = new Map<string, RateLimiter>();
+
+// Keyed by quota as well as provider: a limiter paces from the headers its own responses carried,
+// and one shared across quotas would hold a completion turn for an embedding budget it never read.
+export function sharedRateLimiter(provider: Provider, quota: RateLimitQuota = "completions"): RateLimiter {
+  const key = `${provider}:${quota}`;
+  const existing = sharedLimiters.get(key);
   if (existing) return existing;
   const limiter = createRateLimiter(DEFAULT_RATE_LIMITER_CONFIG);
-  sharedLimiters.set(provider, limiter);
+  sharedLimiters.set(key, limiter);
   return limiter;
 }
 
@@ -69,19 +75,20 @@ export function isRetryableProviderError(error: unknown): boolean {
   if (field(error, "isRetryable") === true) return true;
   const status = statusOf(error);
   if (typeof status === "number" && status >= HTTP_STATUS.internalServerError) return true;
-  const code = field(error, "code");
-  return typeof code === "string" && OVERLOADED_CODES.has(code.toLowerCase());
+  return errorCodes(error).some((code) => OVERLOADED_CODES.has(code));
+}
+
+function positiveNumber(value: unknown): number | undefined {
+  const parsed = typeof value === "string" ? Number.parseFloat(value) : value;
+  return typeof parsed === "number" && Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 function retryAfterMs(error: unknown): number | undefined {
   const headers = field(error, "headers");
-  const retryAfter = field(headers, "retry-after");
-  if (typeof retryAfter === "string") {
-    const seconds = Number.parseFloat(retryAfter);
-    if (Number.isFinite(seconds) && seconds > 0) return seconds * 1_000;
-  }
-  if (typeof retryAfter === "number" && retryAfter > 0) return retryAfter * 1_000;
-  return undefined;
+  const seconds = positiveNumber(field(headers, "retry-after"));
+  if (seconds !== undefined) return seconds * 1_000;
+  // OpenAI sends this instead on some endpoints, already in milliseconds.
+  return positiveNumber(field(headers, "retry-after-ms"));
 }
 
 // Header names across providers (normalized to lowercase)
@@ -90,7 +97,6 @@ const HEADER_KEYS = {
   tokensRemaining: ["anthropic-ratelimit-tokens-remaining", "x-ratelimit-remaining-tokens"],
   requestsReset: ["anthropic-ratelimit-requests-reset", "x-ratelimit-reset-requests"],
   tokensReset: ["anthropic-ratelimit-tokens-reset", "x-ratelimit-reset-tokens"],
-  retryAfter: ["retry-after", "retry-after-ms"],
 } as const;
 
 function findHeader(headers: Headers, keys: readonly string[]): string | null {
@@ -142,12 +148,18 @@ export function createRateLimiter(config: RateLimiterConfig): RateLimiter {
 
   return {
     async beforeCall(abortSignal?: AbortSignal) {
-      // Pace based on remaining budget learned from previous responses
+      // Paced on the budget the last response reported. The wait is spent once: the reset is a
+      // duration measured when it was read, so a call that never gets a response back — and so
+      // never learns a newer budget — must not sleep the same window out all over again.
       const reqReset = requestsResetMs;
       const tokReset = tokensResetMs;
       if (requestsRemaining !== undefined && requestsRemaining <= 1 && reqReset !== undefined) {
+        requestsRemaining = undefined;
+        requestsResetMs = undefined;
         await sleep(jitter(reqReset), abortSignal);
       } else if (tokensRemaining !== undefined && tokensRemaining <= 0 && tokReset !== undefined) {
+        tokensRemaining = undefined;
+        tokensResetMs = undefined;
         await sleep(jitter(tokReset), abortSignal);
       }
     },

@@ -90,6 +90,11 @@ describe("retryAfterMs", () => {
     expect(retryAfterMs({ headers: { "retry-after": 3 } })).toBe(3_000);
   });
 
+  test("reads retry-after-ms, which some endpoints send instead", () => {
+    expect(retryAfterMs({ headers: { "retry-after-ms": "1500" } })).toBe(1_500);
+    expect(retryAfterMs({ headers: { "retry-after": "2", "retry-after-ms": "1500" } })).toBe(2_000);
+  });
+
   test("returns undefined for missing or invalid headers", () => {
     expect(retryAfterMs({ headers: {} })).toBeUndefined();
     expect(retryAfterMs({})).toBeUndefined();
@@ -164,6 +169,22 @@ describe("createRateLimiter", () => {
       new Promise<string>((resolve) => setTimeout(() => resolve("waited"), 50)),
     ]);
     expect(result).toBe("waited");
+  });
+
+  test("the wait for a reported reset is spent once, not on every later call", async () => {
+    const limiter = createRateLimiter(FAST);
+    limiter.onResponse(
+      new Headers({
+        "anthropic-ratelimit-requests-remaining": "0",
+        "anthropic-ratelimit-requests-reset": "1s",
+      }),
+    );
+    await limiter.beforeCall();
+    expect(limiter.state().requestsResetMs).toBeUndefined();
+
+    const start = Date.now();
+    await limiter.beforeCall();
+    expect(Date.now() - start).toBeLessThan(50);
   });
 
   test("delays when tokens remaining is exhausted", async () => {
@@ -255,5 +276,11 @@ describe("sharedRateLimiter", () => {
     const a = sharedRateLimiter("anthropic");
     const o = sharedRateLimiter("openai");
     expect(a).not.toBe(o);
+  });
+
+  test("embeddings pace on their own budget, not the completion budget", () => {
+    clearSharedRateLimiters();
+    expect(sharedRateLimiter("openai")).not.toBe(sharedRateLimiter("openai", "embeddings"));
+    expect(sharedRateLimiter("openai", "embeddings")).toBe(sharedRateLimiter("openai", "embeddings"));
   });
 });
