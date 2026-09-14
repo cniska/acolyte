@@ -17,6 +17,10 @@ const CLIENT_VERSION_TTL_MS = 6 * 60 * 60 * 1000;
 // served model to the API key for the life of a daemon.
 const SERVED_MODELS_TTL_MS = 6 * 60 * 60 * 1000;
 
+// Every turn on a subscription waits for discovery before it starts, and a socket that opens and
+// never delivers would hold the memoized answer — and so every later turn — open with it.
+const DISCOVERY_TIMEOUT_MS = 10_000;
+
 let clientVersion: { value: string; fetchedAt: number } | undefined;
 let discovery: { models: Promise<ReadonlySet<string>>; fetchedAt: number } | undefined;
 
@@ -35,7 +39,8 @@ export function subscriptionModels(fetchFn: FetchFn, env?: Env): Promise<Readonl
   const models = fetchSubscriptionModels(fetchFn, env).then(
     (slugs) => new Set(slugs) as ReadonlySet<string>,
     (cause) => {
-      discovery = undefined;
+      // Only when this attempt is still the cached one: a slow failure must not evict a fresh answer.
+      if (discovery?.models === models) discovery = undefined;
       throw new CodedError(
         PROVIDER_ERROR_CODES.subscriptionDiscoveryFailed,
         "Could not read your OpenAI subscription",
@@ -55,7 +60,10 @@ async function codexClientVersion(fetchFn: FetchFn): Promise<string> {
   if (clientVersion && now - clientVersion.fetchedAt < CLIENT_VERSION_TTL_MS) return clientVersion.value;
   let value = CODEX_VERSION_FALLBACK;
   try {
-    const res = await fetchFn(CODEX_LATEST_RELEASE_URL, { headers: { Accept: "application/vnd.github+json" } });
+    const res = await fetchFn(CODEX_LATEST_RELEASE_URL, {
+      headers: { Accept: "application/vnd.github+json" },
+      signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS),
+    });
     if (res.ok) {
       const parsed = codexReleaseSchema.safeParse(await res.json());
       const tag = parsed.success ? parsed.data.tag_name?.replace(/^rust-v/, "") : undefined;
@@ -84,7 +92,9 @@ const codexModelsResponseSchema = z.object({ models: z.array(codexModelSchema).o
 export async function fetchSubscriptionModels(fetchFn: FetchFn, env?: Env): Promise<string[]> {
   const version = await codexClientVersion(fetchFn);
   const authed = withChatGPTAuthFetch(fetchFn, env);
-  const res = await authed(`${OPENAI_SUBSCRIPTION_BASE_URL}/models?client_version=${version}`);
+  const res = await authed(`${OPENAI_SUBSCRIPTION_BASE_URL}/models?client_version=${version}`, {
+    signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS),
+  });
   if (!res.ok) throw new Error(`Codex models request failed: ${res.status}`);
   const parsed = codexModelsResponseSchema.safeParse(await res.json());
   if (!parsed.success) throw new Error("Codex models response failed validation");

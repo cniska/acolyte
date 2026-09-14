@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, setSystemTime, test } from "bun:test";
 import { PROVIDER_ERROR_CODES } from "./error-contract";
 import { resolveAuthRoute } from "./model-factory";
 import { writeOAuthTokens } from "./oauth-store";
@@ -120,6 +120,42 @@ describe("subscriptionModels", () => {
     await expect(subscriptionModels(fetchFn, env)).rejects.toThrow();
     expect((await subscriptionModels(fetchFn, env)).has("gpt-5.5")).toBe(true);
     expect(codexAttempts).toBe(2);
+  });
+
+  test("a socket that opens and never delivers fails instead of holding every later call", async () => {
+    const env = { HOME: dirs.createDir("sm-") };
+    await writeOAuthTokens("openai", fresh, env);
+    const hanging: FetchFn = (input, init) => {
+      if (String(input).includes("api.github.com")) {
+        return Promise.resolve(new Response(JSON.stringify({ tag_name: "rust-v0.150.0" })));
+      }
+      return new Promise((_, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), { once: true });
+      });
+    };
+
+    await expect(subscriptionModels(hanging, env)).rejects.toMatchObject({
+      code: PROVIDER_ERROR_CODES.subscriptionDiscoveryFailed,
+    });
+    expect((await subscriptionModels(fetchStub(), env)).has("gpt-5.5")).toBe(true);
+  }, 30_000);
+
+  test("the served set is re-read once its lifetime is up", async () => {
+    const env = { HOME: dirs.createDir("sm-") };
+    await writeOAuthTokens("openai", { ...fresh, expiresAt: Date.now() + 30 * 60 * 60 * 1000 }, env);
+    let codexCalls = 0;
+    const fetchFn = fetchStub(() => {
+      codexCalls += 1;
+    });
+
+    try {
+      await subscriptionModels(fetchFn, env);
+      setSystemTime(new Date(Date.now() + 6 * 60 * 60 * 1000 + 1));
+      await subscriptionModels(fetchFn, env);
+    } finally {
+      setSystemTime();
+    }
+    expect(codexCalls).toBe(2);
   });
 });
 
