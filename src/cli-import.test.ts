@@ -62,7 +62,7 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
   const deps: ImportModeDeps = {
     hasHelpFlag: () => false,
     transcriptDir: "/transcripts",
-    scratchDir: "/scratch",
+    scratchDir: (project: string) => `/scratch/${project}`,
     workspace: "/checkout",
     project: options.project === undefined ? "acme/widgets" : options.project,
     planImport: async ({ maxTurns }) => ({
@@ -236,21 +236,36 @@ describe("importMode", () => {
     const h = harness([samplePlan({ pending: 0 })]);
     await importMode(["--reset"], h.deps);
 
-    expect(h.removed).toEqual(["/scratch"]);
+    expect(h.removed).toEqual(["/scratch/acme/widgets"]);
   });
 
   test("--reset clears the corpus on an install with no model configured", async () => {
     const h = harness([samplePlan({ pending: 0 })], { model: null });
     await importMode(["--reset"], h.deps);
 
-    expect(h.removed).toEqual(["/scratch"]);
+    expect(h.removed).toEqual(["/scratch/acme/widgets"]);
   });
 
   test("--reset clears the corpus when the model's provider has no credential", async () => {
     const h = harness([samplePlan({ pending: 0 })], { distillAvailable: false });
     await importMode(["--reset"], h.deps);
 
-    expect(h.removed).toEqual(["/scratch"]);
+    expect(h.removed).toEqual(["/scratch/acme/widgets"]);
+  });
+
+  test("--reset discards nothing while another run holds the lock", async () => {
+    const h = harness([samplePlan()], { locked: true });
+    await importMode(["--reset"], h.deps);
+
+    expect(h.removed).toEqual([]);
+    expect(h.errors[0].message).toContain("already");
+  });
+
+  test("--reset discards only the standing project's corpus", async () => {
+    const h = harness([samplePlan()], { project: "acme/other" });
+    await importMode(["--reset"], h.deps);
+
+    expect(h.removed).toEqual(["/scratch/acme/other"]);
   });
 
   test("--json prints one record per session and no summary prose", async () => {

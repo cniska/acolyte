@@ -7,7 +7,7 @@ import { consumedExchanges, type ImportLedger, markConsumed } from "./import-led
 import { defaultMemoryPolicy, type MemoryDistiller, type MemoryPolicy } from "./memory-contract";
 import { estimateDistillPromptTokens } from "./memory-distiller";
 import { dataDir, type Env, resolveHomeDir } from "./paths";
-import { projectLabelFromWorkspace } from "./resource-id";
+import { projectLabelFromWorkspace, projectResourceIdForLabel } from "./resource-id";
 import { parseClaudeCodeTranscript, type TranscriptExchange } from "./transcript-claude-code";
 
 export const CLAUDE_CODE_SOURCE = "claude-code";
@@ -23,9 +23,12 @@ export function claudeCodeTranscriptDir(env: Env = process.env): string {
   return join(resolveHomeDir(env), ".claude", "projects");
 }
 
-/** Where an import puts what it distills: beside the real corpus, never in it. */
-export function importScratchDir(env: Env = process.env): string {
-  return join(dataDir(env), "import-scratch");
+/**
+ * Where an import puts what it distills: beside the real corpus, never in it, and one directory per
+ * project — a run imports a single project, so `--reset` in one must not discard another's ledger.
+ */
+export function importScratchDir(project: string, env: Env = process.env): string {
+  return join(dataDir(env), "import-scratch", projectResourceIdForLabel(project));
 }
 
 export type TranscriptSourceFile = { readonly path: string; readonly modifiedAt: Date };
@@ -210,25 +213,34 @@ function attribute(
   return { workspace: first, project: first ? resolveProject(first) : null };
 }
 
+/**
+ * The window holds every project's sessions, so each transcript is attributed as it is read and the
+ * ones belonging elsewhere are dropped before their exchanges are retained: a day's window on a busy
+ * machine is hundreds of megabytes, of which one project's share is a small part.
+ */
 async function readCandidates(
   options: PlanImportOptions,
   reader: ImportReader,
   resolveProject: ProjectResolver,
-): Promise<ImportCandidate[]> {
-  const candidates: ImportCandidate[] = [];
+): Promise<{ mine: ImportCandidate[]; unattributable: number }> {
+  const mine: ImportCandidate[] = [];
+  let unattributable = 0;
   for (const file of await reader.listTranscripts(options.dir, options.since)) {
     const transcript = parseClaudeCodeTranscript(await reader.readTranscript(file.path));
     if (transcript.exchanges.length === 0) continue;
-    candidates.push({
+    const attributed = attribute(transcript.workspaces, options.project, resolveProject);
+    if (attributed.project === null) unattributable++;
+    if (attributed.project !== options.project) continue;
+    mine.push({
       file,
       sourceSessionId: transcript.sessionId ?? sessionIdFromPath(file.path),
-      ...attribute(transcript.workspaces, options.project, resolveProject),
+      ...attributed,
       lastActivityAt: transcript.lastActivityAt,
       orderedAt: orderingKey(transcript.lastActivityAt, file),
       exchanges: transcript.exchanges,
     });
   }
-  return candidates;
+  return { mine, unattributable };
 }
 
 /**
@@ -254,9 +266,7 @@ export async function planImport(options: PlanImportOptions): Promise<ImportPlan
   const policy = options.policy ?? defaultMemoryPolicy;
   const budgetLimit = options.stalenessBudget ?? DEFAULT_STALENESS_BUDGET;
 
-  const candidates = await readCandidates(options, reader, resolveProject);
-  const mine = candidates.filter((candidate) => candidate.project === options.project);
-  const unattributable = candidates.filter((candidate) => candidate.project === null).length;
+  const { mine, unattributable } = await readCandidates(options, reader, resolveProject);
 
   const movements = new Map<string, number>();
   const measure = async (lastActivityAt: string | null): Promise<number | null> => {

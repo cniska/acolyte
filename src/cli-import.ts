@@ -36,7 +36,7 @@ export type ImportModelChoice =
 export type ImportModeDeps = {
   hasHelpFlag: (args: string[]) => boolean;
   transcriptDir: string;
-  scratchDir: string;
+  scratchDir: (project: string) => string;
   workspace: string;
   project: string | null;
   planImport: (request: PlanImportRequest) => Promise<ImportPlan>;
@@ -186,32 +186,34 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
     return;
   }
 
-  if (hasBoolFlag(args, "--reset")) {
-    await deps.removeDir(deps.scratchDir);
-    if (!json) deps.printDim(t("cli.import.reset", { path: deps.scratchDir }));
-  }
-
-  // Checked before anything is read: distillation is the only thing that turns a transcript into a
-  // fact, so without a model to run it there is no import to attempt. A dry run makes no model
-  // call, which is what makes it the thing to run before a provider is connected.
-  const chosen = dryRun ? null : deps.resolveModel();
-  if (chosen?.kind === "unconfigured") {
-    deps.commandError("import", t("cli.model.not_configured"));
-    return;
-  }
-  if (chosen?.kind === "unavailable") {
-    deps.commandError("import", t("cli.import.no_model", { model: chosen.model }));
-    return;
-  }
+  const scratchDir = deps.scratchDir(project);
 
   // One run at a time: two would each hold a stale ledger and overwrite the other's progress, so
-  // turns one of them already paid for would be distilled again on the next run.
+  // turns one of them already paid for would be distilled again on the next run. Taken before the
+  // reset too, which would otherwise unlink the corpus a running import is still writing into.
   if (!deps.acquireLock(IMPORT_LOCK).ok) {
     deps.commandError("import", t("cli.import.already_running"));
     return;
   }
   try {
-    await importPlanned(deps, { project, sinceRaw, since, maxTurns, includeStale, json, chosen });
+    if (hasBoolFlag(args, "--reset")) {
+      await deps.removeDir(scratchDir);
+      if (!json) deps.printDim(t("cli.import.reset", { path: scratchDir }));
+    }
+
+    // Checked before anything is read: distillation is the only thing that turns a transcript into a
+    // fact, so without a model to run it there is no import to attempt. A dry run makes no model
+    // call, which is what makes it the thing to run before a provider is connected.
+    const chosen = dryRun ? null : deps.resolveModel();
+    if (chosen?.kind === "unconfigured") {
+      deps.commandError("import", t("cli.model.not_configured"));
+      return;
+    }
+    if (chosen?.kind === "unavailable") {
+      deps.commandError("import", t("cli.import.no_model", { model: chosen.model }));
+      return;
+    }
+    await importPlanned(deps, { project, scratchDir, sinceRaw, since, maxTurns, includeStale, json, chosen });
   } finally {
     deps.releaseLock(IMPORT_LOCK);
   }
@@ -219,6 +221,7 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
 
 type RunInputs = {
   project: string;
+  scratchDir: string;
   sinceRaw: string;
   since: Date;
   maxTurns: number;
@@ -228,8 +231,8 @@ type RunInputs = {
 };
 
 async function importPlanned(deps: ImportModeDeps, input: RunInputs): Promise<void> {
-  const { project, sinceRaw, since, maxTurns, includeStale, json, chosen } = input;
-  const ledgerPath = join(deps.scratchDir, LEDGER_FILE);
+  const { project, scratchDir, sinceRaw, since, maxTurns, includeStale, json, chosen } = input;
+  const ledgerPath = join(scratchDir, LEDGER_FILE);
   const ledger = await deps.readLedger(ledgerPath);
   const plan = await deps.planImport({
     dir: deps.transcriptDir,
@@ -260,7 +263,7 @@ async function importPlanned(deps: ImportModeDeps, input: RunInputs): Promise<vo
   }
   if (!json) emit(pending.map(planRow), planSummary, false, deps);
 
-  const store = deps.createStore(join(deps.scratchDir, STORE_FILE));
+  const store = deps.createStore(join(scratchDir, STORE_FILE));
   try {
     const results = await deps.runImport({
       plans: pending,
@@ -274,7 +277,7 @@ async function importPlanned(deps: ImportModeDeps, input: RunInputs): Promise<vo
       count: results.reduce((sum, result) => sum + result.facts, 0),
       superseded: results.reduce((sum, result) => sum + result.superseded, 0),
       tokens: formatCompactNumber(results.reduce((sum, result) => sum + result.tokens, 0)),
-      path: deps.scratchDir,
+      path: scratchDir,
     });
     if (!json) deps.printDim(summary);
   } catch (error) {

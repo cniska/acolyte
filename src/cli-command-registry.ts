@@ -364,7 +364,7 @@ const COMMAND_REGISTRY: Record<string, CliCommand> = {
       importMode(args, {
         hasHelpFlag,
         transcriptDir: claudeCodeTranscriptDir(),
-        scratchDir: importScratchDir(),
+        scratchDir: (project) => importScratchDir(project),
         workspace: process.cwd(),
         project: projectLabelFromWorkspace(process.cwd()),
         planImport,
