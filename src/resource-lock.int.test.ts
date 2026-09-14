@@ -9,7 +9,7 @@ const { createDir, cleanupDirs } = tempDir();
 const createTempHome = () => createDir("acolyte-lock-test-");
 afterEach(cleanupDirs);
 
-describe("session lock", () => {
+describe("resource lock", () => {
   test("allows re-acquire by same process", () => {
     const env = { HOME: createTempHome() };
     const first = acquireLock("sess_test", { env });
