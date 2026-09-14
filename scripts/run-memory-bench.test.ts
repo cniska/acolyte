@@ -46,12 +46,17 @@ describe("parseArgs", () => {
   });
 
   test("distills with the model named on the command line", () => {
-    expect(resolveDistillModel({ distillModel: "anthropic/claude-opus-5" })).toBe("anthropic/claude-opus-5");
+    expect(resolveDistillModel({ distillModel: "anthropic/claude-opus-5" }, "openai/gpt-5-mini")).toBe(
+      "anthropic/claude-opus-5",
+    );
   });
 
   test("distills with the configured model when the command line names none", () => {
-    if (appConfig.model) expect(resolveDistillModel({ distillModel: null })).toBe(appConfig.model);
-    else expect(() => resolveDistillModel({ distillModel: null })).toThrow("No model configured");
+    expect(resolveDistillModel({ distillModel: null }, "openai/gpt-5-mini")).toBe("openai/gpt-5-mini");
+  });
+
+  test("refuses when neither the command line nor the configuration names a model", () => {
+    expect(() => resolveDistillModel({ distillModel: null }, undefined)).toThrow("No model configured");
   });
 
   test("applies the embedding model override to the embedding configuration", () => {

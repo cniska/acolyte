@@ -2,8 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import type { DistillObservation } from "../src/memory-distiller";
-import { DISTILLER_PROMPT, defaultRunner } from "../src/memory-distiller";
+import { DISTILLER_PROMPT, type DistillObservation, defaultRunner } from "../src/memory-distiller";
 import { cosineSimilarity, embedText } from "../src/memory-embedding";
 
 export type MemoryBenchDatasetId = "longmemeval" | "locomo" | "locomo-observations" | "locomo-distilled";
@@ -537,7 +536,9 @@ const locomoDistilledAdapter: DatasetAdapter = {
     const runner = (systemPrompt: string, userContent: string): Promise<DistillObservation[]> =>
       defaultRunner(systemPrompt, userContent, distillModel);
 
-    const cacheDir = join(dir, "distilled");
+    // Keyed by the model that produced it: a cache shared across models would answer a run of one
+    // with the other's facts and report them under the model that was never called.
+    const cacheDir = join(dir, "distilled", distillModel.replace(/[^a-zA-Z0-9._-]/g, "_"));
     await ensureDir(cacheDir);
     const scenarios: DatasetScenario[] = [];
 

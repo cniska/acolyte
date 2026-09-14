@@ -71,9 +71,16 @@ export function createJudgeRunner(model: string, baseUrl?: string): JudgeRunner 
   };
 }
 
-function parseClass(answer: string): FactClass | null {
-  const word = answer.toLowerCase().match(/state|narration|plan|conversation|perishable|recoverable/)?.[0];
-  return word ? factClassSchema.parse(word) : null;
+/** The rubric asks for the class name alone, so only the class name alone is an answer: a judge that
+ * reasons instead ("this is not a plan, it is state") would otherwise be read by its first word. */
+export function parseClass(answer: string): FactClass | null {
+  const parsed = factClassSchema.safeParse(
+    answer
+      .trim()
+      .toLowerCase()
+      .replace(/[.!]+$/, ""),
+  );
+  return parsed.success ? parsed.data : null;
 }
 
 /** A fact's class, or null when the judge answered outside its enum — never silently defaulted. */
@@ -98,9 +105,11 @@ export async function matchExpectedFact(
 }
 
 export function parseMatch(answer: string, factCount: number): number | null {
-  const digits = /\d+/.exec(answer);
+  // The rubric asks for the number alone, so a reply carrying anything else is not an answer:
+  // reading a digit out of "none of the 3 memories state it" would score a match that is not one.
+  const digits = /^(\d+)[.!]?$/.exec(answer.trim());
   if (!digits) return null;
-  const ordinal = Number(digits[0]);
+  const ordinal = Number(digits[1]);
   // The judge answers in the listing's 1-based numbers; anything outside it is not a match.
   return ordinal >= 1 && ordinal <= factCount ? ordinal - 1 : null;
 }

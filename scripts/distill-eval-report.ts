@@ -39,6 +39,8 @@ export type EvalReport = {
   readonly atomicityViolations: readonly GradedFact[];
   readonly mustNotViolations: readonly GradedFact[];
   readonly coverage: number | null;
+  /** Expectations the judge was asked about, which is what a scope mismatch is counted out of. */
+  readonly expectations: number;
   readonly scopeMismatches: number;
   readonly silenceCorrectness: number | null;
   readonly perFixture: readonly FixtureSummary[];
@@ -131,6 +133,7 @@ export function aggregate(
     atomicityViolations: facts.filter((fact) => fact.chained),
     mustNotViolations: facts.filter((fact) => fact.mustNotHits.length > 0),
     coverage: coverageFlags.length === 0 ? null : rate(coverageFlags.filter(Boolean).length, coverageFlags.length),
+    expectations: coverageFlags.length,
     scopeMismatches: repeats.reduce((total, repeat) => total + repeat.scopeMismatches, 0),
     silenceCorrectness:
       silenceRepeats.length === 0
@@ -172,7 +175,9 @@ export function renderReport(report: EvalReport): string {
   lines.push(`atomicity violations: ${perObservation(report.atomicityViolations.length)}`);
   lines.push(`mustNot violations: ${perObservation(report.mustNotViolations.length)}`);
   lines.push(`coverage: ${report.coverage === null ? "-" : percent(report.coverage)}`);
-  lines.push(`scope mismatches: ${perObservation(report.scopeMismatches)}`);
+  // Counted per expectation, not per observation: its ceiling is the expectations the judge covered.
+  const mismatchRate = report.expectations === 0 ? "-" : percent(rate(report.scopeMismatches, report.expectations));
+  lines.push(`scope mismatches: ${report.scopeMismatches} of ${report.expectations} expectations (${mismatchRate})`);
   lines.push(`silence correctness: ${report.silenceCorrectness === null ? "-" : percent(report.silenceCorrectness)}`);
   lines.push("");
   lines.push("per fixture");

@@ -149,8 +149,8 @@ export function applyModelOverrides(args: Pick<MemoryBenchArgs, "embeddingModel"
 }
 
 /** The model a distilling dataset writes with: named on the command line, or the configured one. */
-export function resolveDistillModel(args: Pick<MemoryBenchArgs, "distillModel">): string {
-  const model = args.distillModel ?? appConfig.model;
+export function resolveDistillModel(args: Pick<MemoryBenchArgs, "distillModel">, configuredModel?: string): string {
+  const model = args.distillModel ?? configuredModel;
   if (!model)
     throw new Error("No model configured; pass --distill-model <id> or set one with acolyte config set model");
   return model;
@@ -294,7 +294,7 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   applyModelOverrides(args);
   const embeddingModel = appConfig.embedding.model;
-  const distillModel = resolveDistillModel(args);
+  const distillModel = resolveDistillModel(args, appConfig.model);
   const dataDir = defaultDataDir();
   const results: Record<string, DatasetResult> = {};
 

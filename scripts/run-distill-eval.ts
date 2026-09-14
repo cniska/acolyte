@@ -87,7 +87,7 @@ async function gradeRepeat(
     facts,
     coverage,
     scopeMismatches,
-    expectsSilence: fixture.expected.length === 0,
+    expectsSilence: fixture.expectsSilence,
   };
 }
 
@@ -153,7 +153,9 @@ async function runCapture(args: string[]): Promise<void> {
   });
   const path = await writeFixture(fixture, parseFlag(args, "--fixtures") ?? FIXTURE_DIR);
   process.stdout.write(`${path}\n`);
-  process.stdout.write("redact it, then add expected facts and mustNot labels before committing.\n");
+  process.stdout.write(
+    "redact it, then add expected facts and mustNot labels — or expectsSilence — before committing.\n",
+  );
 }
 
 async function runFind(args: string[]): Promise<void> {

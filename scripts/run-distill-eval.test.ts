@@ -9,6 +9,7 @@ function fixture(overrides: Partial<DistillFixture> = {}): DistillFixture {
     messages: [{ role: "user", content: "the staleness budget is 50 commits past the session" }],
     output: "recorded",
     expected: [],
+    expectsSilence: false,
     mustNot: [],
     ...overrides,
   };

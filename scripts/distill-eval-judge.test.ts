@@ -14,6 +14,10 @@ describe("classifyFact", () => {
   test("returns null when the judge answers outside its enum, rather than guessing", async () => {
     expect(await classifyFact("a fact", "a turn", answering("mostly fine, I'd say"))).toBeNull();
   });
+
+  test("a judge that reasons past the class name is no class, not the first word it used", async () => {
+    expect(await classifyFact("a fact", "a turn", answering("this is not a plan, it is state"))).toBeNull();
+  });
 });
 
 describe("parseMatch", () => {
@@ -27,6 +31,11 @@ describe("parseMatch", () => {
 
   test("treats a refusal as no match", () => {
     expect(parseMatch("none", 3)).toBeNull();
+  });
+
+  test("a judge that reasons instead of answering is no match, not the digit it happened to use", () => {
+    expect(parseMatch("none of the 3 memories state it", 3)).toBeNull();
+    expect(parseMatch("memory 2 is closest, but no", 3)).toBeNull();
   });
 });
 

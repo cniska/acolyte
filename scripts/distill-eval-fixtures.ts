@@ -23,8 +23,29 @@ export const distillFixtureSchema = z.object({
   activity: taskActivitySchema.optional(),
   /** Facts a good distillation carries, each graded by the judge against any wording. */
   expected: z.array(z.object({ fact: z.string().trim().min(1), scope: z.enum(["project", "user"]) })).default([]),
+  /**
+   * Whether a good distillation records nothing durable here. Stated rather than inferred from an
+   * empty `expected`: a freshly captured fixture has none yet, and reading that as silence would
+   * grade every fact it produces as a failure.
+   */
+  expectsSilence: z.boolean().default(false),
   /** Regex literals a recorded fact may never match, each one a failure the corpus measured. */
-  mustNot: z.array(z.string()).default([]),
+  mustNot: z
+    .array(
+      z
+        .string()
+        .regex(/^\/.*\/[gimsuy]*$/, "mustNot label must be a regex literal, like /^Plan:/i")
+        .refine((literal) => {
+          const match = /^\/(.*)\/([gimsuy]*)$/.exec(literal);
+          try {
+            new RegExp(match?.[1] ?? "", match?.[2]);
+            return true;
+          } catch {
+            return false;
+          }
+        }, "mustNot label is not a usable regex"),
+    )
+    .default([]),
   /**
    * A fact the corpus actually recorded wrong from this turn, kept verbatim so the checks can be
    * replayed against it. A fixture carrying one is a fixture whose labels are known to be able to
@@ -43,7 +64,13 @@ export function fixtureTurnText(fixture: DistillFixture): string {
 }
 
 export async function loadFixtures(dir: string = FIXTURE_DIR): Promise<DistillFixture[]> {
-  const names = (await readdir(dir)).filter((name) => name.endsWith(".json")).sort();
+  // The corpus is captured from real transcripts and never committed, so a fresh checkout has no
+  // directory at all — the same empty case as a directory holding nothing.
+  const entries = await readdir(dir).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return [] as string[];
+    throw error;
+  });
+  const names = entries.filter((name) => name.endsWith(".json")).sort();
   const fixtures: DistillFixture[] = [];
   for (const name of names) {
     const raw = JSON.parse(await readFile(join(dir, name), "utf8"));
