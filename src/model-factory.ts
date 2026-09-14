@@ -34,7 +34,7 @@ export async function resolveAuthRoute(
     served = await subscriptionModels(fetchFn, env);
   } catch (error) {
     // Chosen degradation: an API key is the fallback the user configured, so an unreachable
-    // subscription spends it rather than failing the turn. Said out loud, because it costs money.
+    // subscription spends it rather than failing the turn. Logged, because it costs money.
     if (!openai.apiKey) throw error;
     log.warn("model.route.subscription_unreachable", { model: bareModelId(qualifiedModel) });
     return "api_key";

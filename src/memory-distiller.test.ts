@@ -229,6 +229,37 @@ describe("high-water mark", () => {
     expect(seen[0]).not.toContain("oldest");
     expect(seen[0]).toContain("newest");
   });
+
+  test("a failed commit leaves its messages for the next one to read again", async () => {
+    const seen: string[] = [];
+    const capture = captureRunner(seen);
+    let fail = true;
+    const distiller = createMemoryDistiller({
+      store: createMockStore(),
+      runner: async (systemPrompt, userContent, model) => {
+        if (fail) throw new Error("the distiller's answer was not readable");
+        return capture(systemPrompt, userContent, model);
+      },
+      policy: createMemoryPolicy({ messageThreshold: 1 }),
+    });
+    const messages = [
+      { role: "user", content: "the turn that failed" },
+      { role: "assistant", content: "its answer" },
+    ];
+
+    await expect(
+      distiller.commit({ model: "openai/gpt-5-mini", sessionId: "sess_test0003", messages, output: "done" }),
+    ).rejects.toThrow();
+
+    fail = false;
+    await distiller.commit({
+      model: "openai/gpt-5-mini",
+      sessionId: "sess_test0003",
+      messages: [...messages, { role: "user", content: "the turn after" }],
+      output: "done",
+    });
+    expect(seen[0]).toContain("the turn that failed");
+  });
 });
 
 describe("memoryDistiller", () => {
@@ -925,11 +956,16 @@ describe("parseObservationToolCall", () => {
     expect(parseObservationToolCall({ input: JSON.stringify({ facts: [] }) })).toEqual([]);
   });
 
-  test("malformed input yields no observation", () => {
-    expect(parseObservationToolCall({ input: "not json" })).toEqual([]);
-    expect(
+  test("an answer that cannot be read fails rather than passing for silence", () => {
+    expect(() => parseObservationToolCall({ input: "not json" })).toThrow(
+      expect.objectContaining({ code: "E_DISTILL_UNREADABLE" }),
+    );
+    expect(() =>
       parseObservationToolCall({ input: JSON.stringify({ kind: "finding", scope: "project", content: "unwrapped" }) }),
-    ).toEqual([]);
+    ).toThrow(expect.objectContaining({ code: "E_DISTILL_UNREADABLE" }));
+  });
+
+  test("a fact the envelope carries but the schema rejects costs only itself", () => {
     expect(call({ kind: "finding", content: "no scope given" })).toEqual([]);
     expect(call({ kind: "finding", scope: "elsewhere", content: "an unknown scope" })).toEqual([]);
     expect(call({ kind: "finding", scope: "project", content: "   " })).toEqual([]);

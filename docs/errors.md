@@ -20,7 +20,11 @@ Lifecycle counts tool errors in the coarse categories and records the precise co
 
 ## Provider boundary
 
-Choosing which credential a model runs on needs the set of models a subscription serves, and that set is a network answer. A discovery that fails is `E_SUBSCRIPTION_DISCOVERY_FAILED` with kind `subscription_discovery_failed`, and a model the subscription does not serve, where no API key is configured to fall back to, is `E_MODEL_NOT_ON_SUBSCRIPTION` with kind `model_not_on_subscription`. Both fail the turn rather than routing to another credential, so a request is never billed somewhere the user did not choose.
+Choosing which credential a model runs on needs the set of models a subscription serves, and that set is a network answer. A discovery that fails, where no API key is configured to fall back to, is `E_SUBSCRIPTION_DISCOVERY_FAILED` with kind `subscription_discovery_failed`, and a model the subscription does not serve, on the same condition, is `E_MODEL_NOT_ON_SUBSCRIPTION` with kind `model_not_on_subscription`. Where a key is configured, an unreachable subscription spends it rather than failing the turn, recording `model.route.subscription_unreachable` in the log.
+
+## Memory boundary
+
+Distillation reads the model's answer as an envelope of facts. An empty envelope is silence, and the turn's messages are marked read; an answer that is not readable JSON, or that fails the envelope schema, is `E_DISTILL_UNREADABLE` with kind `distill_unreadable` and fails the commit, so those messages stay unread for the next turn to distill again.
 
 ## Transport boundary
 

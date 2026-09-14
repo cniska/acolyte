@@ -1,6 +1,8 @@
 import type { LanguageModelV4ToolCall } from "@ai-sdk/provider";
 import { z } from "zod";
+import { CodedError } from "./coded-error";
 import { clampToTokenEstimate, type DistillScope, normalizeMemoryText } from "./distill-ops";
+import { ERROR_KINDS, MEMORY_ERROR_CODES } from "./error-contract";
 import { log } from "./log";
 import {
   defaultMemoryPolicy,
@@ -199,18 +201,28 @@ async function getCachedStore(): Promise<MemoryStore> {
 
 export type DistillRunner = (systemPrompt: string, userContent: string, model: string) => Promise<DistillObservation[]>;
 
+/**
+ * An unreadable call is not silence. Silence is an empty `facts` array, and it lets the turn's
+ * messages be marked read; a call that cannot be parsed carries facts nobody has seen yet, so it
+ * fails the commit and leaves the mark where it was for the next turn to read the window again.
+ */
 export function parseObservationToolCall(call: Pick<LanguageModelV4ToolCall, "input">): DistillObservation[] {
   let entries: unknown[];
   try {
     const envelope = DISTILL_ENVELOPE_SCHEMA.safeParse(JSON.parse(call.input));
     if (!envelope.success) {
-      log.warn("memory.distill.unreadable_call", { issue: envelope.error.issues[0]?.message });
-      return [];
+      throw new CodedError(MEMORY_ERROR_CODES.distillUnreadable, "The distiller's answer failed validation", {
+        kind: ERROR_KINDS.distillUnreadable,
+        cause: envelope.error,
+      });
     }
     entries = envelope.data.facts;
   } catch (error) {
-    log.warn("memory.distill.unreadable_call", { error: String(error) });
-    return [];
+    if (error instanceof CodedError) throw error;
+    throw new CodedError(MEMORY_ERROR_CODES.distillUnreadable, "The distiller's answer was not readable JSON", {
+      kind: ERROR_KINDS.distillUnreadable,
+      cause: error,
+    });
   }
 
   const observations: DistillObservation[] = [];

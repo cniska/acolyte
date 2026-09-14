@@ -34,6 +34,7 @@ export type CloudErrorCode = (typeof CLOUD_ERROR_CODES)[keyof typeof CLOUD_ERROR
 
 export const MEMORY_ERROR_CODES = {
   embeddingUnavailable: "E_EMBEDDING_UNAVAILABLE",
+  distillUnreadable: "E_DISTILL_UNREADABLE",
 } as const;
 export type MemoryErrorCode = (typeof MEMORY_ERROR_CODES)[keyof typeof MEMORY_ERROR_CODES];
 
@@ -68,6 +69,7 @@ export type ErrorCode =
 export const ERROR_KINDS = {
   sandboxViolation: "sandbox_violation",
   embeddingUnavailable: "embedding_unavailable",
+  distillUnreadable: "distill_unreadable",
   timeout: "timeout",
   fileNotFound: "file_not_found",
   budgetExhausted: "budget_exhausted",
