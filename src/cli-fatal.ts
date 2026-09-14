@@ -6,6 +6,7 @@ import {
   LIFECYCLE_ERROR_CODES,
   LOGIN_ERROR_CODES,
   MEMORY_ERROR_CODES,
+  PROVIDER_ERROR_CODES,
   TOOL_ERROR_CODES,
   TRANSPORT_ERROR_CODES,
 } from "./error-contract";
@@ -26,6 +27,8 @@ const FATAL_GUIDANCE: Record<ErrorCode, PlainTranslationKey | null> = {
   [LOGIN_ERROR_CODES.codeMissing]: null,
   [LOGIN_ERROR_CODES.exchangeUnsupported]: null,
   [LOGIN_ERROR_CODES.exchangeRefused]: null,
+  [PROVIDER_ERROR_CODES.subscriptionDiscoveryFailed]: null,
+  [PROVIDER_ERROR_CODES.modelNotOnSubscription]: null,
   [TRANSPORT_ERROR_CODES.daemonLost]: null,
   [LIFECYCLE_ERROR_CODES.timeout]: null,
   [LIFECYCLE_ERROR_CODES.fileNotFound]: null,
