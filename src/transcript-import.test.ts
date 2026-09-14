@@ -110,6 +110,18 @@ describe("planImport", () => {
     expect(plans[0]).toMatchObject({ consumed: 2, pending: 3 });
   });
 
+  test("costs each turn once, rather than re-costing the history every call", async () => {
+    // Long turns, so what a call is shown dominates the fixed cost of the prompt around it.
+    const bulky = (count: number) =>
+      sessionFile("s1", "/repo", count, RECORDED_AT).replace(/ask (\d+)/g, `ask $1 ${"x".repeat(2_000)}`);
+    const [short] = await plan({ "/transcripts/a.jsonl": bulky(3) });
+    const [long] = await plan({ "/transcripts/a.jsonl": bulky(24) });
+
+    // A call is shown only what arrived since the previous one, so what one costs does not climb
+    // with the turns behind it. Re-costing the whole window each time would make it climb.
+    expect(long.estimatedTokens / long.calls).toBeLessThan((short.estimatedTokens / short.calls) * 1.5);
+  });
+
   test("estimates nothing once a session is fully consumed", async () => {
     const ledger = markConsumed(emptyImportLedger(), CLAUDE_CODE_SOURCE, "s1", 5);
     const plans = await plan({ "/transcripts/a.jsonl": sessionFile("s1", "/repo", 5) }, ledger);

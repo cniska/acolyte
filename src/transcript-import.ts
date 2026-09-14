@@ -125,9 +125,12 @@ function sessionIdFromPath(path: string): string {
 
 /**
  * The distill calls the pending turns will make and the prompt tokens they will spend. Fewer calls
- * than turns: a session's opening turns carry too little history to distill. The token figure is a
- * floor, the same one `lifecycle.ts` reports — it omits the recall candidates each call is shown,
- * whose size is known only once the commit runs, and whose per-call ceiling the policy sets.
+ * than turns: a session's opening turns carry too little history to distill. Each call is costed
+ * over the messages the distiller will actually be shown — everything since the previous call, and
+ * at most the context window — because after the first call in a session that is only the new turn,
+ * and costing the whole window there would band a run several times above what it spends. The
+ * figure is a floor: it omits the recall candidates each call is shown, whose size is known only
+ * once the commit runs, and whose per-call ceiling the policy sets.
  */
 function estimatePending(
   exchanges: readonly TranscriptExchange[],
@@ -137,15 +140,14 @@ function estimatePending(
   const messages: { role: string; content: string }[] = [];
   let calls = 0;
   let tokens = 0;
+  let distilledThrough = 0;
   for (const [index, exchange] of exchanges.entries()) {
     messages.push({ role: "user", content: exchange.prompt });
     if (index >= consumed && messages.length >= policy.messageThreshold) {
       calls++;
-      tokens += estimateDistillPromptTokens(
-        messages.slice(-policy.contextMessageWindow),
-        exchange.response,
-        exchange.activity,
-      );
+      const start = Math.max(distilledThrough, messages.length - policy.contextMessageWindow, 0);
+      tokens += estimateDistillPromptTokens(messages.slice(start), exchange.response, exchange.activity);
+      distilledThrough = messages.length;
     }
     messages.push({ role: "assistant", content: exchange.response });
   }
