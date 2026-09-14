@@ -94,7 +94,6 @@ export const DEFAULT_STALENESS_BUDGET = 50;
 
 export type ImportSessionPlan = {
   readonly sourceSessionId: string;
-  readonly path: string;
   readonly sessionId: string;
   readonly workspace: string | null;
   readonly project: string;
@@ -305,7 +304,6 @@ export async function planImport(options: PlanImportOptions): Promise<ImportPlan
     const estimate = estimatePending(exchanges, consumed, policy);
     sessions.push({
       sourceSessionId: candidate.sourceSessionId,
-      path: candidate.file.path,
       sessionId: importedSessionId(CLAUDE_CODE_SOURCE, candidate.sourceSessionId),
       workspace: candidate.workspace,
       project: options.project,

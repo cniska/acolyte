@@ -146,6 +146,7 @@
   "cli.help.section.options": "Flaggor",
   "cli.help.section.usage": "Användning",
   "cli.history.none": "Inga sparade sessioner.",
+  "cli.args.missing_value": "{flag} behöver ett värde.",
   "cli.args.invalid_since": "Ogiltigt --since-värde: {value}. Använd formatet 5m, 2h eller 1d.",
   "cli.import.col.session": "Session",
   "cli.import.col.project": "Projekt",

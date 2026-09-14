@@ -375,6 +375,10 @@ export const SV_MESSAGES = {
   "cli.help.section.options": [{ kind: "text", value: "Flaggor" }],
   "cli.help.section.usage": [{ kind: "text", value: "Användning" }],
   "cli.history.none": [{ kind: "text", value: "Inga sparade sessioner." }],
+  "cli.args.missing_value": [
+    { kind: "arg", name: "flag" },
+    { kind: "text", value: " behöver ett värde." },
+  ],
   "cli.args.invalid_since": [
     { kind: "text", value: "Ogiltigt --since-värde: " },
     { kind: "arg", name: "value" },

@@ -364,6 +364,10 @@ export const EN_MESSAGES = {
   "cli.help.section.options": [{ kind: "text", value: "Options" }],
   "cli.help.section.usage": [{ kind: "text", value: "Usage" }],
   "cli.history.none": [{ kind: "text", value: "No saved sessions." }],
+  "cli.args.missing_value": [
+    { kind: "arg", name: "flag" },
+    { kind: "text", value: " needs a value." },
+  ],
   "cli.args.invalid_since": [
     { kind: "text", value: "Invalid --since value: " },
     { kind: "arg", name: "value" },

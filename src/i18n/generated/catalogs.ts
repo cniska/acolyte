@@ -158,6 +158,7 @@ export type MessageArgs = {
   "cli.help.section.options": never;
   "cli.help.section.usage": never;
   "cli.history.none": never;
+  "cli.args.missing_value": { flag: string | number };
   "cli.args.invalid_since": { value: string | number };
   "cli.import.col.session": never;
   "cli.import.col.project": never;

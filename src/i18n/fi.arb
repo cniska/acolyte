@@ -146,6 +146,7 @@
   "cli.help.section.options": "Valitsimet",
   "cli.help.section.usage": "Käyttö",
   "cli.history.none": "Ei tallennettuja istuntoja.",
+  "cli.args.missing_value": "{flag} tarvitsee arvon.",
   "cli.args.invalid_since": "Virheellinen --since-arvo: {value}. Käytä muotoa 5m, 2h tai 1d.",
   "cli.import.col.session": "Istunto",
   "cli.import.col.project": "Projekti",

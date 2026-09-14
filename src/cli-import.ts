@@ -162,6 +162,16 @@ export async function importMode(args: string[], deps: ImportModeDeps): Promise<
     return;
   }
 
+  // A flag last on the line has no value after it, and taking the default there would run a window
+  // or a budget the user did not ask for.
+  const valueless = ["--since", "--max-turns"].find(
+    (flag) => hasBoolFlag(args, flag) && parseFlag(args, flag) === undefined,
+  );
+  if (valueless) {
+    deps.commandError("import", t("cli.args.missing_value", { flag: valueless }));
+    return;
+  }
+
   const sinceRaw = parseFlag(args, "--since") ?? DEFAULT_SINCE;
   const since = parseSince(sinceRaw);
   if (!since) {

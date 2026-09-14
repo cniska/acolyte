@@ -874,6 +874,15 @@
   "@cli.history.none": {
     "description": "Shown by the 'history' command when no sessions are stored (cli-history.ts:30). Separate from the picker's equivalent because the two surfaces may word it differently."
   },
+  "cli.args.missing_value": "{flag} needs a value.",
+  "@cli.args.missing_value": {
+    "description": "Shown when a flag that takes a value is given none. {flag} is the literal flag name the user typed and must not be translated.",
+    "placeholders": {
+      "flag": {
+        "type": "String"
+      }
+    }
+  },
   "cli.args.invalid_since": "Invalid --since value: {value}. Use format like 5m, 2h, 1d.",
   "@cli.args.invalid_since": {
     "description": "Shown when --since is given an unparseable value. '--since' is a literal flag name; {value} is what the user typed; the example durations are literal syntax and must not be translated.",
@@ -947,12 +956,12 @@
     }
   },
   "cli.import.no_project": "This folder has no project. Import reads the transcripts of the repository you are standing in and identifies it by an owner/repo remote, so run it from inside one.",
+  "@cli.import.no_project": {
+    "description": "Shown when 'import' runs somewhere that is not a repository, or whose remotes name no owner/repo. There is no flag for naming a project from outside its checkout."
+  },
   "cli.import.already_running": "An import is already running. Wait for it to finish, or stop it and run this again.",
   "@cli.import.already_running": {
     "description": "Shown when 'import' finds another import run already holding the lock, so only one run writes the ledger."
-  },
-  "@cli.import.no_project": {
-    "description": "Shown when 'import' runs somewhere that is not a repository, or whose remotes name no owner/repo. There is no flag for naming a project from outside its checkout."
   },
   "cli.import.plan": "{count, plural, one {# turn} other {# turns}} to read, roughly {low}–{high} tokens.",
   "@cli.import.plan": {
@@ -1000,6 +1009,23 @@
     }
   },
   "cli.import.done": "{count, plural, one {# memory} other {# memories}} saved, {superseded} replaced, {tokens} tokens. Written to {path}",
+  "@cli.import.done": {
+    "description": "Summary line under the 'import' table once the run finishes. {tokens} is an already-formatted short number such as '48.6k'. {path} is the throwaway directory the import wrote to, not the real corpus.",
+    "placeholders": {
+      "count": {
+        "type": "number"
+      },
+      "superseded": {
+        "type": "number"
+      },
+      "tokens": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "cli.import.session_done": "{session} {project}: {count, plural, one {# memory} other {# memories}}, {superseded} replaced, {tokens} tokens",
   "@cli.import.session_done": {
     "description": "Printed as each source session finishes during an import run, so a long run shows progress. {session} is a short session id, {tokens} an already-formatted short number such as '48.6k'.",
@@ -1017,23 +1043,6 @@
         "type": "num"
       },
       "tokens": {
-        "type": "String"
-      }
-    }
-  },
-  "@cli.import.done": {
-    "description": "Summary line under the 'import' table once the run finishes. {tokens} is an already-formatted short number such as '48.6k'. {path} is the throwaway directory the import wrote to, not the real corpus.",
-    "placeholders": {
-      "count": {
-        "type": "number"
-      },
-      "superseded": {
-        "type": "number"
-      },
-      "tokens": {
-        "type": "String"
-      },
-      "path": {
         "type": "String"
       }
     }

@@ -371,6 +371,10 @@ export const FI_MESSAGES = {
   "cli.help.section.options": [{ kind: "text", value: "Valitsimet" }],
   "cli.help.section.usage": [{ kind: "text", value: "Käyttö" }],
   "cli.history.none": [{ kind: "text", value: "Ei tallennettuja istuntoja." }],
+  "cli.args.missing_value": [
+    { kind: "arg", name: "flag" },
+    { kind: "text", value: " tarvitsee arvon." },
+  ],
   "cli.args.invalid_since": [
     { kind: "text", value: "Virheellinen --since-arvo: " },
     { kind: "arg", name: "value" },

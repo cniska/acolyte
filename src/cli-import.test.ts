@@ -1,13 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { type ImportModeDeps, importMode } from "./cli-import";
-import { emptyImportLedger, type ImportLedger } from "./import-ledger";
+import { emptyImportLedger } from "./import-ledger";
 import type { MemoryStore } from "./memory-contract";
 import type { ImportSessionPlan, ImportSessionResult, RunImportOptions, StaleSessionRef } from "./transcript-import";
 
 function samplePlan(overrides: Partial<ImportSessionPlan> = {}): ImportSessionPlan {
   return {
     sourceSessionId: "abcdef0123",
-    path: "/transcripts/abcdef0123.jsonl",
     sessionId: "sess_abc123",
     workspace: "/repo",
     project: "acme/widgets",
@@ -30,13 +29,11 @@ type Harness = {
   out: string[];
   errors: { name: string; message?: string }[];
   removed: string[];
-  saved: ImportLedger[];
   closed: number;
   runs: RunImportOptions[];
 };
 
 type HarnessOptions = {
-  ledger?: ImportLedger;
   distillAvailable?: boolean;
   /** `null` means no model is configured at all. */
   model?: null;
@@ -52,12 +49,11 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
   const out: string[] = [];
   const errors: { name: string; message?: string }[] = [];
   const removed: string[] = [];
-  const saved: ImportLedger[] = [];
   const runs: RunImportOptions[] = [];
   let released = 0;
   const state = { closed: 0 };
   const store = { close: () => state.closed++ } as unknown as MemoryStore;
-  const ledger = options.ledger ?? emptyImportLedger();
+  const ledger = emptyImportLedger();
 
   const deps: ImportModeDeps = {
     hasHelpFlag: () => false,
@@ -81,10 +77,7 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
         superseded: 1,
         tokens: 500,
       }));
-      for (const result of results) {
-        saved.push(runOptions.ledger);
-        runOptions.onSession?.(result);
-      }
+      for (const result of results) runOptions.onSession?.(result);
       return results;
     },
     createStore: () => store,
@@ -94,9 +87,7 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
         ? { kind: "unconfigured" }
         : { kind: options.distillAvailable === false ? "unavailable" : "ready", model: "openai/gpt-5-mini" },
     readLedger: async () => ledger,
-    writeLedger: async (_path, next) => {
-      saved.push(next);
-    },
+    writeLedger: async () => {},
     acquireLock: () => ({ ok: options.locked !== true }),
     releaseLock: () => {
       released++;
@@ -117,7 +108,6 @@ function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harn
     out,
     errors,
     removed,
-    saved,
     runs,
     get closed() {
       return state.closed;
@@ -149,6 +139,16 @@ describe("importMode", () => {
       await importMode(["--max-turns", value], h.deps);
 
       expect(h.errors[0]?.message).toContain(value);
+      expect(h.runs).toEqual([]);
+    }
+  });
+
+  test("rejects a value flag left with no value rather than running the default", async () => {
+    for (const flag of ["--since", "--max-turns"]) {
+      const h = harness([samplePlan()]);
+      await importMode([flag], h.deps);
+
+      expect(h.errors[0]?.message).toContain(flag);
       expect(h.runs).toEqual([]);
     }
   });
