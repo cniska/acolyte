@@ -204,6 +204,25 @@ describe("streamModelCall", () => {
     await expect(within(500, call)).rejects.toThrow(/did not open/i);
   });
 
+  test("a stream that never opened is tried again, since that is the provider being unavailable", async () => {
+    let attempts = 0;
+    const client = {
+      doStream: (options: { abortSignal?: AbortSignal }) => {
+        attempts += 1;
+        if (attempts > 1) return Promise.resolve({ stream: new ReadableStream({ start: (c) => c.close() }) });
+        return new Promise((_, reject) => {
+          options.abortSignal?.addEventListener("abort", () => reject(options.abortSignal?.reason), { once: true });
+        });
+      },
+    } as unknown as LanguageModelV4;
+
+    await within(
+      1_000,
+      streamModelCall({ client, limiter: limiter(), request: { prompt: [] }, idleTimeoutMs: 20, maxAttempts: 2 }),
+    );
+    expect(attempts).toBe(2);
+  });
+
   test("a backoff ends the moment the caller cancels, not when the provider said to return", async () => {
     const controller = new AbortController();
     const slow = createRateLimiter({ backoffBaseMs: 60_000, backoffMaxMs: 60_000 });

@@ -42,6 +42,7 @@ export type MemoryCommitMetrics = {
   projectPromotedFacts?: number;
   userPromotedFacts?: number;
   sessionScopedFacts?: number;
+  /** Facts whose scope the workspace could not key, so there was nowhere to write them. */
   droppedUntaggedFacts?: number;
   supersededFacts?: number;
   candidateCount?: number;

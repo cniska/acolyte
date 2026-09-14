@@ -377,6 +377,22 @@ describe("memoryDistiller", () => {
       expect(withoutTopic?.topic).toBeNull();
     });
 
+    test("counts a fact the workspace had no scope to key, rather than losing it silently", async () => {
+      const store = createMockStore();
+      const source = createTestDistiller(
+        store,
+        makeRunner([{ kind: "finding", scope: "project", content: "repo uses Bun", topic: null, supersedes: [] }]),
+      );
+      const metrics = await source.commit({
+        model: "openai/gpt-5-mini",
+        sessionId: "sess_test0001",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+      expect(store.written).toHaveLength(0);
+      expect(metrics?.droppedUntaggedFacts).toBe(1);
+    });
+
     test("session commit promotes project and user observations to scoped stores", async () => {
       const store = createMockStore();
       const source = createTestDistiller(

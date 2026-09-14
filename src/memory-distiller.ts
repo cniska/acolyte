@@ -66,9 +66,9 @@ const OBSERVE_FUNCTION_NAME = "memory-observe";
 
 /**
  * The only tool offered to the distiller's own model call, and the shape its observations come back
- * in. Nothing executes the call — reading it is the whole handling. The model calls it on every turn,
- * so silence is an empty `facts` array rather than the absence of a call: measured, the model never
- * withholds the call, and a contract that hangs silence on withholding it gets one stray fact instead.
+ * in. Nothing executes the call — reading it is the whole handling. Silence is an empty `facts`
+ * array rather than the absence of a call: a contract that hangs silence on withholding the call
+ * cannot tell a quiet turn from a turn the model answered in prose.
  */
 const DISTILL_OUTPUT_TOOL = toFunctionTool({
   id: OBSERVE_FUNCTION_NAME,
@@ -385,6 +385,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       let projectCount = 0;
       let userCount = 0;
       let sessionCount = 0;
+      let droppedCount = 0;
       const successorsBySuperseded = new Map<string, string[]>();
 
       for (const obs of filtered) {
@@ -392,6 +393,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
         if (!factKey) {
           // A workspace with no project scope has nowhere to put a project fact; the trace is the
           // only place that shows it, since distillation never speaks in the transcript.
+          droppedCount++;
           log.debug("memory.commit.no_scope", { scope: obs.scope });
           continue;
         }
@@ -431,6 +433,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
         projectPromotedFacts: projectCount,
         userPromotedFacts: userCount,
         sessionScopedFacts: sessionCount,
+        droppedUntaggedFacts: droppedCount,
         supersededFacts: supersededCount,
         candidateCount: candidates.length,
         distillTokens: totalTokens,

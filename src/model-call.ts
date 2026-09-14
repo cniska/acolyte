@@ -23,6 +23,10 @@ function timeoutError(message: string): Error {
   return error;
 }
 
+function isConnectTimeout(error: unknown): boolean {
+  return (error as { code?: unknown } | null)?.code === LIFECYCLE_ERROR_CODES.timeout;
+}
+
 export type ModelCallRequest = Parameters<LanguageModelV4["doStream"]>[0];
 
 export type ModelCallOptions = {
@@ -87,7 +91,9 @@ async function withProviderRetry<T>(
       limiter.reset();
       return result;
     } catch (error) {
-      const recovery = limiter.onError(error);
+      // A stream that never opened is the provider being momentarily unavailable, which is what this
+      // loop is for; the limiter cannot see that, because the deadline is ours rather than theirs.
+      const recovery = isConnectTimeout(error) ? { shouldRetry: true, delayMs: 0 } : limiter.onError(error);
       if (!recovery.shouldRetry || attempt >= maxAttempts) throw error;
       log.debug("model.call.retry", { label, attempt, delay_ms: recovery.delayMs });
       await sleep(recovery.delayMs, abortSignal);
