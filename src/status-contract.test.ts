@@ -22,6 +22,23 @@ describe("parseStatusFields", () => {
     expect(fields).not.toHaveProperty("ok");
   });
 
+  test("a daemon with no model configured reports status without one", () => {
+    const fields = parseStatusFields({
+      ok: true,
+      providers: [],
+      provider_auth: [],
+      protocol_version: "1",
+      build: "1.2.3 (abc1234)",
+      capabilities: "chat",
+      service: "acolyte",
+      tasks_total: 0,
+      tasks_running: 0,
+      rpc_queue_length: 0,
+    });
+    expect(fields).not.toBeNull();
+    expect(fields).not.toHaveProperty("model");
+  });
+
   test("returns null for invalid payload", () => {
     expect(parseStatusFields({})).toBeNull();
     expect(parseStatusFields(null)).toBeNull();

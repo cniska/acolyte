@@ -68,6 +68,8 @@ type BenchSummary = {
 };
 
 const DEFAULT_K_VALUES = [3, 5, 10];
+/** The one project scope the bench stores into and recalls from; a `proj_` id, as recall requires. */
+const BENCH_SCOPE_KEY = "proj_bench";
 
 function parseInteger(token: string | undefined, flag: string): number {
   if (!token) throw new Error(`Missing value for ${flag}`);
@@ -140,13 +142,18 @@ function printUsage(): void {
   );
 }
 
-export function applyModelOverrides(args: Pick<MemoryBenchArgs, "embeddingModel" | "distillModel">): void {
+export function applyModelOverrides(args: Pick<MemoryBenchArgs, "embeddingModel">): void {
   if (args.embeddingModel) {
     (appConfig.embedding as { model: string }).model = args.embeddingModel;
   }
-  if (args.distillModel) {
-    (appConfig as { distillModel: string }).distillModel = args.distillModel;
-  }
+}
+
+/** The model a distilling dataset writes with: named on the command line, or the configured one. */
+export function resolveDistillModel(args: Pick<MemoryBenchArgs, "distillModel">, configuredModel?: string): string {
+  const model = args.distillModel ?? configuredModel;
+  if (!model)
+    throw new Error("No model configured; pass --distill-model <id> or set one with acolyte config set model");
+  return model;
 }
 
 function safeIsoDate(value: string): string {
@@ -157,8 +164,7 @@ function safeIsoDate(value: string): string {
 function toMemoryRecord(obs: NormalizedObservation, index: number): MemoryRecord {
   return {
     id: `mem_bench_${index}`,
-    scopeKey: "proj_bench",
-    kind: "stored",
+    scopeKey: BENCH_SCOPE_KEY,
     content: obs.content,
     createdAt: safeIsoDate(obs.timestamp),
     tokenEstimate: Math.ceil(obs.content.length / 4),
@@ -193,7 +199,7 @@ async function runScenario(scenario: DatasetScenario, kValues: number[], tempDir
         if (i === 0) throw new Error("Embedding provider returned null — check your embedding model configuration");
         continue;
       }
-      store.writeEmbedding(recordId, "proj_bench", embeddingToBuffer(embedding));
+      store.writeEmbedding(recordId, BENCH_SCOPE_KEY, embeddingToBuffer(embedding));
     }
     const embeddingDurationMs = performance.now() - embedStart;
 
@@ -203,7 +209,13 @@ async function runScenario(scenario: DatasetScenario, kValues: number[], tempDir
     const queryResults: QueryResult[] = [];
 
     for (const query of scenario.queries) {
-      const results = await searchMemories(query.question, { store, limit: maxK });
+      // Recall reads the scopes the caller could write, so the bench's own scope has to be the one
+      // its records were stored under; passing the options object as the context retrieves nothing.
+      const results = await searchMemories(
+        query.question,
+        { resourceId: BENCH_SCOPE_KEY },
+        { scope: "project", store, limit: maxK, touch: false },
+      );
       const retrievedRecordIds = results.map((r) => r.id);
 
       // Map ground-truth observation IDs to record IDs
@@ -282,13 +294,14 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   applyModelOverrides(args);
   const embeddingModel = appConfig.embedding.model;
+  const distillModel = resolveDistillModel(args, appConfig.model);
   const dataDir = defaultDataDir();
   const results: Record<string, DatasetResult> = {};
 
   for (const datasetId of args.datasets) {
     const adapter = MEMORY_BENCH_ADAPTERS[datasetId];
     if (!args.json) console.log(`loading ${adapter.name}...`);
-    const dataset = await adapter.load(dataDir);
+    const dataset = await adapter.load({ dataDir, distillModel });
     if (!args.json) console.log(`  ${dataset.scenarios.length} scenarios loaded`);
 
     results[datasetId] = await runDataset(dataset, args.kValues, args.limit, args.json);

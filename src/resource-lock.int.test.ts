@@ -2,21 +2,21 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { stateDir } from "./paths";
-import { acquireSessionLock, releaseSessionLock, sweepStaleSessionLocks } from "./session-lock";
+import { acquireLock, releaseLock, sweepStaleLocks } from "./resource-lock";
 import { tempDir } from "./test-utils";
 
 const { createDir, cleanupDirs } = tempDir();
 const createTempHome = () => createDir("acolyte-lock-test-");
 afterEach(cleanupDirs);
 
-describe("session lock", () => {
+describe("resource lock", () => {
   test("allows re-acquire by same process", () => {
     const env = { HOME: createTempHome() };
-    const first = acquireSessionLock("sess_test", { env });
-    const second = acquireSessionLock("sess_test", { env });
+    const first = acquireLock("sess_test", { env });
+    const second = acquireLock("sess_test", { env });
     expect(first.ok).toBe(true);
     expect(second.ok).toBe(true);
-    releaseSessionLock("sess_test", { env });
+    releaseLock("sess_test", { env });
   });
 
   test("reclaims stale lock from non-running pid", () => {
@@ -26,9 +26,9 @@ describe("session lock", () => {
     mkdirSync(locksDir, { recursive: true });
     const lockPath = join(stateDir(env), "locks", "sess_test.lock");
     writeFileSync(lockPath, "999999");
-    const result = acquireSessionLock("sess_test", { env });
+    const result = acquireLock("sess_test", { env });
     expect(result.ok).toBe(true);
-    releaseSessionLock("sess_test", { env });
+    releaseLock("sess_test", { env });
   });
 
   test("blocks when lock is owned by a live different pid", () => {
@@ -40,16 +40,16 @@ describe("session lock", () => {
       mkdirSync(locksDir, { recursive: true });
       const lockPath = join(stateDir(env), "locks", "sess_test.lock");
       writeFileSync(lockPath, String(sleeper.pid));
-      const result = acquireSessionLock("sess_test", { env });
+      const result = acquireLock("sess_test", { env });
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.ownerPid).toBe(sleeper.pid);
     } finally {
       sleeper.kill();
-      releaseSessionLock("sess_test", { env });
+      releaseLock("sess_test", { env });
     }
   });
 
-  test("sweepStaleSessionLocks removes dead and malformed locks, keeps live locks", () => {
+  test("sweepStaleLocks removes dead and malformed locks, keeps live locks", () => {
     const homeDir = createTempHome();
     const env = { HOME: homeDir };
     const locksDir = join(stateDir(env), "locks");
@@ -65,7 +65,7 @@ describe("session lock", () => {
     writeFileSync(livePath, String(sleeper.pid));
 
     try {
-      const summary = sweepStaleSessionLocks({ env });
+      const summary = sweepStaleLocks({ env });
       expect(summary.removed).toBe(2);
       expect(summary.kept).toBe(1);
       expect(existsSync(livePath)).toBe(true);
@@ -74,7 +74,7 @@ describe("session lock", () => {
     } finally {
       sleeper.kill();
       try {
-        releaseSessionLock("sess_live", { env });
+        releaseLock("sess_live", { env });
       } catch {
         // best effort
       }

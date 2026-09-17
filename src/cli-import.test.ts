@@ -1,0 +1,394 @@
+import { describe, expect, test } from "bun:test";
+import { type ImportModeDeps, importMode } from "./cli-import";
+import { emptyImportLedger } from "./import-ledger";
+import type { MemoryStore } from "./memory-contract";
+import type { ImportSessionPlan, ImportSessionResult, RunImportOptions, StaleSessionRef } from "./transcript-import";
+
+function samplePlan(overrides: Partial<ImportSessionPlan> = {}): ImportSessionPlan {
+  return {
+    sourceSessionId: "abcdef0123",
+    sessionId: "sess_abc123",
+    workspace: "/repo",
+    project: "acme/widgets",
+    lastActivityAt: "2026-08-20T09:00:00.000Z",
+    movement: 3,
+    stale: false,
+    exchanges: [],
+    consumed: 0,
+    pending: 4,
+    calls: 2,
+    estimatedTokens: 1_200,
+    ...overrides,
+  };
+}
+
+type Harness = {
+  deps: ImportModeDeps;
+  releases: () => number;
+  dim: string[];
+  out: string[];
+  errors: { name: string; message?: string }[];
+  removed: string[];
+  closed: number;
+  runs: RunImportOptions[];
+};
+
+type HarnessOptions = {
+  distillAvailable?: boolean;
+  /** `null` means no model is configured at all. */
+  model?: null;
+  project?: string | null;
+  runFails?: string;
+  locked?: boolean;
+  stale?: StaleSessionRef[];
+  unattributable?: number;
+};
+
+function harness(plans: ImportSessionPlan[], options: HarnessOptions = {}): Harness {
+  const dim: string[] = [];
+  const out: string[] = [];
+  const errors: { name: string; message?: string }[] = [];
+  const removed: string[] = [];
+  const runs: RunImportOptions[] = [];
+  let released = 0;
+  const state = { closed: 0 };
+  const store = { close: () => state.closed++ } as unknown as MemoryStore;
+  const ledger = emptyImportLedger();
+
+  const deps: ImportModeDeps = {
+    hasHelpFlag: () => false,
+    transcriptDir: "/transcripts",
+    scratchDir: (project: string) => `/scratch/${project}`,
+    workspace: "/checkout",
+    project: options.project === undefined ? "acme/widgets" : options.project,
+    planImport: async ({ maxTurns }) => ({
+      sessions: plans.map((plan) => ({ ...plan, pending: Math.min(plan.pending, maxTurns) })),
+      heldBack: Math.max(plans.reduce((sum, plan) => sum + plan.pending, 0) - maxTurns, 0),
+      stale: options.stale ?? [],
+      unattributable: options.unattributable ?? 0,
+    }),
+    runImport: async (runOptions) => {
+      runs.push(runOptions);
+      if (options.runFails) throw new Error(options.runFails);
+      const results: ImportSessionResult[] = runOptions.plans.map((plan) => ({
+        plan,
+        distilled: 2,
+        facts: 3,
+        superseded: 1,
+        tokens: 500,
+      }));
+      for (const result of results) runOptions.onSession?.(result);
+      return results;
+    },
+    createStore: () => store,
+    createDistiller: () => ({ commit: async () => undefined }),
+    resolveModel: () =>
+      options.model === null
+        ? { kind: "unconfigured" }
+        : { kind: options.distillAvailable === false ? "unavailable" : "ready", model: "openai/gpt-5-mini" },
+    readLedger: async () => ledger,
+    writeLedger: async () => {},
+    acquireLock: () => ({ ok: options.locked !== true }),
+    releaseLock: () => {
+      released++;
+    },
+    removeDir: async (path) => {
+      removed.push(path);
+    },
+    printDim: (message) => dim.push(message),
+    printOutput: (message) => out.push(message),
+    commandError: (name, message) => errors.push({ name, message }),
+    commandHelp: () => {},
+  };
+
+  return {
+    deps,
+    releases: () => released,
+    dim,
+    out,
+    errors,
+    removed,
+    runs,
+    get closed() {
+      return state.closed;
+    },
+  };
+}
+
+describe("importMode", () => {
+  test("rejects an unparseable --since", async () => {
+    const h = harness([samplePlan()]);
+    await importMode(["--since", "yesterday"], h.deps);
+
+    expect(h.errors[0].name).toBe("import");
+    expect(h.errors[0].message).toContain("yesterday");
+    expect(h.runs).toEqual([]);
+  });
+
+  test("rejects a stray positional argument", async () => {
+    const h = harness([samplePlan()]);
+    await importMode(["everything"], h.deps);
+
+    expect(h.errors).toHaveLength(1);
+    expect(h.runs).toEqual([]);
+  });
+
+  test("rejects a --max-turns that is not a positive whole number", async () => {
+    for (const value of ["0", "-3", "lots", "2.5"]) {
+      const h = harness([samplePlan()]);
+      await importMode(["--max-turns", value], h.deps);
+
+      expect(h.errors[0]?.message).toContain(value);
+      expect(h.runs).toEqual([]);
+    }
+  });
+
+  test("rejects a value flag left with no value rather than running the default", async () => {
+    for (const flag of ["--since", "--max-turns"]) {
+      const h = harness([samplePlan()]);
+      await importMode([flag], h.deps);
+
+      expect(h.errors[0]?.message).toContain(flag);
+      expect(h.runs).toEqual([]);
+    }
+  });
+
+  test("bounds the run to the turn budget and says what is left", async () => {
+    const h = harness([samplePlan({ pending: 10 })]);
+    await importMode(["--max-turns", "4"], h.deps);
+
+    expect(h.runs[0].plans.map((plan) => plan.pending)).toEqual([4]);
+    expect(h.dim.join("\n")).toContain("6 turns are left");
+  });
+
+  test("says nothing about held-back turns when the budget covered the window", async () => {
+    const h = harness([samplePlan({ pending: 2 })]);
+    await importMode(["--max-turns", "4"], h.deps);
+
+    expect(h.dim.join("\n")).not.toContain("are left");
+  });
+
+  test("refuses to run without a usable model, naming what to connect", async () => {
+    const h = harness([samplePlan()], { distillAvailable: false });
+    await importMode([], h.deps);
+
+    expect(h.errors[0].message).toContain("openai/gpt-5-mini");
+    expect(h.errors[0].message).toContain("acolyte auth");
+    expect(h.runs).toEqual([]);
+    expect(h.removed).toEqual([]);
+  });
+
+  test("refuses to run when no model is configured, naming how to choose one", async () => {
+    const h = harness([samplePlan()], { model: null });
+    await importMode([], h.deps);
+
+    expect(h.errors[0].message).toContain("acolyte config set model");
+    expect(h.runs).toEqual([]);
+    expect(h.removed).toEqual([]);
+  });
+
+  test("--dry-run plans without a configured model", async () => {
+    const h = harness([samplePlan()], { model: null });
+    await importMode(["--dry-run"], h.deps);
+
+    expect(h.errors).toEqual([]);
+    expect(h.dim.join("\n")).toContain("abcdef01");
+    expect(h.runs).toEqual([]);
+  });
+
+  test("--dry-run still works with no usable model, since it makes no model call", async () => {
+    const h = harness([samplePlan()], { distillAvailable: false });
+    await importMode(["--dry-run"], h.deps);
+
+    expect(h.errors).toEqual([]);
+    expect(h.dim.join("\n")).toContain("abcdef01");
+  });
+
+  test("says so when the window holds nothing to import", async () => {
+    const h = harness([samplePlan({ pending: 0 })]);
+    await importMode([], h.deps);
+
+    expect(h.dim.join("\n")).toContain("24h");
+    expect(h.runs).toEqual([]);
+  });
+
+  test("--dry-run reports the plan without distilling", async () => {
+    const h = harness([samplePlan()]);
+    await importMode(["--dry-run"], h.deps);
+
+    expect(h.runs).toEqual([]);
+    expect(h.dim.join("\n")).toContain("abcdef01");
+    expect(h.dim.join("\n")).toContain("acme/widgets");
+    expect(h.dim.join("\n")).toContain("1.2k");
+  });
+
+  test("imports the pending sessions and names where they went", async () => {
+    const h = harness([samplePlan(), samplePlan({ sourceSessionId: "second", pending: 0 })]);
+    await importMode([], h.deps);
+
+    expect(h.runs).toHaveLength(1);
+    expect(h.runs[0].plans.map((plan) => plan.sourceSessionId)).toEqual(["abcdef0123"]);
+    expect(h.dim.join("\n")).toContain("/scratch");
+    expect(h.closed).toBe(1);
+  });
+
+  test("--reset clears the throwaway corpus first", async () => {
+    const h = harness([samplePlan({ pending: 0 })]);
+    await importMode(["--reset"], h.deps);
+
+    expect(h.removed).toEqual(["/scratch/acme/widgets"]);
+  });
+
+  test("--reset clears the corpus on an install with no model configured", async () => {
+    const h = harness([samplePlan({ pending: 0 })], { model: null });
+    await importMode(["--reset"], h.deps);
+
+    expect(h.removed).toEqual(["/scratch/acme/widgets"]);
+  });
+
+  test("--reset clears the corpus when the model's provider has no credential", async () => {
+    const h = harness([samplePlan({ pending: 0 })], { distillAvailable: false });
+    await importMode(["--reset"], h.deps);
+
+    expect(h.removed).toEqual(["/scratch/acme/widgets"]);
+  });
+
+  test("--reset discards nothing while another run holds the lock", async () => {
+    const h = harness([samplePlan()], { locked: true });
+    await importMode(["--reset"], h.deps);
+
+    expect(h.removed).toEqual([]);
+    expect(h.errors[0].message).toContain("already");
+  });
+
+  test("--reset discards only the standing project's corpus", async () => {
+    const h = harness([samplePlan()], { project: "acme/other" });
+    await importMode(["--reset"], h.deps);
+
+    expect(h.removed).toEqual(["/scratch/acme/other"]);
+  });
+
+  test("--json prints one record per session and no summary prose", async () => {
+    const h = harness([samplePlan()]);
+    await importMode(["--json"], h.deps);
+
+    expect(h.dim).toEqual([]);
+    expect(JSON.parse(h.out.join("\n"))).toMatchObject({
+      session: "abcdef01",
+      memories: "3",
+      replaced: "1",
+      tokens: "500",
+    });
+  });
+
+  test("refuses where there is no project to import, naming what it needs", async () => {
+    const h = harness([samplePlan()], { project: null });
+    await importMode([], h.deps);
+
+    expect(h.errors[0].message).toContain("owner/repo");
+    expect(h.runs).toEqual([]);
+    expect(h.removed).toEqual([]);
+  });
+
+  test("shows the plan and the cost band before it spends anything", async () => {
+    const h = harness([samplePlan()]);
+    await importMode([], h.deps);
+
+    expect(h.dim.join("\n")).toContain("4 turns to read");
+    expect(h.dim.join("\n")).toContain("1.2k–41.2k");
+    expect(h.runs).toHaveLength(1);
+  });
+
+  test("says what each session yielded as it finishes, not only at the end", async () => {
+    const h = harness([samplePlan({ sourceSessionId: "first00000" }), samplePlan({ sourceSessionId: "second0000" })]);
+    await importMode([], h.deps);
+
+    expect(h.dim.filter((line) => line.startsWith("first000"))).toHaveLength(1);
+    expect(h.dim.filter((line) => line.startsWith("second00"))).toHaveLength(1);
+    expect(h.dim.join("\n")).toContain("3 memories, 1 replaced, 500 tokens");
+  });
+
+  test("a run that fails partway says why instead of crashing", async () => {
+    const h = harness([samplePlan()], { runFails: "You have no credits remaining." });
+    await importMode([], h.deps);
+
+    expect(h.errors[0]).toMatchObject({ name: "import", message: "You have no credits remaining." });
+    expect(h.closed).toBe(1);
+  });
+
+  test("the closing summary totals every session, not just the last", async () => {
+    const h = harness([samplePlan({ sourceSessionId: "first00000" }), samplePlan({ sourceSessionId: "second0000" })]);
+    await importMode([], h.deps);
+
+    // Two sessions at 3 memories / 1 replaced / 500 tokens each.
+    expect(h.dim.at(-1)).toContain("6 memories");
+    expect(h.dim.at(-1)).toContain("2 replaced");
+    expect(h.dim.at(-1)).toContain("1.0k tokens");
+  });
+
+  test("refuses to start while another run holds the import", async () => {
+    const h = harness([samplePlan()], { locked: true });
+    await importMode([], h.deps);
+
+    expect(h.errors[0]?.message).toContain("already running");
+    expect(h.runs).toEqual([]);
+  });
+
+  test("releases the import when a run fails partway", async () => {
+    const h = harness([samplePlan()], { runFails: "provider exploded" });
+    await importMode([], h.deps);
+
+    expect(h.releases()).toBe(1);
+  });
+
+  test("--dry-run spends nothing", async () => {
+    const h = harness([samplePlan()]);
+    await importMode(["--dry-run"], h.deps);
+
+    expect(h.runs).toEqual([]);
+  });
+
+  test("reports the sessions the staleness budget kept out and how to reach them", async () => {
+    const h = harness([samplePlan()], {
+      stale: [
+        { sourceSessionId: "old1", lastActivityAt: "2026-01-01T00:00:00.000Z", movement: 88 },
+        { sourceSessionId: "old2", lastActivityAt: "2026-02-01T00:00:00.000Z", movement: 240 },
+      ],
+    });
+    await importMode(["--dry-run"], h.deps);
+
+    expect(h.dim.join("\n")).toContain("Skipped 2 sessions: the project has up to 240 commits since they ended");
+    expect(h.dim.join("\n")).toContain("--include-stale");
+  });
+
+  test("reports the sessions that carry no timestamp separately from the ones measured", async () => {
+    const h = harness([samplePlan()], {
+      stale: [
+        { sourceSessionId: "old1", lastActivityAt: "2026-01-01T00:00:00.000Z", movement: 88 },
+        { sourceSessionId: "undated", lastActivityAt: null, movement: null },
+      ],
+    });
+    await importMode(["--dry-run"], h.deps);
+
+    expect(h.dim.join("\n")).toContain("Skipped 1 session: the project has 88 commits since it ended");
+    expect(h.dim.join("\n")).toContain("Skipped 1 session: it carries no time");
+  });
+
+  test("reports the in-window sessions no project can be resolved for", async () => {
+    const h = harness([samplePlan()], { unattributable: 3 });
+    await importMode(["--dry-run"], h.deps);
+
+    expect(h.dim.join("\n")).toContain("3 sessions have no project");
+  });
+
+  test("says why a window that held only stale sessions imported nothing", async () => {
+    const h = harness([samplePlan({ pending: 0 })], {
+      stale: [{ sourceSessionId: "old1", lastActivityAt: "2026-01-01T00:00:00.000Z", movement: 88 }],
+    });
+    await importMode([], h.deps);
+
+    expect(h.dim.join("\n")).toContain("acme/widgets");
+    expect(h.dim.join("\n")).toContain("88 commits since it ended");
+    expect(h.runs).toEqual([]);
+  });
+});

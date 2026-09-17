@@ -10,10 +10,9 @@ import { setLocale } from "./i18n";
 import { runLifecycle } from "./lifecycle";
 import { VERBOSE_ONLY_EVENTS } from "./lifecycle-constants";
 import { errorToLogFields, log } from "./log";
-import { authRouteForModel } from "./model-factory";
-import { ensureSubscriptionModelsLoaded, isOpenAiSubscriptionModel } from "./openai-subscription-models";
+import { resolveAuthRoute } from "./model-factory";
 import { loadProjectRulesPrompt } from "./project-rules";
-import { bareModelId, isProviderAvailable, providerFromModel } from "./provider-config";
+import { type AuthRoute, isProviderAvailable, providerFromModel } from "./provider-config";
 import type { Provider } from "./provider-contract";
 import { parseResourceId, projectResourceIdFromWorkspace } from "./resource-id";
 import { publishProjectLabel } from "./scope-label-sync";
@@ -216,18 +215,11 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
     return;
   }
 
-  const modelId = bareModelId(chatRequest.model);
-  const openaiCreds = providerCredentials.openai;
-  if (modelProvider === "openai" && openaiCreds?.oauth) {
-    await ensureSubscriptionModelsLoaded(globalThis.fetch);
-  }
-  if (modelProvider === "openai" && openaiCreds?.oauth && !openaiCreds.apiKey && !isOpenAiSubscriptionModel(modelId)) {
-    const payload = streamErrorPayload(
-      new Error(
-        `Model "${chatRequest.model}" is not available on your OpenAI subscription. Set OPENAI_API_KEY to use other OpenAI models.`,
-      ),
-    );
-    handlers.onError(payload);
+  let authRoute: AuthRoute;
+  try {
+    authRoute = await resolveAuthRoute(chatRequest.model, providerCredentials);
+  } catch (error) {
+    handlers.onError(streamErrorPayload(error));
     return;
   }
 
@@ -285,7 +277,7 @@ export async function runChatRequest(chatRequest: ChatRequest, handlers: RunChat
       features: config.features,
       reasoning: config.reasoning,
       locale: config.locale,
-      authRoute: authRouteForModel(chatRequest.model, providerCredentials),
+      authRoute,
       taskId: handlers.taskId,
       runControl,
       onEvent: (event) => {

@@ -1,5 +1,4 @@
 import type { z } from "zod";
-import { appConfig } from "./app-config";
 import { fullUsage, subcommandUsage, WORKSPACES_SPEC } from "./chat-command-specs";
 import type { CommandContext, CommandResult, ParsedCommand } from "./chat-commands-contract";
 import { createRow } from "./chat-contract";
@@ -125,7 +124,7 @@ export async function runWorkspacesNew(ctx: CommandContext, parsed: ParsedComman
     ctx.setRows((current) => [...current, createRow("system", t("chat.workspaces.create_failed", { reason }))]);
     return { stop: true, userText: text };
   }
-  const next = createSession(appConfig.model);
+  const next = createSession(ctx.currentSession.model);
   next.workspaceName = name;
   next.workspace = created.workspacePath;
   next.workspaceBranch = created.branch;

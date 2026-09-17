@@ -34,6 +34,15 @@ Each installs the latest released binary for macOS and Linux, behind a launcher 
 
 Requires Git 2.14 or newer on `PATH`: Acolyte reports every file edit as a Git diff, and `/workspaces` manages Git worktrees.
 
+Then connect a provider and choose a model — Acolyte ships with no default, so both are needed before the first turn:
+
+```bash
+acolyte auth vercel --key
+acolyte config set model anthropic/claude-sonnet-4
+```
+
+See [Configuration](docs/configuration.md) for the other providers, credential precedence, and local models.
+
 ## Runtime model
 
 ```text
@@ -78,7 +87,13 @@ Provider credentials are not needed to run the test suites. To use the agent aga
 bun run src/cli.ts auth vercel --key
 ```
 
-This stores the key in Acolyte's private global credentials file. Use `openai`, `anthropic`, or `google` instead to configure a direct provider. See [Configuration](docs/configuration.md) for credential precedence, local models, and provider settings.
+This stores the key in Acolyte's private global credentials file. Use `openai`, `anthropic`, or `google` instead to configure a direct provider. Set a model too — there is no default:
+
+```bash
+bun run src/cli.ts config set model anthropic/claude-sonnet-4
+```
+
+See [Configuration](docs/configuration.md) for credential precedence, local models, and provider settings.
 
 ## Common commands
 

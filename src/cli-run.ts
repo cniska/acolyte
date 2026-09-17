@@ -99,8 +99,15 @@ export async function runMode(args: string[], deps: RunModeDeps): Promise<void> 
     return;
   }
 
+  const model = parsed.model ?? appModel;
+  if (!model) {
+    printError(t("cli.model.not_configured"));
+    process.exitCode = 1;
+    return;
+  }
+
   const resolvedConfig = readResolvedConfigSync();
-  const session = createSession(parsed.model ?? appModel);
+  const session = createSession(model);
   const daemon = await ensureLocalServer({
     port: serverPort,
     apiKey: serverApiKey,

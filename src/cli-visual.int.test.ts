@@ -54,7 +54,6 @@ async function withDualTransportChatServer<T>(fn: (baseUrl: string) => Promise<T
                 ok: true,
                 providers: ["openai"],
                 provider_auth: ["openai (api key)"],
-                model: "gpt-5-mini",
                 protocol_version: PROTOCOL_VERSION,
                 build: "1.2.3 (abc1234)",
                 capabilities: "stream.sse, error.structured",
@@ -303,7 +302,6 @@ describe("cli visual regression", () => {
         expect(out).toBe(
           dedent(`
           Providers:          openai (api key)
-          Model:              gpt-5-mini
           Protocol version:   ${PROTOCOL_VERSION}
           Build:              1.2.3 (abc1234)
           Capabilities:       stream.sse, error.structured
@@ -333,6 +331,7 @@ describe("cli visual regression", () => {
       await withCliTestEnv(async ({ run }) => {
         const port = new URL(baseUrl).port;
         await run(["config", "set", "port", port]);
+        await run(["config", "set", "model", "gpt-5-mini"]);
         const output = normalizeRunOutput(await run(["run", "hello transport parity"]));
         expect(output).toContain("Transport parity ok.");
       });

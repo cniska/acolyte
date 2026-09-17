@@ -4,21 +4,49 @@ import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModelV4, SharedV4ProviderOptions } from "@ai-sdk/provider";
 import { defaultCredentials, type ProviderCredentialsMap } from "./agent-model";
 import { unreachable } from "./assert";
+import { CodedError } from "./coded-error";
+import { ERROR_KINDS, PROVIDER_ERROR_CODES } from "./error-contract";
+import { log } from "./log";
 import { withChatGPTAuthFetch } from "./openai-chatgpt-fetch";
-import { isOpenAiSubscriptionModel } from "./openai-subscription-models";
+import { subscriptionModels } from "./openai-subscription-models";
+import type { Env } from "./paths";
 import { mergeProviderOptions, withVercelPromptCacheFetch } from "./prompt-cache";
-import { type AuthRoute, bareModelId, type ProviderCredentials, providerFromModel } from "./provider-config";
+import { type AuthRoute, bareModelId, providerFromModel } from "./provider-config";
 import { OPENAI_SUBSCRIPTION_BASE_URL } from "./provider-constants";
-import { createRateLimitFetch, type RateLimiter } from "./rate-limiter";
+import { createRateLimitFetch, type FetchFn, type RateLimiter } from "./rate-limiter";
 
-/** A subscription serves only the models it lists; other OpenAI models fall back to the API key. */
-export function usesOpenAiSubscription(modelId: string, credentials: ProviderCredentials): boolean {
-  return Boolean(credentials.oauth) && isOpenAiSubscriptionModel(modelId);
-}
-
-export function authRouteForModel(qualifiedModel: string, credentials: ProviderCredentialsMap): AuthRoute {
+/**
+ * Which credential a model will run on. Async because a subscription serves only the models it
+ * lists, and that list is a network answer: producing the route is the only way to have asked.
+ */
+export async function resolveAuthRoute(
+  qualifiedModel: string,
+  credentials?: ProviderCredentialsMap,
+  fetchFn: FetchFn = globalThis.fetch,
+  env?: Env,
+): Promise<AuthRoute> {
   if (providerFromModel(qualifiedModel) !== "openai") return "api_key";
-  return usesOpenAiSubscription(bareModelId(qualifiedModel), credentials.openai ?? {}) ? "subscription" : "api_key";
+  const openai = (credentials ?? defaultCredentials()).openai ?? {};
+  if (!openai.oauth) return "api_key";
+
+  let served: ReadonlySet<string>;
+  try {
+    served = await subscriptionModels(fetchFn, env);
+  } catch (error) {
+    // Chosen degradation: an API key is the fallback the user configured, so an unreachable
+    // subscription spends it rather than failing the turn. Logged, because it costs money.
+    if (!openai.apiKey) throw error;
+    log.warn("model.route.subscription_unreachable", { model: bareModelId(qualifiedModel) });
+    return "api_key";
+  }
+
+  if (served.has(bareModelId(qualifiedModel))) return "subscription";
+  if (openai.apiKey) return "api_key";
+  throw new CodedError(
+    PROVIDER_ERROR_CODES.modelNotOnSubscription,
+    `Your OpenAI subscription does not serve "${bareModelId(qualifiedModel)}". It serves ${[...served].sort().join(", ") || "no models"}. Set OPENAI_API_KEY to use other OpenAI models.`,
+    { kind: ERROR_KINDS.modelNotOnSubscription },
+  );
 }
 
 // The subscription backend is stateless: it rejects store:true and never persists items. The adapter
@@ -38,6 +66,7 @@ export function withUnstoredResponses(model: LanguageModelV4): LanguageModelV4 {
 export function createModel(
   qualifiedModel: string,
   rateLimiter: RateLimiter,
+  route: AuthRoute,
   credentials?: ProviderCredentialsMap,
 ): LanguageModelV4 {
   const creds = credentials ?? defaultCredentials();
@@ -64,7 +93,7 @@ export function createModel(
       return google(modelId);
     }
     case "openai": {
-      if (usesOpenAiSubscription(modelId, providerCreds)) {
+      if (route === "subscription") {
         const openai = createOpenAI({
           apiKey: "chatgpt-oauth",
           baseURL: OPENAI_SUBSCRIPTION_BASE_URL,

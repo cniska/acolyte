@@ -8,10 +8,10 @@ import { createClient } from "./client-factory";
 import { nowIso } from "./datetime";
 import { formatFileContext } from "./file-context";
 import { t } from "./i18n";
+import { acquireLock, releaseLock } from "./resource-lock";
 import { apiUrlForPort, ensureLocalServer } from "./server-daemon";
 import { serverSpawnCommand } from "./server-spawn";
 import type { Session, SessionState, SessionStore } from "./session-contract";
-import { acquireSessionLock, releaseSessionLock } from "./session-lock";
 import { createSession, getSessionStore } from "./session-store";
 import { clearScreen, printDim, printError } from "./ui";
 
@@ -65,6 +65,14 @@ export function createFatalErrorHandler(deps: FatalErrorDeps): (error: unknown) 
   };
 }
 
+/** A resumed session keeps the model it was started on; a fresh one needs the configured model. */
+export function sessionModelFor(
+  resolved: ResumeTarget | null,
+  configuredModel: string | undefined,
+): string | undefined {
+  return resolved?.kind === "ok" ? resolved.session.model : configuredModel;
+}
+
 export async function attachFileToSession(session: Session, filePath: string): Promise<void> {
   const context = await formatFileContext(filePath);
   session.messages.push(createMessage("system", context));
@@ -80,7 +88,6 @@ async function loadSessionState(store: SessionStore): Promise<SessionState> {
 export async function chatModeWithOptions(options: { resumeLatest: boolean; resumePrefix?: string }): Promise<void> {
   const sessionStore = await getSessionStore();
   const state = await loadSessionState(sessionStore);
-  const model = appConfig.model;
   const resolved = resolveResumeTarget(state, options);
   if (resolved?.kind === "not_found") {
     printError(t("chat.resume.not_found", { prefix: resolved.prefix }));
@@ -94,6 +101,12 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     process.exitCode = 1;
     return;
   }
+  const model = sessionModelFor(resolved, appConfig.model);
+  if (!model) {
+    printError(t("cli.model.not_configured"));
+    process.exitCode = 1;
+    return;
+  }
   const isResumed = resolved?.kind === "ok";
   const session = isResumed ? resolved.session : createSession(model);
   if (!isResumed) {
@@ -101,7 +114,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     state.sessions.unshift(session);
   }
   state.activeSessionId = session.id;
-  const lock = acquireSessionLock(session.id);
+  const lock = acquireLock(session.id);
   if (!lock.ok) {
     printError(t("chat.session.locked", { pid: lock.ownerPid ?? "unknown" }));
     printDim(t("chat.resume.use_command", { command: formatResumeCommand(session.id) }));
@@ -129,7 +142,7 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
   // Runs after the renderer has restored the terminal, so the error prints cleanly.
   // process.exit skips the finally below, so release the session lock here too.
   const onFatalError = createFatalErrorHandler({
-    releaseLock: () => releaseSessionLock(session.id),
+    releaseLock: () => releaseLock(session.id),
     print: printError,
     exit: () => process.exit(1),
   });
@@ -152,6 +165,6 @@ export async function chatModeWithOptions(options: { resumeLatest: boolean; resu
     const resumeId = state.activeSessionId ?? session.id;
     printDim(t("chat.resume.with_command", { command: formatResumeCommand(resumeId) }));
   } finally {
-    releaseSessionLock(session.id);
+    releaseLock(session.id);
   }
 }

@@ -333,7 +333,7 @@ export function createClient(overrides?: {
     });
   return {
     replyStream,
-    status: overrides?.status ?? (async () => ({ providers: ["openai"], model: "gpt-5-mini" })),
+    status: overrides?.status ?? (async () => ({ providers: ["openai"], provider_auth: ["openai (api key)"] })),
     taskStatus: overrides?.taskStatus ?? (async () => null),
     close: () => {},
   };
@@ -589,6 +589,7 @@ export function createLifecycleInput(overrides: Partial<LifecycleInput> = {}): L
     soulPrompt: "",
     features: DEFAULT_FEATURE_FLAGS,
     locale: "en",
+    authRoute: "api_key",
     ...overrides,
   };
 }
@@ -596,6 +597,7 @@ export function createLifecycleInput(overrides: Partial<LifecycleInput> = {}): L
 export function createRunContext(overrides: Partial<RunContext> = {}): RunContext {
   return {
     request: { model: "gpt-5-mini", message: "test", history: [] },
+    authRoute: "api_key",
     workspace: undefined,
     taskId: undefined,
     soulPrompt: "",

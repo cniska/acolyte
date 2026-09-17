@@ -18,48 +18,42 @@ const { create: createStore, cleanup: cleanupStores } = tempDb("acolyte-distille
 let fake: FakeProviderServer;
 let savedBaseUrl: string;
 let savedApiKey: string | undefined;
-let savedDistillModel: string;
+let savedModel: string | undefined;
 let lastRequestBody: Record<string, unknown> | undefined;
 
 beforeAll(() => {
   savedBaseUrl = appConfig.openai.baseUrl;
   savedApiKey = appConfig.openai.apiKey;
-  savedDistillModel = appConfig.distillModel;
+  savedModel = appConfig.model;
   fake = startFakeProviderServer({
     handleRequest: (ctx) => {
       lastRequestBody = ctx.body as Record<string, unknown>;
       return createToolCallsPayload(ctx.model, ctx.responseCounter, [
         {
-          id: `fc_proj_${ctx.responseCounter}`,
-          callId: `call_proj_${ctx.responseCounter}`,
+          id: `fc_facts_${ctx.responseCounter}`,
+          callId: `call_facts_${ctx.responseCounter}`,
           name: "memory-observe",
-          args: JSON.stringify({ scope: "project", content: "project uses Bun as runtime", topic: "tooling" }),
-        },
-        {
-          id: `fc_user_${ctx.responseCounter}`,
-          callId: `call_user_${ctx.responseCounter}`,
-          name: "memory-observe",
-          args: JSON.stringify({ scope: "user", content: "prefers concise responses" }),
-        },
-        {
-          id: `fc_sess_${ctx.responseCounter}`,
-          callId: `call_sess_${ctx.responseCounter}`,
-          name: "memory-observe",
-          args: JSON.stringify({ scope: "session", content: "fixing memory search bug" }),
+          args: JSON.stringify({
+            facts: [
+              { kind: "convention", scope: "project", content: "project uses Bun as runtime", topic: "tooling" },
+              { kind: "preference", scope: "user", content: "prefers concise responses" },
+              { kind: "finding", scope: "session", content: "fixing memory search bug" },
+            ],
+          }),
         },
       ]);
     },
   });
   (appConfig.openai as { baseUrl: string }).baseUrl = fake.baseUrl;
   (appConfig.openai as { apiKey: string | undefined }).apiKey = "fake-key";
-  (appConfig as { distillModel: string }).distillModel = "gpt-4o-mini";
+  (appConfig as { model: string }).model = "gpt-4o-mini";
 });
 
 afterAll(() => {
   fake.stop();
   (appConfig.openai as { baseUrl: string }).baseUrl = savedBaseUrl;
   (appConfig.openai as { apiKey: string | undefined }).apiKey = savedApiKey;
-  (appConfig as { distillModel: string }).distillModel = savedDistillModel;
+  (appConfig as { model: string | undefined }).model = savedModel;
 });
 
 afterEach(cleanupStores);
@@ -70,6 +64,7 @@ describe("memoryDistiller integration", () => {
     const distiller = createMemoryDistiller({ store, policy: testPolicy });
 
     const metrics = await distiller.commit({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_inttest001",
       resourceId: "proj_inttest001",
       messages: [
@@ -101,6 +96,7 @@ describe("memoryDistiller integration", () => {
     const distiller = createMemoryDistiller({ store, policy: testPolicy });
 
     await distiller.commit({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_inttest002",
       resourceId: "proj_inttest002",
       messages: [
@@ -122,6 +118,7 @@ describe("memoryDistiller integration", () => {
     const distiller = createMemoryDistiller({ store, policy: testPolicy });
 
     await distiller.commit({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_inttest003",
       resourceId: "proj_inttest003",
       messages: [{ role: "user", content: "hello" }],

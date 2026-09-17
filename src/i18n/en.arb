@@ -752,6 +752,10 @@
   "@cli.help.desc.history": {
     "description": "Description of the 'history' command in the CLI command table. Lowercase verb phrase, no trailing period."
   },
+  "cli.help.desc.import": "learn from another agent's transcripts",
+  "@cli.help.desc.import": {
+    "description": "Description of the hidden 'import' command in the CLI command table. Lowercase verb phrase, no trailing period."
+  },
   "cli.help.desc.login": "authenticate with the cloud",
   "@cli.help.desc.login": {
     "description": "Description of the 'login' command, which signs in to the hosted cloud service. Lowercase verb phrase, no trailing period."
@@ -869,6 +873,188 @@
   "cli.history.none": "No saved sessions.",
   "@cli.history.none": {
     "description": "Shown by the 'history' command when no sessions are stored (cli-history.ts:30). Separate from the picker's equivalent because the two surfaces may word it differently."
+  },
+  "cli.args.missing_value": "{flag} needs a value.",
+  "@cli.args.missing_value": {
+    "description": "Shown when a flag that takes a value is given none. {flag} is the literal flag name the user typed and must not be translated.",
+    "placeholders": {
+      "flag": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.args.invalid_since": "Invalid --since value: {value}. Use format like 5m, 2h, 1d.",
+  "@cli.args.invalid_since": {
+    "description": "Shown when --since is given an unparseable value. '--since' is a literal flag name; {value} is what the user typed; the example durations are literal syntax and must not be translated.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.import.col.session": "Session",
+  "@cli.import.col.session": {
+    "description": "Column header in the 'import' table: the source agent's session, shown by the first characters of its id. Title case, no trailing period."
+  },
+  "cli.import.col.project": "Project",
+  "@cli.import.col.project": {
+    "description": "Column header in the 'import' table: the owner/repo the session's working directory belongs to. Title case, no trailing period."
+  },
+  "cli.import.col.turns": "Turns",
+  "@cli.import.col.turns": {
+    "description": "Column header in the 'import' table: turns the run will read from this session. Title case, no trailing period."
+  },
+  "cli.import.col.memories": "Memories",
+  "@cli.import.col.memories": {
+    "description": "Column header in the 'import' table: memories the run saved from this session. Title case, no trailing period."
+  },
+  "cli.import.col.replaced": "Replaced",
+  "@cli.import.col.replaced": {
+    "description": "Column header in the 'import' table: existing memories a newer one took the place of. Title case, no trailing period."
+  },
+  "cli.import.col.tokens": "Tokens",
+  "@cli.import.col.tokens": {
+    "description": "Column header in the 'import' table: tokens the reading used, or is estimated to use. Title case, no trailing period."
+  },
+  "cli.import.invalid_max_turns": "Invalid --max-turns value: {value}. Use a whole number of turns, 1 or more.",
+  "@cli.import.invalid_max_turns": {
+    "description": "Shown when --max-turns is given something other than a positive whole number. '--max-turns' is a literal flag name; {value} is what the user typed.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.import.held_back": "{count, plural, one {# turn is} other {# turns are}} left; run it again for the next batch.",
+  "@cli.import.held_back": {
+    "description": "Appended to the 'import' summary when --max-turns stopped the run short. The ledger makes the next run continue where this one ended.",
+    "placeholders": {
+      "count": {
+        "type": "number"
+      }
+    }
+  },
+  "cli.import.no_model": "No model available: {model}. Run acolyte auth to connect a provider, or use --dry-run to see what would be imported.",
+  "@cli.import.no_model": {
+    "description": "Shown when 'import' is asked to run but the configured model has no usable credential. {model} is the qualified model id; 'acolyte auth' and '--dry-run' are literals the user types.",
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.import.none": "Nothing new to read for {project} in the last {since}.",
+  "@cli.import.none": {
+    "description": "Shown by 'import' when the window holds no session of this project the ledger has not already consumed. {since} is the duration the user asked for, such as 24h; {project} is an owner/repo label.",
+    "placeholders": {
+      "since": {
+        "type": "String"
+      },
+      "project": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.import.no_project": "This folder has no project. Import reads the transcripts of the repository you are standing in and identifies it by an owner/repo remote, so run it from inside one.",
+  "@cli.import.no_project": {
+    "description": "Shown when 'import' runs somewhere that is not a repository, or whose remotes name no owner/repo. There is no flag for naming a project from outside its checkout."
+  },
+  "cli.import.already_running": "An import is already running. Wait for it to finish, or stop it and run this again.",
+  "@cli.import.already_running": {
+    "description": "Shown when 'import' finds another import run already holding the lock, so only one run writes the ledger."
+  },
+  "cli.import.plan": "{count, plural, one {# turn} other {# turns}} to read, roughly {low}–{high} tokens.",
+  "@cli.import.plan": {
+    "description": "Summary line under the 'import' plan table; the table above it lists the sessions. The cost is a band because each reading is also shown the memories it might replace, whose size is known only once it runs: {low} and {high} are already-formatted short numbers such as '130k'. Separated by an en dash.",
+    "placeholders": {
+      "count": {
+        "type": "number"
+      },
+      "low": {
+        "type": "String"
+      },
+      "high": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.import.stale": "{count, plural, one {Skipped # session: the project has {commits} commits since it ended} other {Skipped # sessions: the project has up to {commits} commits since they ended}}. Add --include-stale to read them anyway.",
+  "@cli.import.stale": {
+    "description": "Shown with the import plan for sessions the staleness budget kept out: the project has moved on, so what they would establish is likely out of date. {commits} is the largest count measured. '--include-stale' is a literal flag name.",
+    "placeholders": {
+      "count": {
+        "type": "number"
+      },
+      "commits": {
+        "type": "number"
+      }
+    }
+  },
+  "cli.import.undated": "{count, plural, one {Skipped # session: it carries no time, so its age cannot be checked} other {Skipped # sessions: they carry no time, so their age cannot be checked}}. Add --include-stale to read them anyway.",
+  "@cli.import.undated": {
+    "description": "Shown with the import plan for sessions whose records carry no time, which leaves no way to measure what the project did after them. '--include-stale' is a literal flag name.",
+    "placeholders": {
+      "count": {
+        "type": "number"
+      }
+    }
+  },
+  "cli.import.unattributable": "{count, plural, one {# session has no project: the folder it recorded no longer names a repository} other {# sessions have no project: the folders they recorded no longer name a repository}}.",
+  "@cli.import.unattributable": {
+    "description": "Shown with the import plan for sessions recorded in a working directory that has since been deleted or lost its remote, so no project can be resolved for them and no run can reach them.",
+    "placeholders": {
+      "count": {
+        "type": "number"
+      }
+    }
+  },
+  "cli.import.done": "{count, plural, one {# memory} other {# memories}} saved, {superseded} replaced, {tokens} tokens. Written to {path}",
+  "@cli.import.done": {
+    "description": "Summary line under the 'import' table once the run finishes. {tokens} is an already-formatted short number such as '48.6k'. {path} is the throwaway directory the import wrote to, not the real corpus.",
+    "placeholders": {
+      "count": {
+        "type": "number"
+      },
+      "superseded": {
+        "type": "number"
+      },
+      "tokens": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.import.session_done": "{session} {project}: {count, plural, one {# memory} other {# memories}}, {superseded} replaced, {tokens} tokens",
+  "@cli.import.session_done": {
+    "description": "Printed as each source session finishes during an import run, so a long run shows progress. {session} is a short session id, {tokens} an already-formatted short number such as '48.6k'.",
+    "placeholders": {
+      "session": {
+        "type": "String"
+      },
+      "project": {
+        "type": "String"
+      },
+      "count": {
+        "type": "num"
+      },
+      "superseded": {
+        "type": "num"
+      },
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "cli.import.reset": "Cleared {path}",
+  "@cli.import.reset": {
+    "description": "Shown by 'import --reset' after deleting the throwaway corpus and its ledger. {path} is the directory removed.",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
   },
   "cli.login.opening.browser": "Opening browser to sign in…",
   "@cli.login.opening.browser": {
@@ -1046,15 +1232,6 @@
       }
     }
   },
-  "cli.logs.invalid_since": "Invalid --since value: {value}. Use format like 5m, 2h, 1d.",
-  "@cli.logs.invalid_since": {
-    "description": "Shown when --since is given an unparseable value. '--since' is a literal flag name; {value} is what the user typed; the example durations are literal syntax and must not be translated.",
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
   "cli.logs.no_file": "No log file found. Start a server first.",
   "@cli.logs.no_file": {
     "description": "Shown by 'logs' when no log file exists yet. Two short sentences: the state, then what to do."
@@ -1079,6 +1256,10 @@
         "type": "String"
       }
     }
+  },
+  "cli.model.not_configured": "No model configured. Run acolyte config set model <id> to choose one.",
+  "@cli.model.not_configured": {
+    "description": "Shown when a command that needs a model (chat, run, skill, import) starts with no model set in any config scope. 'acolyte config set model <id>' is a literal command the user types and must not be translated."
   },
   "cli.memory.restored": "Restored {count, plural, one {# memory} other {# memories}}: {ids}.",
   "@cli.memory.restored": {
@@ -1525,10 +1706,6 @@
   "status.label.memory": "Memory",
   "@status.label.memory": {
     "description": "Row label in the status report for memory storage and size. Its value comes from status.memory.summary."
-  },
-  "status.label.model": "Model",
-  "@status.label.model": {
-    "description": "Row label in the status report for the active model. Distinct from the picker label and the trace column, which may translate differently."
   },
   "status.label.protocol_version": "Protocol version",
   "@status.label.protocol_version": {

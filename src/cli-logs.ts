@@ -65,7 +65,7 @@ export async function logsMode(args: string[], deps: LogsModeDeps): Promise<void
   if (sinceRaw) {
     since = parseSince(sinceRaw);
     if (!since) {
-      commandError("logs", t("cli.logs.invalid_since", { value: sinceRaw }));
+      commandError("logs", t("cli.args.invalid_since", { value: sinceRaw }));
       return;
     }
   }

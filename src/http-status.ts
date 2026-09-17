@@ -5,4 +5,5 @@ export const HTTP_STATUS = {
   notFound: 404,
   conflict: 409,
   tooManyRequests: 429,
+  internalServerError: 500,
 } as const;

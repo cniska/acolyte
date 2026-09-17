@@ -54,7 +54,7 @@ The `SessionStore` interface provides CRUD, search, and active session tracking.
 - `src/session-ops.ts` — session operations (message search)
 - `src/session-toolkit.ts` — session tools (`session-search`)
 - `src/cloud-client.ts` — cloud API session store (feature-flagged)
-- `src/session-lock.ts` — PID-based file locking for concurrent access
+- `src/resource-lock.ts` — PID-based file locking for concurrent access
 
 ## Further reading
 

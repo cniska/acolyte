@@ -4,6 +4,7 @@ import {
   createRateLimiter,
   createRateLimitFetch,
   isRateLimitError,
+  isRetryableProviderError,
   type RateLimiterConfig,
   retryAfterMs,
   sharedRateLimiter,
@@ -33,6 +34,52 @@ describe("isRateLimitError", () => {
   });
 });
 
+describe("isRetryableProviderError", () => {
+  test("a rate limit is retryable", () => {
+    expect(isRetryableProviderError({ status: 429 })).toBe(true);
+  });
+
+  test("an overloaded provider is retryable by status", () => {
+    expect(isRetryableProviderError({ status: 529 })).toBe(true);
+    expect(isRetryableProviderError({ statusCode: 503 })).toBe(true);
+  });
+
+  test("an overloaded provider is retryable by code", () => {
+    expect(isRetryableProviderError({ code: "overloaded_error" })).toBe(true);
+    expect(isRetryableProviderError({ code: "SERVICE_UNAVAILABLE" })).toBe(true);
+  });
+
+  test("a provider that failed on its own side is retryable", () => {
+    expect(isRetryableProviderError({ status: 500 })).toBe(true);
+    expect(isRetryableProviderError({ statusCode: 502 })).toBe(true);
+    expect(isRetryableProviderError({ status: 504 })).toBe(true);
+  });
+
+  test("an error the provider sdk marked retryable is retryable", () => {
+    expect(isRetryableProviderError({ statusCode: 408, isRetryable: true })).toBe(true);
+    expect(isRetryableProviderError({ statusCode: 409, isRetryable: true })).toBe(true);
+  });
+
+  test("an exhausted balance is not retryable, since waiting cannot refill it", () => {
+    expect(isRetryableProviderError({ status: 429, code: "insufficient_quota" })).toBe(false);
+    expect(
+      isRetryableProviderError({
+        status: 429,
+        isRetryable: true,
+        data: { error: { code: "credit_balance_exhausted" } },
+      }),
+    ).toBe(false);
+  });
+
+  test("a wrong request is not retryable, since repeating it cannot help", () => {
+    expect(isRetryableProviderError({ status: 400 })).toBe(false);
+    expect(isRetryableProviderError({ status: 401 })).toBe(false);
+    expect(isRetryableProviderError({ status: 404 })).toBe(false);
+    expect(isRetryableProviderError({ statusCode: 422, isRetryable: false })).toBe(false);
+    expect(isRetryableProviderError(null)).toBe(false);
+  });
+});
+
 describe("retryAfterMs", () => {
   test("parses retry-after header in seconds", () => {
     expect(retryAfterMs({ headers: { "retry-after": "2" } })).toBe(2_000);
@@ -41,6 +88,11 @@ describe("retryAfterMs", () => {
 
   test("parses numeric retry-after", () => {
     expect(retryAfterMs({ headers: { "retry-after": 3 } })).toBe(3_000);
+  });
+
+  test("reads retry-after-ms, which some endpoints send instead", () => {
+    expect(retryAfterMs({ headers: { "retry-after-ms": "1500" } })).toBe(1_500);
+    expect(retryAfterMs({ headers: { "retry-after": "2", "retry-after-ms": "1500" } })).toBe(2_000);
   });
 
   test("returns undefined for missing or invalid headers", () => {
@@ -119,6 +171,22 @@ describe("createRateLimiter", () => {
     expect(result).toBe("waited");
   });
 
+  test("the wait for a reported reset is spent once, not on every later call", async () => {
+    const limiter = createRateLimiter(FAST);
+    limiter.onResponse(
+      new Headers({
+        "anthropic-ratelimit-requests-remaining": "0",
+        "anthropic-ratelimit-requests-reset": "1s",
+      }),
+    );
+    await limiter.beforeCall();
+    expect(limiter.state().requestsResetMs).toBeUndefined();
+
+    const start = Date.now();
+    await limiter.beforeCall();
+    expect(Date.now() - start).toBeLessThan(50);
+  });
+
   test("delays when tokens remaining is exhausted", async () => {
     const limiter = createRateLimiter(FAST);
     limiter.onResponse(
@@ -142,9 +210,16 @@ describe("createRateLimiter", () => {
     expect(result.delayMs).toBeGreaterThan(0);
   });
 
-  test("onError returns no retry for non-rate-limit errors", () => {
+  test("onError returns no retry for an error repeating cannot fix", () => {
     const limiter = createRateLimiter(FAST);
-    const result = limiter.onError({ status: 500 });
+    const result = limiter.onError({ status: 400 });
+    expect(result.shouldRetry).toBe(false);
+    expect(result.delayMs).toBe(0);
+  });
+
+  test("onError refuses a retry-after longer than the backoff ceiling", () => {
+    const limiter = createRateLimiter(FAST);
+    const result = limiter.onError({ status: 429, headers: { "retry-after": "3600" } });
     expect(result.shouldRetry).toBe(false);
     expect(result.delayMs).toBe(0);
   });
@@ -201,5 +276,11 @@ describe("sharedRateLimiter", () => {
     const a = sharedRateLimiter("anthropic");
     const o = sharedRateLimiter("openai");
     expect(a).not.toBe(o);
+  });
+
+  test("embeddings pace on their own budget, not the completion budget", () => {
+    clearSharedRateLimiters();
+    expect(sharedRateLimiter("openai")).not.toBe(sharedRateLimiter("openai", "embeddings"));
+    expect(sharedRateLimiter("openai", "embeddings")).toBe(sharedRateLimiter("openai", "embeddings"));
   });
 });

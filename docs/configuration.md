@@ -10,11 +10,15 @@ Paths (see [Paths](paths.md) for platform-specific details):
 
 ```bash
 acolyte config list
-acolyte config set model gpt-5-mini
+acolyte config set model <id>
 acolyte config set locale en
 acolyte config set --project logFormat json
 acolyte config unset openaiBaseUrl
 ```
+
+## Model
+
+There is no default model. Until one is set, chat, `run`, `skill`, and `import` report that no model is configured and stop instead of starting. `acolyte config set model <id>` sets it for the user, `acolyte config set --project model <id>` for one repository, and `/model` in chat writes the project-scoped value. The model id selects the provider; a model whose provider has no credential is reported as unavailable, separately from an unset model.
 
 ## Provider auth
 
@@ -189,7 +193,7 @@ acolyte config set features.undoCheckpoints true
 |---|---|
 | `port` | daemon server port (default: 6767) |
 | `locale` | UI and reply language (default: `en`) |
-| `model` | model |
+| `model` | model id, and through it the provider (no default) |
 | `reasoning` | reasoning level for supported models (`low`, `medium`, `high`) |
 | `openaiBaseUrl` | OpenAI API base URL |
 | `anthropicBaseUrl` | Anthropic API base URL |
@@ -198,7 +202,6 @@ acolyte config set features.undoCheckpoints true
 | `logFormat` | log output format (`logfmt` or `json`) |
 | `embeddingModel` | embedding model for semantic recall |
 | `embeddingBaseUrl` | explicit OpenAI-compatible embedding API base URL |
-| `distillModel` | model used for memory distillation |
 | `replyTimeoutMs` | max reply wait time in ms (min 1000, default 180000) |
 | `features.undoCheckpoints` | opt-in: capture write-tool undo checkpoints |
 | `features.workspaces` | opt-in: enable `/workspaces` chat commands |

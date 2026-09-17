@@ -136,7 +136,7 @@ describe("chat message handler", () => {
       client: createClient({
         status: async () => ({
           provider_auth: ["openai (api key)"],
-          model: "gpt-5-mini",
+          memory: "sqlite (142 entries)",
         }),
       }),
     });
@@ -153,7 +153,7 @@ describe("chat message handler", () => {
     expect(statusContent?.header).toBe("Status");
     const pairs = statusContent?.sections[0] ?? [];
     expect(pairs).toContainEqual(["Providers", "openai (api key)"]);
-    expect(pairs).toContainEqual(["Model", "gpt-5-mini"]);
+    expect(pairs).toContainEqual(["Memory", "sqlite (142 entries)"]);
   });
 
   test("routes /sessions through message handler and renders sessions list row", async () => {

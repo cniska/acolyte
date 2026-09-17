@@ -341,6 +341,7 @@ export const SV_MESSAGES = {
   "cli.help.desc.auth": [{ kind: "text", value: "autentisera en leverantör (API-nyckel eller prenumeration)" }],
   "cli.help.desc.config": [{ kind: "text", value: "hantera inställningar" }],
   "cli.help.desc.history": [{ kind: "text", value: "visa senaste sessionerna" }],
+  "cli.help.desc.import": [{ kind: "text", value: "lär av en annan agents transkript" }],
   "cli.help.desc.login": [{ kind: "text", value: "logga in mot molnet" }],
   "cli.help.desc.logout": [{ kind: "text", value: "ta bort molnuppgifterna" }],
   "cli.help.desc.logs": [{ kind: "text", value: "visa serverloggarna" }],
@@ -374,6 +375,205 @@ export const SV_MESSAGES = {
   "cli.help.section.options": [{ kind: "text", value: "Flaggor" }],
   "cli.help.section.usage": [{ kind: "text", value: "Användning" }],
   "cli.history.none": [{ kind: "text", value: "Inga sparade sessioner." }],
+  "cli.args.missing_value": [
+    { kind: "arg", name: "flag" },
+    { kind: "text", value: " behöver ett värde." },
+  ],
+  "cli.args.invalid_since": [
+    { kind: "text", value: "Ogiltigt --since-värde: " },
+    { kind: "arg", name: "value" },
+    { kind: "text", value: ". Använd formatet 5m, 2h eller 1d." },
+  ],
+  "cli.import.col.session": [{ kind: "text", value: "Session" }],
+  "cli.import.col.project": [{ kind: "text", value: "Projekt" }],
+  "cli.import.col.turns": [{ kind: "text", value: "Turer" }],
+  "cli.import.col.memories": [{ kind: "text", value: "Minnen" }],
+  "cli.import.col.replaced": [{ kind: "text", value: "Ersatta" }],
+  "cli.import.col.tokens": [{ kind: "text", value: "Tokens" }],
+  "cli.import.invalid_max_turns": [
+    { kind: "text", value: "Ogiltigt --max-turns-värde: " },
+    { kind: "arg", name: "value" },
+    { kind: "text", value: ". Använd ett heltal, minst 1." },
+  ],
+  "cli.import.held_back": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " tur" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turer" },
+        ],
+      },
+    },
+    { kind: "text", value: " återstår; kör kommandot igen för nästa omgång." },
+  ],
+  "cli.import.no_model": [
+    { kind: "text", value: "Ingen modell tillgänglig: " },
+    { kind: "arg", name: "model" },
+    {
+      kind: "text",
+      value: ". Anslut en leverantör med acolyte auth, eller använd --dry-run för att se vad som skulle importeras.",
+    },
+  ],
+  "cli.import.none": [
+    { kind: "text", value: "Inget nytt att läsa för " },
+    { kind: "arg", name: "project" },
+    { kind: "text", value: " de senaste " },
+    { kind: "arg", name: "since" },
+    { kind: "text", value: "." },
+  ],
+  "cli.import.no_project": [
+    {
+      kind: "text",
+      value:
+        "Den här mappen har inget projekt. Import läser transkripten för det repository du står i och identifierar det med en owner/repo-fjärr, så kör kommandot inifrån ett sådant.",
+    },
+  ],
+  "cli.import.already_running": [
+    { kind: "text", value: "En import körs redan. Vänta tills den är klar, eller stoppa den och kör det här igen." },
+  ],
+  "cli.import.plan": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " tur" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turer" },
+        ],
+      },
+    },
+    { kind: "text", value: " att läsa, ungefär " },
+    { kind: "arg", name: "low" },
+    { kind: "text", value: "–" },
+    { kind: "arg", name: "high" },
+    { kind: "text", value: " tokens." },
+  ],
+  "cli.import.stale": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "text", value: "Hoppade över " },
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " session: projektet har " },
+          { kind: "arg", name: "commits" },
+          { kind: "text", value: " commits sedan den avslutades" },
+        ],
+        other: [
+          { kind: "text", value: "Hoppade över " },
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " sessioner: projektet har upp till " },
+          { kind: "arg", name: "commits" },
+          { kind: "text", value: " commits sedan de avslutades" },
+        ],
+      },
+    },
+    { kind: "text", value: ". Lägg till --include-stale för att läsa dem ändå." },
+  ],
+  "cli.import.undated": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "text", value: "Hoppade över " },
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " session: den saknar tid, så åldern kan inte kontrolleras" },
+        ],
+        other: [
+          { kind: "text", value: "Hoppade över " },
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " sessioner: de saknar tid, så åldern kan inte kontrolleras" },
+        ],
+      },
+    },
+    { kind: "text", value: ". Lägg till --include-stale för att läsa dem ändå." },
+  ],
+  "cli.import.unattributable": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          {
+            kind: "text",
+            value: " session har inget projekt: mappen den spelade in namnger inte längre ett repository",
+          },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          {
+            kind: "text",
+            value: " sessioner har inget projekt: mapparna de spelade in namnger inte längre ett repository",
+          },
+        ],
+      },
+    },
+    { kind: "text", value: "." },
+  ],
+  "cli.import.done": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " minne" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " minnen" },
+        ],
+      },
+    },
+    { kind: "text", value: " sparade, " },
+    { kind: "arg", name: "superseded" },
+    { kind: "text", value: " ersatta, " },
+    { kind: "arg", name: "tokens" },
+    { kind: "text", value: " tokens. Skrivet till " },
+    { kind: "arg", name: "path" },
+  ],
+  "cli.import.session_done": [
+    { kind: "arg", name: "session" },
+    { kind: "text", value: " " },
+    { kind: "arg", name: "project" },
+    { kind: "text", value: ": " },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " minne" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " minnen" },
+        ],
+      },
+    },
+    { kind: "text", value: ", " },
+    { kind: "arg", name: "superseded" },
+    { kind: "text", value: " ersatta, " },
+    { kind: "arg", name: "tokens" },
+    { kind: "text", value: " tokens" },
+  ],
+  "cli.import.reset": [
+    { kind: "text", value: "Rensade " },
+    { kind: "arg", name: "path" },
+  ],
   "cli.login.opening.browser": [{ kind: "text", value: "Öppnar webbläsaren för inloggning…" }],
   "cli.login.open.manually": [
     { kind: "text", value: "Om ingen webbläsare öppnas, gå till: " },
@@ -465,11 +665,6 @@ export const SV_MESSAGES = {
     { kind: "arg", name: "level" },
     { kind: "text", value: ". Använd debug, info, warn eller error." },
   ],
-  "cli.logs.invalid_since": [
-    { kind: "text", value: "Ogiltigt --since-värde: " },
-    { kind: "arg", name: "value" },
-    { kind: "text", value: ". Använd formatet 5m, 2h eller 1d." },
-  ],
   "cli.logs.no_file": [{ kind: "text", value: "Ingen loggfil hittades. Starta en server först." }],
   "cli.logs.no_lines": [{ kind: "text", value: "Inga loggrader matchar de angivna filtren." }],
   "cli.memory.archive.none": [{ kind: "text", value: "Inga arkiverade minnen." }],
@@ -477,6 +672,9 @@ export const SV_MESSAGES = {
   "cli.memory.restore.none": [
     { kind: "text", value: "Inget arkiverat minne hittades för: " },
     { kind: "arg", name: "ids" },
+  ],
+  "cli.model.not_configured": [
+    { kind: "text", value: "Ingen modell är konfigurerad. Välj en modell med acolyte config set model <id>." },
   ],
   "cli.memory.restored": [
     { kind: "text", value: "Återställde " },
@@ -753,7 +951,6 @@ export const SV_MESSAGES = {
   "status.label.cloud_url": [{ kind: "text", value: "Moln-URL" }],
   "status.label.cloud_user": [{ kind: "text", value: "Användare" }],
   "status.label.memory": [{ kind: "text", value: "Minne" }],
-  "status.label.model": [{ kind: "text", value: "Modell" }],
   "status.label.protocol_version": [{ kind: "text", value: "Protokollversion" }],
   "status.label.providers": [{ kind: "text", value: "Leverantörer" }],
   "status.label.resources.config.collisions": [{ kind: "text", value: "Krockar mellan inställningsfiler" }],

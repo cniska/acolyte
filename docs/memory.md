@@ -37,7 +37,7 @@ A workspace whose repository has no remote naming an `owner/repo` has no project
 
 After a completed request, the distiller examines the new conversation content and a task-activity digest. The digest records files changed, commands run and whether they failed, and other tool failures, so durable work facts can survive when the final response omits them.
 
-The distiller writes observations through `memory-observe(scope, content, topic?)`. A useful observation is one self-contained claim about the work that cannot be recovered by reading the code: a decision and its reason, a discovered constraint, a project convention, or a user preference. Volatile details such as line numbers, file listings, and unrealized intentions do not belong in memory.
+The distiller calls `memory-observe` once per turn with a `facts` array, one entry per observation and empty on a turn that established nothing. Every entry names its kind — `finding`, `decision`, `convention`, or `preference` — and carries one self-contained present-tense sentence about the codebase, the project, or the person, with its specifics copied from the turn. The kinds are the parts of a turn the repository cannot state for itself; how the code now works, where the repository stands, and work still ahead fit none of them and are not recorded. The kind is not stored: it shapes the observation, and the record keeps the sentence and its scope.
 
 Observations are deduplicated within their scope and receive an embedding. A `topic` is an optional single-word label, such as `testing`, `auth`, or `config`.
 
@@ -80,6 +80,12 @@ Use `/memory [scope] --archived` or `acolyte memory list [scope] --archived` to 
 
 Memory uses SQLite by default: `memory.db` in the data directory, with `memories` and `memory_embeddings` tables, BLOB vectors, and WAL mode. With the `cloudSync` feature flag, it uses the cloud Postgres and pgvector backend configured by `acolyte login`. See [Paths](paths.md) and [Cloud](cloud.md).
 
+## Importing another agent's transcripts
+
+`acolyte import` replays the session transcripts another agent left on the machine as turns, so distillation writes what it observes in them. It imports the project the command stands in, oldest session first, bounded by a turn budget, and a ledger records how far each source session has been read so a later run continues rather than repeats. Only the scopes that outlive a session are kept: a session-scoped observation names something true while that work was open, and the imported work is closed.
+
+What an import writes goes to its own corpus under `import-scratch/<project>/`, not the one recall reads, and `--reset` discards that project's corpus and ledger. See [Paths](paths.md).
+
 ## Benchmarks
 Measured on LoCoMo, 10 conversations, 1,650 queries, and 2,541 observations with `text-embedding-3-small`:
 
@@ -101,6 +107,7 @@ Input quality from distillation accounts for a larger gain than any retrieval al
 - `src/memory-recall.ts` — scope filtering and hybrid ranking.
 - `src/memory-toolkit.ts` — model-facing search and add tools.
 - `src/memory-store.ts` — SQLite store and store factory.
+- `src/transcript-import.ts` — planning and replaying another agent's sessions.
 - `src/cloud-client.ts` — feature-flagged cloud store.
 - `src/memory-embedding.ts` — embedding, scoring, and topic filtering.
 

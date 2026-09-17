@@ -1,7 +1,8 @@
 import type { LanguageModelV4ToolCall } from "@ai-sdk/provider";
 import { z } from "zod";
-import { appConfig } from "./app-config";
+import { CodedError } from "./coded-error";
 import { clampToTokenEstimate, type DistillScope, normalizeMemoryText } from "./distill-ops";
+import { ERROR_KINDS, MEMORY_ERROR_CODES } from "./error-contract";
 import { log } from "./log";
 import {
   defaultMemoryPolicy,
@@ -19,52 +20,78 @@ import type { embedText } from "./memory-embedding";
 import { addObservation, resolveScopeKey, retireMemories, type ScopeContext } from "./memory-ops";
 import { searchMemories } from "./memory-recall";
 import { getMemoryStore } from "./memory-store";
-import { createModel } from "./model-factory";
+import { streamModelCall } from "./model-call";
+import { createModel, resolveAuthRoute } from "./model-factory";
 import { normalizeModel, providerFromModel } from "./provider-config";
 import { sharedRateLimiter } from "./rate-limiter";
 import { renderTaskActivity, type TaskActivity } from "./task-activity";
 import { estimateTokens } from "./token-estimate";
 import { toFunctionTool } from "./tool-contract";
 
-const DISTILL_OUTPUT_SCHEMA = z.object({
+/**
+ * The four things a turn can leave behind that the repository cannot say for itself. A candidate
+ * that fits none of them — how the code now works, where the repository stands, work still ahead —
+ * has no value to name, and the model has to name one before it can write an entry.
+ */
+export const distillFactKindSchema = z.enum(["finding", "decision", "convention", "preference"]);
+export type DistillFactKind = z.infer<typeof distillFactKindSchema>;
+
+const DISTILL_FACT_SCHEMA = z.object({
+  kind: distillFactKindSchema.describe(
+    "finding: what the work discovered — a survey's result, a measurement, what broke and why, how a tool or system outside this checkout behaves. decision: what was settled and the reason, whether or not anything implements it yet. convention: how this project wants to be worked in. preference: what the person wants, or corrected.",
+  ),
+  content: z
+    .string()
+    .trim()
+    .min(1)
+    .describe(
+      "One present-tense sentence about the codebase, the project, or the person, understandable by someone who was not here. Figures, names, paths and error text copied exactly from the turn.",
+    ),
   scope: memoryScopeSchema,
-  content: z.string().trim().min(1),
   // Absent and blank both mean "no topic", and `.optional()` alone accepts only absent. A rejected
   // field fails the whole call, so without this an observation is lost over an optional label.
   topic: memoryTopicSchema.or(z.string().regex(/^\s*$/)).optional(),
   supersedes: z.array(z.string()).default([]),
 });
 
+const DISTILL_OUTPUT_SCHEMA = z.object({
+  facts: z
+    .array(DISTILL_FACT_SCHEMA)
+    .describe("Every fact the turn established, in the order found. Empty when it established none."),
+});
+
+const DISTILL_ENVELOPE_SCHEMA = z.object({ facts: z.array(z.unknown()) });
+
 const OBSERVE_FUNCTION_NAME = "memory-observe";
 
 /**
  * The only tool offered to the distiller's own model call, and the shape its observations come back
- * in. Nothing executes the call — reading it is the whole handling — and returning none is how a turn
- * says it established nothing.
+ * in. Nothing executes the call — reading it is the whole handling. Silence is an empty `facts`
+ * array rather than the absence of a call: a contract that hangs silence on withholding the call
+ * cannot tell a quiet turn from a turn the model answered in prose.
  */
 const DISTILL_OUTPUT_TOOL = toFunctionTool({
   id: OBSERVE_FUNCTION_NAME,
-  description: "Record one fact established by this turn's work into memory.",
+  description:
+    "Record the facts this turn established. facts holds one entry per fact, in the order found, and is empty when the turn established none.",
   inputSchema: z.toJSONSchema(DISTILL_OUTPUT_SCHEMA) as Record<string, unknown>,
 });
 
 export const DISTILLER_PROMPT = `This turn is over, and I am deciding what survives it.
 
-Conversations are mostly noise: failed attempts, detours, things I read once and can read again. I don't hoard them. I keep what mattered and let the rest go, and the durable part is all I will have of this work next session.
+I have two memories. The repository is one: the code, the commits, whatever the work wrote down, all of it readable again next session. This corpus is the other, and it holds the only copy of what the repository cannot say: what the work discovered, what we decided and why, how this project wants to be worked in, what the person I work with wants. Whatever lives only in the conversation is gone when the turn ends unless I write it here.
 
-What mattered is what I would want to know later and could not recover by reading the code:
-- a decision, and the reason behind it — especially a reason the result does not show
-- a constraint the work discovered: what broke, and why it broke
-- how this project wants to be worked in — its commands, conventions, and the rules its owner holds
-- who I am working with: what they prefer, what they corrected me on
+What I am shown is the request, my own report back to the person, and an "observed" digest of the edits and commands behind it. A report has parts, and I sort by part:
+- What I found. A survey's result, a measurement, a comparison, what broke and why, how another tool or system behaves. This exists nowhere else yet, and each finding is its own fact — folding several into one entry loses all but the first.
+- What we decided, and the reason. A settled design, the alternative we rejected, a rule the person holds. A decision is a fact the moment it is settled, whether or not anything implements it yet, and I write it as a decision with its reason: "the import keeps project and user scope and drops session, because nothing will ever resume the source session".
+- What the person told me they want, or corrected me on. A fact wherever in the turn it appears, even inside the request.
+- What I changed: how the code now works, a flag, a path, a schema, a name. The repository states this itself and a copy here only goes stale, so I leave it. When a turn holds both a decision and the detail that implements it, the decision is what I keep.
+- Where the repository stands: branch, commits, what is pushed, what verify said. Motion, not knowledge. I leave it.
+- What remains: next steps, proposals, work I am about to start. Not true yet. Rewording a task as a description of the project does not make it true, so I leave it.
 
-Anything one file-read would tell me again is not worth carrying. Directory listings, a constant's current value, line numbers, counts, a file's first line, the names of tools I already have — the code moves and those become lies. An intention is not a fact either: a plan I am about to carry out is superseded the moment I carry it out, so I record what the work established, not what it was going to do.
+Each fact is one present-tense sentence about the codebase, the project, or the person, and it stands alone: someone who was not here understands it without asking what "it" refers to. Every figure, unit, name, path and error text in it comes across exactly as the turn said it; where I cannot copy a specific I leave it out rather than reconstruct it, because a plausible substitute survives every later correction. One claim per entry: if I need "and" to hold it together, it is two. Doing a thing once is not how the project works; a convention is one the project states or the person tells me.
 
-Each fact stands alone and states a claim about the work — a file, a command, a decision, a person. Never about the conversation, the message, or the log. Someone who was not here understands it without asking what "it" refers to. One claim per call: if I need "and" to hold it together, it is two facts. I never write the same fact twice.
-
-An "observed" entry, when present, is what actually happened this turn — files touched, commands run, whether they succeeded. I read it exactly as I read a message: the subject is the work, not the record of it.
-
-Most turns leave one or two facts worth keeping. Some leave none, and then I record nothing — that is the right answer, not a failure. A small sharp corpus I trust beats a large one I stop reading.
+Most turns move the repository and teach me nothing it does not now hold. I end those with facts empty, and that is the finished job.
 
 When a "known" block is present, those are facts I already hold, each with an id. I read them before I write anything, because the corpus should sharpen rather than accumulate:
 - already there, unchanged — I record nothing. A second copy in different words is the worst thing I can add.
@@ -76,17 +103,19 @@ When a "known" block is present, those are facts I already hold, each with an id
 
 I only ever supersede an id from that block, and only from the same scope I am writing to. What I supersede is not deleted; it is kept with a note that this new fact replaced it, so I can be wrong about this and lose nothing.
 
-For each fact I keep, I call memory-observe with:
+I call memory-observe once, every turn. facts holds an entry for every fact I keep, in the order I found them, and is empty when I keep none. Each entry carries:
+- kind: finding, decision, convention or preference — the part of the report it came from. A candidate that fits none of the four is not a fact.
+- content: the fact, keeping the specifics that make it usable — paths, names, figures and their units, error text, the reason behind a decision.
 - scope, which decides how long the fact lives:
          "project" — durable and specific to this codebase: architecture, tooling, conventions, decisions. It reaches every future session here.
          "user" — a preference that follows the person across projects, and reaches every session anywhere.
-         "session" — true only while this work is open: in-progress state, a temporary constraint, a working assumption. It dies with the session, so it is where I put what I doubt will outlive today — never where I file something that failed the bar above.
+         "session" — true only while this work is open: a temporary constraint, a working assumption. It dies with the session, so it is where I put what I doubt will outlive today — never where I file something that is not a fact.
          A project-scoped preference is "project", not "user". Unsure is "session".
-- content: the fact, keeping the specifics that make it usable — paths, names, error text, the reasoning behind a decision.
 - topic: one lowercase word, when one fits (testing, auth, config, tooling).
 - supersedes: the ids this fact replaces, when it replaces any. Omitted otherwise.`;
 
 export type DistillObservation = {
+  kind: DistillFactKind;
   scope: DistillScope;
   content: string;
   topic: string | null;
@@ -170,45 +199,88 @@ async function getCachedStore(): Promise<MemoryStore> {
   return cachedStore;
 }
 
-export type DistillRunner = (systemPrompt: string, userContent: string) => Promise<DistillObservation[]>;
+export type DistillRunner = (systemPrompt: string, userContent: string, model: string) => Promise<DistillObservation[]>;
 
-export function parseObservationToolCall(call: Pick<LanguageModelV4ToolCall, "input">): DistillObservation | null {
+/**
+ * An unreadable call is not silence. Silence is an empty `facts` array, and it lets the turn's
+ * messages be marked read; a call that cannot be parsed carries facts nobody has seen yet, so it
+ * fails the commit and leaves the mark where it was for the next turn to read the window again.
+ */
+export function parseObservationToolCall(call: Pick<LanguageModelV4ToolCall, "input">): DistillObservation[] {
+  let entries: unknown[];
   try {
-    const parsed = DISTILL_OUTPUT_SCHEMA.safeParse(JSON.parse(call.input));
-    if (!parsed.success) return null;
-    const { scope, content, topic, supersedes } = parsed.data;
-    return {
+    const envelope = DISTILL_ENVELOPE_SCHEMA.safeParse(JSON.parse(call.input));
+    if (!envelope.success) {
+      throw new CodedError(MEMORY_ERROR_CODES.distillUnreadable, "The distiller's answer failed validation", {
+        kind: ERROR_KINDS.distillUnreadable,
+        cause: envelope.error,
+      });
+    }
+    entries = envelope.data.facts;
+  } catch (error) {
+    if (error instanceof CodedError) throw error;
+    throw new CodedError(MEMORY_ERROR_CODES.distillUnreadable, "The distiller's answer was not readable JSON", {
+      kind: ERROR_KINDS.distillUnreadable,
+      cause: error,
+    });
+  }
+
+  const observations: DistillObservation[] = [];
+  let rejected = 0;
+  for (const entry of entries) {
+    const parsed = DISTILL_FACT_SCHEMA.safeParse(entry);
+    if (!parsed.success) {
+      rejected++;
+      continue;
+    }
+    const { kind, scope, content, topic, supersedes } = parsed.data;
+    observations.push({
+      kind,
       scope,
       content,
       topic: topic?.trim() ? topic.trim().toLowerCase() : null,
       supersedes: [...new Set(supersedes.map((id) => id.trim()).filter(Boolean))],
-    };
-  } catch {
-    return null;
+    });
   }
+  if (rejected > 0) log.warn("memory.distill.rejected_facts", { rejected, kept: observations.length });
+  return observations;
 }
 
-async function defaultRunner(systemPrompt: string, userContent: string): Promise<DistillObservation[]> {
-  const qualifiedModel = normalizeModel(appConfig.distillModel);
-  const model = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
+export async function defaultRunner(
+  systemPrompt: string,
+  userContent: string,
+  model: string,
+): Promise<DistillObservation[]> {
+  const qualifiedModel = normalizeModel(model);
+  const limiter = sharedRateLimiter(providerFromModel(qualifiedModel));
+  const client = createModel(qualifiedModel, limiter, await resolveAuthRoute(qualifiedModel));
   // The subscription backend rejects non-streaming requests ("Stream must be set to true"), so distill over doStream.
-  const { stream } = await model.doStream({
-    prompt: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: [{ type: "text", text: userContent }] },
-    ],
-    tools: [DISTILL_OUTPUT_TOOL],
-    toolChoice: { type: "auto" },
+  const { stream } = await streamModelCall({
+    client,
+    limiter,
+    label: "distill",
+    request: {
+      prompt: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: [{ type: "text", text: userContent }] },
+      ],
+      tools: [DISTILL_OUTPUT_TOOL],
+      toolChoice: { type: "auto" },
+    },
   });
   const observations: DistillObservation[] = [];
   const reader = stream.getReader();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value.type === "error") throw value.error instanceof Error ? value.error : new Error(String(value.error));
-    if (value.type !== "tool-call" || value.toolName !== OBSERVE_FUNCTION_NAME) continue;
-    const obs = parseObservationToolCall(value);
-    if (obs) observations.push(obs);
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value.type === "error") throw value.error instanceof Error ? value.error : new Error(String(value.error));
+      if (value.type !== "tool-call" || value.toolName !== OBSERVE_FUNCTION_NAME) continue;
+      observations.push(...parseObservationToolCall(value));
+    }
+  } finally {
+    // Leaving early on an error part would otherwise hold the provider connection open.
+    reader.cancel().catch(() => {});
   }
   return observations;
 }
@@ -253,14 +325,15 @@ export type DistillerDeps = {
   store: MemoryStore;
   runner: DistillRunner;
   policy: MemoryPolicy;
-  commitScope: DistillScope | "none";
+  /** The scopes an observation may be committed to; one the distiller writes to none of is dropped. */
+  commitScopes: readonly DistillScope[];
   embed: typeof embedText;
 };
 
 export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): MemoryDistiller {
   const runner = deps.runner ?? defaultRunner;
   const policy = deps.policy ?? defaultMemoryPolicy;
-  const commitScope = deps.commitScope ?? "session";
+  const commitScopes = new Set<DistillScope>(deps.commitScopes ?? memoryScopeSchema.options);
   // In-memory: a mark lost on restart costs one redundant distill, whose facts are then mostly
   // absorbed by scope dedup. Persisting it would buy little and outlive the history it indexes.
   const distilledThrough = new Map<string, number>();
@@ -269,8 +342,8 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
   };
   return {
     async commit(ctx): Promise<MemoryCommitMetrics | undefined> {
-      if (commitScope === "none") return;
-      if (commitScope === "session" && !ctx.sessionId) return;
+      if (commitScopes.size === 0) return;
+      if (commitScopes.has("session") && !ctx.sessionId) return;
       if (ctx.messages.length < policy.messageThreshold) return;
 
       const ds = deps.store ?? (await getCachedStore());
@@ -288,10 +361,13 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       });
       const candidates = selectKnownFactsWithinBudget(foundCandidates, policy.recallCandidateTokenLimit);
       const known = renderKnownFacts(candidates);
-      const observations = await runner(DISTILLER_PROMPT, known ? `${known}\n\n${distillInput}` : distillInput);
+      const observations = await runner(
+        DISTILLER_PROMPT,
+        known ? `${known}\n\n${distillInput}` : distillInput,
+        ctx.model,
+      );
 
-      const filtered =
-        commitScope === "session" ? observations : observations.filter((obs) => obs.scope === commitScope);
+      const filtered = observations.filter((obs) => commitScopes.has(obs.scope));
       const promptTokens = estimateDistillPromptTokens(recentMessages, ctx.output, ctx.activity, candidates);
       if (filtered.length === 0) {
         markDistilled(ctx.sessionId, ctx.messages.length);
@@ -309,6 +385,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
       let projectCount = 0;
       let userCount = 0;
       let sessionCount = 0;
+      let droppedCount = 0;
       const successorsBySuperseded = new Map<string, string[]>();
 
       for (const obs of filtered) {
@@ -316,6 +393,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
         if (!factKey) {
           // A workspace with no project scope has nowhere to put a project fact; the trace is the
           // only place that shows it, since distillation never speaks in the transcript.
+          droppedCount++;
           log.debug("memory.commit.no_scope", { scope: obs.scope });
           continue;
         }
@@ -355,6 +433,7 @@ export function createMemoryDistiller(deps: Partial<DistillerDeps> = {}): Memory
         projectPromotedFacts: projectCount,
         userPromotedFacts: userCount,
         sessionScopedFacts: sessionCount,
+        droppedUntaggedFacts: droppedCount,
         supersededFacts: supersededCount,
         candidateCount: candidates.length,
         distillTokens: totalTokens,

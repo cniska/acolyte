@@ -31,18 +31,15 @@ function locksDir(options?: LockOptions): string {
   return join(stateDir(options?.env), "locks");
 }
 
-function lockPathForSession(sessionId: string, options?: LockOptions): string {
-  const safe = sessionId.replace(/[^a-zA-Z0-9_-]/g, "_");
+function lockPathFor(resource: string, options?: LockOptions): string {
+  const safe = resource.replace(/[^a-zA-Z0-9_-]/g, "_");
   return join(locksDir(options), `${safe}.lock`);
 }
 
-export function acquireSessionLock(
-  sessionId: string,
-  options?: LockOptions,
-): { ok: true } | { ok: false; ownerPid: number } {
-  sweepStaleSessionLocks(options);
+export function acquireLock(resource: string, options?: LockOptions): { ok: true } | { ok: false; ownerPid: number } {
+  sweepStaleLocks(options);
   mkdirSync(locksDir(options), { recursive: true });
-  const lockPath = lockPathForSession(sessionId, options);
+  const lockPath = lockPathFor(resource, options);
   const myPid = process.pid;
 
   for (let attempt = 0; attempt < MAX_LOCK_ATTEMPTS; attempt += 1) {
@@ -78,7 +75,7 @@ export function acquireSessionLock(
   return { ok: false, ownerPid: 0 };
 }
 
-export function sweepStaleSessionLocks(options?: LockOptions): { removed: number; kept: number } {
+export function sweepStaleLocks(options?: LockOptions): { removed: number; kept: number } {
   const dir = locksDir(options);
   if (!existsSync(dir)) return { removed: 0, kept: 0 };
 
@@ -111,8 +108,8 @@ export function sweepStaleSessionLocks(options?: LockOptions): { removed: number
   return { removed, kept };
 }
 
-export function releaseSessionLock(sessionId: string, options?: LockOptions): void {
-  const lockPath = lockPathForSession(sessionId, options);
+export function releaseLock(resource: string, options?: LockOptions): void {
+  const lockPath = lockPathFor(resource, options);
   if (!existsSync(lockPath)) return;
   try {
     const ownerRaw = readFileSync(lockPath, "utf8").trim();

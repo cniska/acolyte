@@ -205,6 +205,17 @@ describe("config store", () => {
     expect(resolved.features.undoCheckpoints).toBe(true);
   });
 
+  test("no model is resolved until one is configured", () => {
+    const home = createDir("acolyte-config-home-");
+    const dataDir = configDir({ HOME: home });
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(join(dataDir, "config.toml"), "port = 7777\n", "utf8");
+
+    const resolved = readResolvedConfigSync({ env: { HOME: home }, cwd: home });
+    expect(resolved.model).toBeUndefined();
+    expect(resolved.port).toBe(7777);
+  });
+
   test("readResolvedConfigSync applies defaults and model fallbacks", () => {
     const home = createDir("acolyte-config-home-");
     const dataDir = configDir({ HOME: home });
@@ -215,7 +226,6 @@ describe("config store", () => {
     expect(resolved.port).toBe(6767);
     expect(resolved.locale).toBe("en");
     expect(resolved.model).toBe("anthropic/claude-sonnet-4");
-    expect(resolved.distillModel).toBe("anthropic/claude-sonnet-4");
     expect(resolved.anthropicBaseUrl).toBe("https://api.anthropic.com/v1");
 
     expect(resolved.logFormat).toBe("logfmt");

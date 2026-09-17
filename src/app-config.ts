@@ -32,7 +32,6 @@ export const appConfig = {
   },
   model: fileConfig.model,
   reasoning: fileConfig.reasoning,
-  distillModel: fileConfig.distillModel,
   embedding: {
     model: fileConfig.embeddingModel,
     baseUrl: fileConfig.embeddingBaseUrl,
@@ -44,5 +43,5 @@ export const appConfig = {
 } as const;
 
 export function setModel(model: string): void {
-  (appConfig as { model: string }).model = model;
+  (appConfig as { model: string | undefined }).model = model;
 }

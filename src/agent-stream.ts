@@ -14,10 +14,11 @@ import { ERROR_KINDS, LIFECYCLE_ERROR_CODES } from "./error-contract";
 import { serializeToolError } from "./error-handling";
 import { MAX_TOOL_RESULT_CHARS } from "./lifecycle-constants";
 import { log } from "./log";
+import { streamModelCall } from "./model-call";
 import { createModel } from "./model-factory";
 import { applyPromptCacheMarkers } from "./prompt-cache";
 import { estimatePromptSize, promptBudgetError } from "./prompt-size";
-import { normalizeModel, providerFromModel } from "./provider-config";
+import { type AuthRoute, normalizeModel, providerFromModel } from "./provider-config";
 import { type RateLimiter, sharedRateLimiter } from "./rate-limiter";
 import { type ToolDefinition, toFunctionTools } from "./tool-contract";
 import { truncateMiddle } from "./truncate-text";
@@ -103,27 +104,19 @@ export function createAgentStream(
             }
           }
 
-          await rateLimiter.beforeCall();
-          let streamResult: Awaited<ReturnType<typeof model.doStream>>;
-          try {
-            streamResult = await model.doStream({
+          const streamResult = await streamModelCall({
+            client: model,
+            limiter: rateLimiter,
+            label: "agent-stream",
+            ...(options.abortSignal ? { abortSignal: options.abortSignal } : {}),
+            request: {
               prompt: messages,
               tools: functionTools.length > 0 ? functionTools : undefined,
               toolChoice: functionTools.length > 0 ? { type: "auto" } : undefined,
-              ...(options.abortSignal ? { abortSignal: options.abortSignal } : {}),
               ...(options.reasoning ? { reasoning: options.reasoning } : {}),
               ...(options.providerOptions ? { providerOptions: options.providerOptions } : {}),
-            });
-            rateLimiter.reset();
-          } catch (error) {
-            const recovery = rateLimiter.onError(error);
-            if (recovery.shouldRetry) {
-              log.debug("agent-stream.rate_limit.retry", { delay_ms: recovery.delayMs, iteration: loopIteration });
-              await new Promise((resolve) => setTimeout(resolve, recovery.delayMs));
-              continue;
-            }
-            throw error;
-          }
+            },
+          });
 
           const pendingToolCalls: Array<{
             toolCallId: string;
@@ -425,6 +418,7 @@ function safeParseJSON(value: unknown): Record<string, unknown> {
 
 export function createAgent(input: {
   model: string;
+  authRoute: AuthRoute;
   instructions: Agent["instructions"];
   id?: string;
   name?: string;
@@ -433,7 +427,7 @@ export function createAgent(input: {
   const qualifiedModel = normalizeModel(input.model);
   const provider = providerFromModel(qualifiedModel);
   const rateLimiter = sharedRateLimiter(provider);
-  const modelInstance = createModel(qualifiedModel, rateLimiter);
+  const modelInstance = createModel(qualifiedModel, rateLimiter, input.authRoute);
   const tools = input.tools ?? {};
   const stream = createAgentStream(modelInstance, input.instructions, tools, rateLimiter, provider);
   return {

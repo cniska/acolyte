@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { DistillScope } from "./distill-ops";
 import type { MemoryDisposition, MemoryRecord, MemoryStore } from "./memory-contract";
 import { createMemoryPolicy } from "./memory-contract";
 import type { DistillObservation } from "./memory-distiller";
@@ -23,7 +24,7 @@ function createMemoryDistiller(deps: Parameters<typeof createMemoryDistillerWith
 function createTestDistiller(
   store: MemoryStore & { written: MemoryRecord[]; removed: string[] },
   runner?: (systemPrompt: string, userContent: string) => Promise<DistillObservation[]>,
-  options?: { commitScope?: "session" | "project" | "user" | "none" },
+  options?: { commitScopes?: readonly DistillScope[] },
 ) {
   return createMemoryDistiller({ store, runner, policy: testPolicy, ...options });
 }
@@ -136,8 +137,14 @@ describe("high-water mark", () => {
       runner: captureRunner(seen),
       policy: testPolicy,
     });
-    await distiller.commit({ sessionId: "sess_test0001", messages: turnOne, output: "done one" });
     await distiller.commit({
+      model: "openai/gpt-5-mini",
+      sessionId: "sess_test0001",
+      messages: turnOne,
+      output: "done one",
+    });
+    await distiller.commit({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_test0001",
       messages: [...turnOne, { role: "user", content: "turn two" }],
       output: "done two",
@@ -158,15 +165,21 @@ describe("high-water mark", () => {
       store,
       runner: async (_prompt, userContent) => {
         seen.push(userContent);
-        return [{ scope: "session", content: "a durable fact", topic: null, supersedes: [] }];
+        return [{ kind: "finding", scope: "session", content: "a durable fact", topic: null, supersedes: [] }];
       },
       policy: testPolicy,
     });
     await expect(
-      distiller.commit({ sessionId: "sess_test0001", messages: turnOne, output: "done one" }),
+      distiller.commit({
+        model: "openai/gpt-5-mini",
+        sessionId: "sess_test0001",
+        messages: turnOne,
+        output: "done one",
+      }),
     ).rejects.toThrow();
     failWrite = false;
     await distiller.commit({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_test0001",
       messages: [...turnOne, { role: "user", content: "turn two" }],
       output: "done two",
@@ -181,8 +194,18 @@ describe("high-water mark", () => {
       runner: captureRunner(seen),
       policy: testPolicy,
     });
-    await distiller.commit({ sessionId: "sess_test0001", messages: turnOne, output: "done" });
-    await distiller.commit({ sessionId: "sess_test0002", messages: turnOne, output: "done" });
+    await distiller.commit({
+      model: "openai/gpt-5-mini",
+      sessionId: "sess_test0001",
+      messages: turnOne,
+      output: "done",
+    });
+    await distiller.commit({
+      model: "openai/gpt-5-mini",
+      sessionId: "sess_test0002",
+      messages: turnOne,
+      output: "done",
+    });
     expect(seen[1]).toContain("turn one");
   });
 
@@ -194,6 +217,7 @@ describe("high-water mark", () => {
       policy: createMemoryPolicy({ messageThreshold: 1, contextMessageWindow: 2 }),
     });
     await distiller.commit({
+      model: "openai/gpt-5-mini",
       sessionId: "sess_test0001",
       messages: [
         { role: "user", content: "oldest" },
@@ -205,6 +229,37 @@ describe("high-water mark", () => {
     expect(seen[0]).not.toContain("oldest");
     expect(seen[0]).toContain("newest");
   });
+
+  test("a failed commit leaves its messages for the next one to read again", async () => {
+    const seen: string[] = [];
+    const capture = captureRunner(seen);
+    let fail = true;
+    const distiller = createMemoryDistiller({
+      store: createMockStore(),
+      runner: async (systemPrompt, userContent) => {
+        if (fail) throw new Error("the distiller's answer was not readable");
+        return capture(systemPrompt, userContent);
+      },
+      policy: createMemoryPolicy({ messageThreshold: 1 }),
+    });
+    const messages = [
+      { role: "user", content: "the turn that failed" },
+      { role: "assistant", content: "its answer" },
+    ];
+
+    await expect(
+      distiller.commit({ model: "openai/gpt-5-mini", sessionId: "sess_test0003", messages, output: "done" }),
+    ).rejects.toThrow();
+
+    fail = false;
+    await distiller.commit({
+      model: "openai/gpt-5-mini",
+      sessionId: "sess_test0003",
+      messages: [...messages, { role: "user", content: "the turn after" }],
+      output: "done",
+    });
+    expect(seen[0]).toContain("the turn that failed");
+  });
 });
 
 describe("memoryDistiller", () => {
@@ -213,9 +268,10 @@ describe("memoryDistiller", () => {
       const store = createMockStore();
       const source = createTestDistiller(
         store,
-        makeRunner([{ scope: "session", content: "a fact", topic: null, supersedes: [] }]),
+        makeRunner([{ kind: "finding", scope: "session", content: "a fact", topic: null, supersedes: [] }]),
       );
       await source.commit({
+        model: "openai/gpt-5-mini",
         messages: Array.from({ length: 25 }, (_, i) => ({ role: "user", content: `msg ${i}` })),
         output: "response",
       });
@@ -226,10 +282,11 @@ describe("memoryDistiller", () => {
       const store = createMockStore();
       const source = createMemoryDistiller({
         store,
-        runner: makeRunner([{ scope: "session", content: "a fact", topic: null, supersedes: [] }]),
+        runner: makeRunner([{ kind: "finding", scope: "session", content: "a fact", topic: null, supersedes: [] }]),
         policy: createMemoryPolicy({ messageThreshold: 5 }),
       });
       await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         messages: [{ role: "user", content: "hello" }],
         output: "hi",
@@ -256,9 +313,12 @@ describe("memoryDistiller", () => {
       ]);
       const source = createTestDistiller(
         store,
-        makeRunner([{ scope: "session", content: "prefers short answers", topic: null, supersedes: [] }]),
+        makeRunner([
+          { kind: "finding", scope: "session", content: "prefers short answers", topic: null, supersedes: [] },
+        ]),
       );
       await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         messages: [{ role: "user", content: "hello" }],
         output: "done",
@@ -278,6 +338,7 @@ describe("memoryDistiller", () => {
       ]);
       const source = createTestDistiller(store, makeRunner([]));
       const metrics = await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         resourceId: "proj_abc123",
         messages: [{ role: "user", content: "hello" }],
@@ -299,11 +360,12 @@ describe("memoryDistiller", () => {
       const source = createTestDistiller(
         store,
         makeRunner([
-          { scope: "project", content: "project uses Vitest", topic: "testing", supersedes: [] },
-          { scope: "project", content: "repo has 18k lines of code", topic: null, supersedes: [] },
+          { kind: "finding", scope: "project", content: "project uses Vitest", topic: "testing", supersedes: [] },
+          { kind: "finding", scope: "project", content: "repo has 18k lines of code", topic: null, supersedes: [] },
         ]),
       );
       await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         resourceId: "proj_abc123",
         messages: [{ role: "user", content: "hello" }],
@@ -315,17 +377,34 @@ describe("memoryDistiller", () => {
       expect(withoutTopic?.topic).toBeNull();
     });
 
+    test("counts a fact the workspace had no scope to key, rather than losing it silently", async () => {
+      const store = createMockStore();
+      const source = createTestDistiller(
+        store,
+        makeRunner([{ kind: "finding", scope: "project", content: "repo uses Bun", topic: null, supersedes: [] }]),
+      );
+      const metrics = await source.commit({
+        model: "openai/gpt-5-mini",
+        sessionId: "sess_test0001",
+        messages: [{ role: "user", content: "hello" }],
+        output: "done",
+      });
+      expect(store.written).toHaveLength(0);
+      expect(metrics?.droppedUntaggedFacts).toBe(1);
+    });
+
     test("session commit promotes project and user observations to scoped stores", async () => {
       const store = createMockStore();
       const source = createTestDistiller(
         store,
         makeRunner([
-          { scope: "project", content: "repo uses Bun", topic: null, supersedes: [] },
-          { scope: "user", content: "prefers short answers", topic: null, supersedes: [] },
-          { scope: "session", content: "fix failing tests", topic: null, supersedes: [] },
+          { kind: "finding", scope: "project", content: "repo uses Bun", topic: null, supersedes: [] },
+          { kind: "preference", scope: "user", content: "prefers short answers", topic: null, supersedes: [] },
+          { kind: "finding", scope: "session", content: "fix failing tests", topic: null, supersedes: [] },
         ]),
       );
       await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         resourceId: "proj_abc123",
         messages: [{ role: "user", content: "hello" }],
@@ -345,14 +424,15 @@ describe("memoryDistiller", () => {
       const source = createTestDistiller(
         store,
         makeRunner([
-          { scope: "project", content: "project fact one", topic: null, supersedes: [] },
-          { scope: "project", content: "project fact two", topic: null, supersedes: [] },
-          { scope: "user", content: "user fact one", topic: null, supersedes: [] },
-          { scope: "session", content: "session fact one", topic: null, supersedes: [] },
-          { scope: "project", content: "project fact three", topic: null, supersedes: [] },
+          { kind: "finding", scope: "project", content: "project fact one", topic: null, supersedes: [] },
+          { kind: "finding", scope: "project", content: "project fact two", topic: null, supersedes: [] },
+          { kind: "preference", scope: "user", content: "user fact one", topic: null, supersedes: [] },
+          { kind: "finding", scope: "session", content: "session fact one", topic: null, supersedes: [] },
+          { kind: "finding", scope: "project", content: "project fact three", topic: null, supersedes: [] },
         ]),
       );
       const metrics = await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         resourceId: "proj_abc123",
         messages: [{ role: "user", content: "hello" }],
@@ -365,19 +445,20 @@ describe("memoryDistiller", () => {
       });
     });
 
-    test("commitScope filters to only commit matching scope", async () => {
+    test("commitScopes drops an observation for a scope it does not name", async () => {
       const store = createMockStore();
       const source = createMemoryDistiller({
         store,
         runner: makeRunner([
-          { scope: "project", content: "a project fact", topic: null, supersedes: [] },
-          { scope: "session", content: "a session fact", topic: null, supersedes: [] },
-          { scope: "user", content: "a user fact", topic: null, supersedes: [] },
+          { kind: "finding", scope: "project", content: "a project fact", topic: null, supersedes: [] },
+          { kind: "finding", scope: "session", content: "a session fact", topic: null, supersedes: [] },
+          { kind: "preference", scope: "user", content: "a user fact", topic: null, supersedes: [] },
         ]),
         policy: testPolicy,
-        commitScope: "project",
+        commitScopes: ["project"],
       });
       await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         resourceId: "proj_abc123",
         messages: [{ role: "user", content: "hello" }],
@@ -395,10 +476,13 @@ describe("memoryDistiller", () => {
       const store = createMockStore();
       const source = createMemoryDistiller({
         store,
-        runner: makeRunner([{ scope: "project", content: "a project fact", topic: null, supersedes: [] }]),
+        runner: makeRunner([
+          { kind: "finding", scope: "project", content: "a project fact", topic: null, supersedes: [] },
+        ]),
         policy: testPolicy,
       });
       await source.commit({
+        model: "openai/gpt-5-mini",
         sessionId: "sess_test0001",
         workspace: "/tmp/acolyte-project",
         messages: [{ role: "user", content: "hello" }],
@@ -414,11 +498,41 @@ describe("memoryDistiller", () => {
         {
           name: "good_scoped_output",
           observations: [
-            { scope: "project" as const, content: "uses bun test", topic: null, supersedes: [] },
-            { scope: "user" as const, content: "prefers concise responses", topic: null, supersedes: [] },
-            { scope: "session" as const, content: "fixing failing memory tests", topic: null, supersedes: [] },
-            { scope: "session" as const, content: "stabilize memory quality", topic: null, supersedes: [] },
-            { scope: "session" as const, content: "add regression coverage", topic: null, supersedes: [] },
+            {
+              kind: "finding" as const,
+              scope: "project" as const,
+              content: "uses bun test",
+              topic: null,
+              supersedes: [],
+            },
+            {
+              kind: "preference" as const,
+              scope: "user" as const,
+              content: "prefers concise responses",
+              topic: null,
+              supersedes: [],
+            },
+            {
+              kind: "finding" as const,
+              scope: "session" as const,
+              content: "fixing failing memory tests",
+              topic: null,
+              supersedes: [],
+            },
+            {
+              kind: "finding" as const,
+              scope: "session" as const,
+              content: "stabilize memory quality",
+              topic: null,
+              supersedes: [],
+            },
+            {
+              kind: "finding" as const,
+              scope: "session" as const,
+              content: "add regression coverage",
+              topic: null,
+              supersedes: [],
+            },
           ],
           expectedMetrics: {
             projectPromotedFacts: 1,
@@ -429,7 +543,15 @@ describe("memoryDistiller", () => {
         },
         {
           name: "only_project_observations",
-          observations: [{ scope: "project" as const, content: "uses bun test", topic: null, supersedes: [] }],
+          observations: [
+            {
+              kind: "finding" as const,
+              scope: "project" as const,
+              content: "uses bun test",
+              topic: null,
+              supersedes: [],
+            },
+          ],
           expectedMetrics: {
             projectPromotedFacts: 1,
             userPromotedFacts: 0,
@@ -447,6 +569,7 @@ describe("memoryDistiller", () => {
           policy: fixturePolicy,
         });
         const metrics = await source.commit({
+          model: "openai/gpt-5-mini",
           sessionId: "sess_test0001",
           resourceId: "proj_abc123",
           messages: [{ role: "user", content: "hello" }],
@@ -545,11 +668,29 @@ describe("supersession", () => {
     tokenEstimate: 8,
   };
   const commitCtx = {
+    model: "openai/gpt-5-mini",
     sessionId: "sess_test0001",
     resourceId: "proj_abc123" as const,
     messages: [{ role: "user", content: "hello" }],
     output: "done",
   };
+
+  test("distills with the model the turn ran with, not a configured one", async () => {
+    const store = createMockStore();
+    let seenModel = "";
+    const distiller = createMemoryDistiller({
+      store,
+      policy: testPolicy,
+      runner: async (_prompt, _content, model) => {
+        seenModel = model;
+        return [];
+      },
+    });
+
+    await distiller.commit({ ...commitCtx, model: "anthropic/claude-sonnet-4" });
+
+    expect(seenModel).toBe("anthropic/claude-sonnet-4");
+  });
 
   test("shows existing facts to the distiller with their ids", async () => {
     const store = createMockStore([{ ...existing }]);
@@ -573,6 +714,7 @@ describe("supersession", () => {
       store,
       runner: makeRunner([
         {
+          kind: "finding",
           scope: "project",
           content: "src/lifecycle-completion.ts owns the terminal-step backstop",
           topic: "lifecycle",
@@ -596,7 +738,13 @@ describe("supersession", () => {
     const distiller = createMemoryDistiller({
       store,
       runner: makeRunner([
-        { scope: "project", content: "a brand new project fact", topic: null, supersedes: ["mem_neverseen1"] },
+        {
+          kind: "finding",
+          scope: "project",
+          content: "a brand new project fact",
+          topic: null,
+          supersedes: ["mem_neverseen1"],
+        },
       ]),
       policy: testPolicy,
     });
@@ -610,7 +758,13 @@ describe("supersession", () => {
     const distiller = createMemoryDistiller({
       store,
       runner: makeRunner([
-        { scope: "user", content: "prefers short answers", topic: null, supersedes: ["mem_stale00001"] },
+        {
+          kind: "preference",
+          scope: "user",
+          content: "prefers short answers",
+          topic: null,
+          supersedes: ["mem_stale00001"],
+        },
       ]),
       policy: testPolicy,
     });
@@ -624,7 +778,7 @@ describe("supersession", () => {
     const distiller = createMemoryDistiller({
       store,
       runner: makeRunner([
-        { scope: "project", content: existing.content, topic: null, supersedes: ["mem_stale00001"] },
+        { kind: "finding", scope: "project", content: existing.content, topic: null, supersedes: ["mem_stale00001"] },
       ]),
       policy: testPolicy,
     });
@@ -640,6 +794,7 @@ describe("supersession", () => {
       store,
       runner: makeRunner([
         {
+          kind: "finding",
           scope: "project",
           content: "src/lifecycle-completion.ts owns the backstop and classifies finishReason",
           topic: null,
@@ -663,12 +818,14 @@ describe("supersession", () => {
       store,
       runner: makeRunner([
         {
+          kind: "finding",
           scope: "project",
           content: "the backstop classifies the terminal step",
           topic: null,
           supersedes: ["mem_stale00001"],
         },
         {
+          kind: "finding",
           scope: "project",
           content: "the backstop reopens once per reason",
           topic: null,
@@ -693,7 +850,9 @@ describe("supersession", () => {
     const store = createMockStore([{ ...existing }]);
     const distiller = createMemoryDistiller({
       store,
-      runner: makeRunner([{ scope: "project", content: existing.content, topic: null, supersedes: [] }]),
+      runner: makeRunner([
+        { kind: "finding", scope: "project", content: existing.content, topic: null, supersedes: [] },
+      ]),
       policy: testPolicy,
     });
     const metrics = await distiller.commit(commitCtx);
@@ -709,7 +868,13 @@ describe("supersession", () => {
     const distiller = createMemoryDistiller({
       store,
       runner: makeRunner([
-        { scope: "project", content: "a sharper version of the fact", topic: null, supersedes: ["mem_stale00001"] },
+        {
+          kind: "finding",
+          scope: "project",
+          content: "a sharper version of the fact",
+          topic: null,
+          supersedes: ["mem_stale00001"],
+        },
       ]),
       policy: testPolicy,
     });
@@ -755,49 +920,104 @@ describe("supersession", () => {
 });
 
 describe("parseObservationToolCall", () => {
-  const call = (input: unknown) => parseObservationToolCall({ input: JSON.stringify(input) });
+  const call = (...facts: unknown[]) => parseObservationToolCall({ input: JSON.stringify({ facts }) });
 
   test("a well-formed call becomes an observation", () => {
-    expect(call({ scope: "project", content: "the loader owns retries", topic: "Loader" })).toEqual({
-      scope: "project",
-      content: "the loader owns retries",
-      topic: "loader",
-      supersedes: [],
-    });
+    expect(call({ kind: "finding", scope: "project", content: "the loader owns retries", topic: "Loader" })).toEqual([
+      {
+        kind: "finding",
+        scope: "project",
+        content: "the loader owns retries",
+        topic: "loader",
+        supersedes: [],
+      },
+    ]);
+  });
+
+  test("an entry names which kind of fact it is, and one outside the four rejects the call", () => {
+    expect(call({ scope: "project", content: "a fact with no kind" })).toEqual([]);
+    expect(call({ kind: "change", scope: "project", content: "renamed the flag" })).toEqual([]);
+    expect(call({ kind: "decision", scope: "project", content: "imports spend oldest-first" })[0]?.kind).toBe(
+      "decision",
+    );
+  });
+
+  test("one call carries every fact a turn established", () => {
+    expect(
+      call(
+        { kind: "finding", scope: "project", content: "omp and pi share a transcript format" },
+        { kind: "finding", scope: "project", content: "opencode stores sessions in sqlite" },
+        { kind: "preference", scope: "user", content: "he wants provider setup outside the TUI" },
+      ).map((observation) => observation.content),
+    ).toEqual([
+      "omp and pi share a transcript format",
+      "opencode stores sessions in sqlite",
+      "he wants provider setup outside the TUI",
+    ]);
   });
 
   test("a blank topic is kept as an observation with no topic", () => {
-    expect(call({ scope: "project", content: "the loader owns retries", topic: "" })).toEqual({
-      scope: "project",
-      content: "the loader owns retries",
-      topic: null,
-      supersedes: [],
-    });
+    expect(call({ kind: "finding", scope: "project", content: "the loader owns retries", topic: "" })).toEqual([
+      {
+        kind: "finding",
+        scope: "project",
+        content: "the loader owns retries",
+        topic: null,
+        supersedes: [],
+      },
+    ]);
   });
 
-  test("malformed input yields no observation", () => {
-    expect(parseObservationToolCall({ input: "not json" })).toBeNull();
-    expect(call({ content: "no scope given" })).toBeNull();
-    expect(call({ scope: "elsewhere", content: "an unknown scope" })).toBeNull();
-    expect(call({ scope: "project", content: "   " })).toBeNull();
+  test("a call with no facts records nothing", () => {
+    expect(parseObservationToolCall({ input: JSON.stringify({ facts: [] }) })).toEqual([]);
+  });
+
+  test("an answer that cannot be read fails rather than passing for silence", () => {
+    expect(() => parseObservationToolCall({ input: "not json" })).toThrow(
+      expect.objectContaining({ code: "E_DISTILL_UNREADABLE" }),
+    );
+    expect(() =>
+      parseObservationToolCall({ input: JSON.stringify({ kind: "finding", scope: "project", content: "unwrapped" }) }),
+    ).toThrow(expect.objectContaining({ code: "E_DISTILL_UNREADABLE" }));
+  });
+
+  test("a fact the envelope carries but the schema rejects costs only itself", () => {
+    expect(call({ kind: "finding", content: "no scope given" })).toEqual([]);
+    expect(call({ kind: "finding", scope: "elsewhere", content: "an unknown scope" })).toEqual([]);
+    expect(call({ kind: "finding", scope: "project", content: "   " })).toEqual([]);
+  });
+
+  test("one malformed fact costs only itself", () => {
+    expect(
+      call(
+        { kind: "finding", scope: "project", content: "a good fact" },
+        { scope: "elsewhere", content: "a bad one" },
+        { kind: "decision", scope: "user", content: "another good fact" },
+      ).map((observation) => observation.content),
+    ).toEqual(["a good fact", "another good fact"]);
+  });
+
+  test("a batch of nothing but malformed facts yields no observation", () => {
+    expect(call({ scope: "elsewhere", content: "a bad one" }, { kind: "finding", content: "no scope" })).toEqual([]);
   });
 
   test("a non-array supersedes yields no observation", () => {
-    expect(call({ scope: "project", content: "a fact", supersedes: "mem_one000001" })).toBeNull();
-    expect(call({ scope: "project", content: "a fact", supersedes: [1] })).toBeNull();
+    expect(call({ kind: "finding", scope: "project", content: "a fact", supersedes: "mem_one000001" })).toEqual([]);
+    expect(call({ kind: "finding", scope: "project", content: "a fact", supersedes: [1] })).toEqual([]);
   });
 
   test("supersedes ids are trimmed and deduplicated", () => {
     expect(
       call({
+        kind: "finding",
         scope: "project",
         content: "a fact",
         supersedes: [" mem_one000001 ", "mem_one000001", "  ", "mem_two000002"],
-      })?.supersedes,
+      })[0]?.supersedes,
     ).toEqual(["mem_one000001", "mem_two000002"]);
   });
 
   test("a blank topic becomes no topic", () => {
-    expect(call({ scope: "user", content: "a fact", topic: "   " })?.topic).toBeNull();
+    expect(call({ kind: "preference", scope: "user", content: "a fact", topic: "   " })[0]?.topic).toBeNull();
   });
 });

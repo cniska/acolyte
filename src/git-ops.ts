@@ -70,6 +70,24 @@ export async function gitStatusShort(workspace: string): Promise<string> {
   return stdout.trim();
 }
 
+/**
+ * Commits reachable from `HEAD` that landed after a moment, which is how far a checkout has moved
+ * past something recorded then. `--ignore-missing` answers zero for a repository with no commits
+ * yet, where the count is zero rather than unanswerable.
+ */
+export async function gitCommitsSince(workspace: string, sinceIso: string): Promise<number> {
+  const args = ["git", "rev-list", "--count", "--ignore-missing", `--since=${sinceIso}`, "HEAD"];
+  const { code, stdout, stderr } = await runCommand(args, workspace);
+  if (code !== 0) throw new Error(stderr.trim() || "git rev-list failed");
+  const counted = stdout.trim();
+  const count = Number(counted);
+  // Empty output is its own case: `Number("")` is 0, which would pass for a real count of zero.
+  if (counted === "" || !Number.isInteger(count) || count < 0) {
+    throw new Error(`git rev-list counted ${counted || "nothing"}`);
+  }
+  return count;
+}
+
 export async function gitDiff(workspace: string, pathInput?: string, contextLines = 3): Promise<string> {
   const args = ["git", "diff", `--unified=${contextLines}`];
   if (pathInput) {

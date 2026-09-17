@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { appConfig, setModel } from "./app-config";
+import { appConfig } from "./app-config";
 import { fullUsage, MEMORY_SPEC, subcommandUsage } from "./chat-command-specs";
 import { dispatchSlashCommand } from "./chat-commands";
 import { isCommandOutput } from "./chat-contract";
@@ -424,7 +424,7 @@ describe("chat-commands", () => {
       expect(writes).toEqual([{ key: "model", value: "gpt-5.2", scope: "project" }]);
       expect(appConfig.model).toBe("gpt-5.2");
     } finally {
-      setModel(previousModel);
+      (appConfig as { model: string | undefined }).model = previousModel;
     }
   });
 
@@ -437,7 +437,7 @@ describe("chat-commands", () => {
       expect(stop).toBe(true);
       expect(persistCalls).toBe(1);
     } finally {
-      setModel(previousModel);
+      (appConfig as { model: string | undefined }).model = previousModel;
     }
   });
 
@@ -454,6 +454,16 @@ describe("chat-commands", () => {
     expect(spies.tokenUsageSets).toEqual([[]]);
     expect(sessionState.sessions).toHaveLength(2);
     expect(sessionState.activeSessionId).toBe(spies.currentSessionIds[0]);
+  });
+
+  test("dispatchSlashCommand /new starts the new session on the current session's model", async () => {
+    const session = createSession({ id: "sess_current", model: "anthropic/claude-sonnet-4" });
+    const sessionState = createSessionState({ sessions: [session], activeSessionId: session.id });
+    const { ctx } = createCommandContext("/new", { sessionState, currentSession: session });
+
+    await dispatchSlashCommand(ctx);
+
+    expect(sessionState.sessions[0]?.model).toBe("anthropic/claude-sonnet-4");
   });
 
   test("dispatchSlashCommand /resume with prefix restores matching session", async () => {

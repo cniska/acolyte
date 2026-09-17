@@ -679,7 +679,10 @@ describe("cancellation", () => {
     const { getFullOutput } = await stream("hi", { abortSignal: controller.signal });
     await getFullOutput();
 
-    expect(calls[0]?.abortSignal).toBe(controller.signal);
+    const seen = calls[0]?.abortSignal as AbortSignal | undefined;
+    expect(seen?.aborted).toBe(false);
+    controller.abort(new Error("user stopped the turn"));
+    expect(seen?.aborted).toBe(true);
   });
 });
 

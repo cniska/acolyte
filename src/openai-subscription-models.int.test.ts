@@ -1,12 +1,12 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { authRouteForModel, usesOpenAiSubscription } from "./model-factory";
+import { afterEach, beforeEach, describe, expect, setSystemTime, test } from "bun:test";
+import { PROVIDER_ERROR_CODES } from "./error-contract";
+import { resolveAuthRoute } from "./model-factory";
 import { writeOAuthTokens } from "./oauth-store";
 import type { OAuthTokenSet } from "./oauth-store-contract";
 import {
-  ensureSubscriptionModelsLoaded,
   fetchSubscriptionModels,
-  isOpenAiSubscriptionModel,
   resetSubscriptionModelsCache,
+  subscriptionModels,
 } from "./openai-subscription-models";
 import type { FetchFn } from "./rate-limiter";
 import { tempDir } from "./test-utils";
@@ -56,25 +56,11 @@ describe("fetchSubscriptionModels", () => {
     expect(codexUrl).toContain("client_version=0.150.0");
   });
 
-  test("populates routing so membership excludes code-mode and hidden models", async () => {
+  test("the served set excludes code-mode and hidden models", async () => {
     const env = { HOME: dirs.createDir("sm-") };
     await writeOAuthTokens("openai", fresh, env);
-    await fetchSubscriptionModels(fetchStub(), env);
-    expect(isOpenAiSubscriptionModel("gpt-5.5")).toBe(true);
-    expect(isOpenAiSubscriptionModel("gpt-5.6-luna")).toBe(false);
-    expect(isOpenAiSubscriptionModel("gpt-5.4")).toBe(false);
-    expect(isOpenAiSubscriptionModel("gpt-4o")).toBe(false);
-  });
-
-  test("routes a served model to the subscription only with oauth", async () => {
-    const env = { HOME: dirs.createDir("sm-") };
-    await writeOAuthTokens("openai", fresh, env);
-    await fetchSubscriptionModels(fetchStub(), env);
-    expect(usesOpenAiSubscription("gpt-5.5", { oauth: true })).toBe(true);
-    expect(usesOpenAiSubscription("gpt-5.6-luna", { oauth: true, apiKey: "sk" })).toBe(false);
-    expect(usesOpenAiSubscription("gpt-5.5", { apiKey: "sk" })).toBe(false);
-    expect(authRouteForModel("openai/gpt-5.5", { openai: { oauth: true } })).toBe("subscription");
-    expect(authRouteForModel("openai/gpt-5.6-luna", { openai: { oauth: true, apiKey: "sk" } })).toBe("api_key");
+    const served = await subscriptionModels(fetchStub(), env);
+    expect([...served]).toEqual(["gpt-5.5"]);
   });
 
   test("uses the fallback version when the release lookup fails", async () => {
@@ -92,19 +78,32 @@ describe("fetchSubscriptionModels", () => {
   });
 });
 
-describe("ensureSubscriptionModelsLoaded", () => {
+describe("subscriptionModels", () => {
   test("memoizes discovery so concurrent callers share one fetch", async () => {
     const env = { HOME: dirs.createDir("sm-") };
     await writeOAuthTokens("openai", fresh, env);
     let codexCalls = 0;
     const fetchFn = fetchStub(() => (codexCalls += 1));
-    await Promise.all([
-      ensureSubscriptionModelsLoaded(fetchFn, env),
-      ensureSubscriptionModelsLoaded(fetchFn, env),
-      ensureSubscriptionModelsLoaded(fetchFn, env),
+    const sets = await Promise.all([
+      subscriptionModels(fetchFn, env),
+      subscriptionModels(fetchFn, env),
+      subscriptionModels(fetchFn, env),
     ]);
     expect(codexCalls).toBe(1);
-    expect(isOpenAiSubscriptionModel("gpt-5.5")).toBe(true);
+    expect(sets.every((served) => served.has("gpt-5.5"))).toBe(true);
+  });
+
+  test("a discovery failure is a coded error, not an empty set that routes elsewhere", async () => {
+    const env = { HOME: dirs.createDir("sm-") };
+    await writeOAuthTokens("openai", fresh, env);
+    const failing: FetchFn = async (input) =>
+      String(input).includes("api.github.com")
+        ? new Response(JSON.stringify({ tag_name: "rust-v0.150.0" }))
+        : new Response("", { status: 500 });
+
+    await expect(subscriptionModels(failing, env)).rejects.toMatchObject({
+      code: PROVIDER_ERROR_CODES.subscriptionDiscoveryFailed,
+    });
   });
 
   test("a transient discovery failure is not cached, so the next call retries", async () => {
@@ -118,10 +117,95 @@ describe("ensureSubscriptionModelsLoaded", () => {
       if (codexAttempts === 1) return new Response("", { status: 500 });
       return new Response(JSON.stringify(modelsResponse));
     };
-    await ensureSubscriptionModelsLoaded(fetchFn, env);
-    expect(isOpenAiSubscriptionModel("gpt-5.5")).toBe(false);
-    await ensureSubscriptionModelsLoaded(fetchFn, env);
+    await expect(subscriptionModels(fetchFn, env)).rejects.toThrow();
+    expect((await subscriptionModels(fetchFn, env)).has("gpt-5.5")).toBe(true);
     expect(codexAttempts).toBe(2);
-    expect(isOpenAiSubscriptionModel("gpt-5.5")).toBe(true);
+  });
+
+  test("a socket that opens and never delivers fails instead of holding every later call", async () => {
+    const env = { HOME: dirs.createDir("sm-") };
+    await writeOAuthTokens("openai", fresh, env);
+    const hanging: FetchFn = (input, init) => {
+      if (String(input).includes("api.github.com")) {
+        return Promise.resolve(new Response(JSON.stringify({ tag_name: "rust-v0.150.0" })));
+      }
+      return new Promise((_, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), { once: true });
+      });
+    };
+
+    await expect(subscriptionModels(hanging, env)).rejects.toMatchObject({
+      code: PROVIDER_ERROR_CODES.subscriptionDiscoveryFailed,
+    });
+    expect((await subscriptionModels(fetchStub(), env)).has("gpt-5.5")).toBe(true);
+  }, 30_000);
+
+  test("the served set is re-read once its lifetime is up", async () => {
+    const env = { HOME: dirs.createDir("sm-") };
+    await writeOAuthTokens("openai", { ...fresh, expiresAt: Date.now() + 30 * 60 * 60 * 1000 }, env);
+    let codexCalls = 0;
+    const fetchFn = fetchStub(() => {
+      codexCalls += 1;
+    });
+
+    try {
+      await subscriptionModels(fetchFn, env);
+      setSystemTime(new Date(Date.now() + 6 * 60 * 60 * 1000 + 1));
+      await subscriptionModels(fetchFn, env);
+    } finally {
+      setSystemTime();
+    }
+    expect(codexCalls).toBe(2);
+  });
+});
+
+describe("resolveAuthRoute", () => {
+  test("a served model routes to the subscription and an unserved one to the key", async () => {
+    const env = { HOME: dirs.createDir("sm-") };
+    await writeOAuthTokens("openai", fresh, env);
+    const stub = fetchStub();
+
+    expect(await resolveAuthRoute("openai/gpt-5.5", { openai: { oauth: true } }, stub, env)).toBe("subscription");
+    expect(await resolveAuthRoute("openai/gpt-5.6-luna", { openai: { oauth: true, apiKey: "sk" } }, stub, env)).toBe(
+      "api_key",
+    );
+    expect(await resolveAuthRoute("openai/gpt-5.5", { openai: { apiKey: "sk" } }, stub, env)).toBe("api_key");
+    expect(await resolveAuthRoute("anthropic/claude-sonnet-5", { openai: { oauth: true } }, stub, env)).toBe("api_key");
+  });
+
+  test("an unreachable subscription spends the key the user configured", async () => {
+    const env = { HOME: dirs.createDir("sm-") };
+    await writeOAuthTokens("openai", fresh, env);
+    const failing: FetchFn = async (input) =>
+      String(input).includes("api.github.com")
+        ? new Response(JSON.stringify({ tag_name: "rust-v0.150.0" }))
+        : new Response("", { status: 500 });
+
+    expect(await resolveAuthRoute("openai/gpt-5.5", { openai: { oauth: true, apiKey: "sk" } }, failing, env)).toBe(
+      "api_key",
+    );
+  });
+
+  test("an unreachable subscription with no key to spend fails rather than guessing", async () => {
+    const env = { HOME: dirs.createDir("sm-") };
+    await writeOAuthTokens("openai", fresh, env);
+    const failing: FetchFn = async (input) =>
+      String(input).includes("api.github.com")
+        ? new Response(JSON.stringify({ tag_name: "rust-v0.150.0" }))
+        : new Response("", { status: 500 });
+
+    await expect(resolveAuthRoute("openai/gpt-5.5", { openai: { oauth: true } }, failing, env)).rejects.toMatchObject({
+      code: PROVIDER_ERROR_CODES.subscriptionDiscoveryFailed,
+    });
+  });
+
+  test("an unserved model with no key to fall back on fails by name", async () => {
+    const env = { HOME: dirs.createDir("sm-") };
+    await writeOAuthTokens("openai", fresh, env);
+    await expect(
+      resolveAuthRoute("openai/gpt-5.6-luna", { openai: { oauth: true } }, fetchStub(), env),
+    ).rejects.toMatchObject({
+      code: PROVIDER_ERROR_CODES.modelNotOnSubscription,
+    });
   });
 });

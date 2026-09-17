@@ -2,8 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import type { DistillObservation } from "../src/memory-distiller";
-import { DISTILLER_PROMPT } from "../src/memory-distiller";
+import { DISTILLER_PROMPT, type DistillObservation, defaultRunner } from "../src/memory-distiller";
 import { cosineSimilarity, embedText } from "../src/memory-embedding";
 
 export type MemoryBenchDatasetId = "longmemeval" | "locomo" | "locomo-observations" | "locomo-distilled";
@@ -33,11 +32,20 @@ export type NormalizedDataset = {
   readonly scenarios: readonly DatasetScenario[];
 };
 
+export type DatasetLoadOptions = {
+  readonly dataDir: string;
+  /**
+   * The model a dataset distills with, named by the caller because distillation reads the turn's
+   * resolved model rather than a long-lived config key. Datasets that only read fixtures ignore it.
+   */
+  readonly distillModel: string;
+};
+
 export type DatasetAdapter = {
   readonly id: MemoryBenchDatasetId;
   readonly name: string;
   readonly description: string;
-  readonly load: (dataDir: string) => Promise<NormalizedDataset>;
+  readonly load: (options: DatasetLoadOptions) => Promise<NormalizedDataset>;
 };
 
 const DATA_DIR = join(import.meta.dir, "data", "memory-bench");
@@ -116,7 +124,7 @@ const longMemEvalAdapter: DatasetAdapter = {
   id: "longmemeval",
   name: "LongMemEval",
   description: "500 questions testing long-term memory across multi-session conversations (~115k tokens each)",
-  async load(dataDir = DATA_DIR) {
+  async load({ dataDir }: DatasetLoadOptions) {
     const dir = join(dataDir, "longmemeval");
     await ensureDir(dir);
     const filePath = join(dir, LONGMEMEVAL_FILE);
@@ -199,7 +207,7 @@ const locomoAdapter: DatasetAdapter = {
   id: "locomo",
   name: "LoCoMo",
   description: "10 long conversations with QA pairs testing factual recall and temporal reasoning",
-  async load(dataDir = DATA_DIR) {
+  async load({ dataDir }: DatasetLoadOptions) {
     const dir = join(dataDir, "locomo");
     await ensureDir(dir);
     const filePath = join(dir, LOCOMO_FILE);
@@ -375,7 +383,7 @@ const locomoObservationsAdapter: DatasetAdapter = {
   id: "locomo-observations",
   name: "LoCoMo (observations)",
   description: "10 long conversations using pre-extracted observations instead of raw turns",
-  async load(dataDir = DATA_DIR) {
+  async load({ dataDir }: DatasetLoadOptions) {
     const dir = join(dataDir, "locomo");
     await ensureDir(dir);
     const filePath = join(dir, LOCOMO_FILE);
@@ -516,39 +524,21 @@ const locomoDistilledAdapter: DatasetAdapter = {
   id: "locomo-distilled",
   name: "LoCoMo (distilled)",
   description: "10 long conversations distilled through the real Acolyte distiller pipeline",
-  async load(dataDir = DATA_DIR) {
+  async load({ dataDir, distillModel }: DatasetLoadOptions) {
     const dir = join(dataDir, "locomo");
     await ensureDir(dir);
     const filePath = join(dir, LOCOMO_FILE);
     await downloadIfMissing(LOCOMO_URL, filePath);
     const raw = JSON.parse(await readFile(filePath, "utf8")) as unknown[];
 
-    const { createModel } = await import("../src/model-factory");
-    const { normalizeModel, providerFromModel } = await import("../src/provider-config");
-    const { sharedRateLimiter } = await import("../src/rate-limiter");
-    const { appConfig } = await import("../src/app-config");
+    // The production distill path, so what this dataset measures is what a real turn would produce:
+    // it offers the memory-observe tool and parses the calls, which prose off a bare stream is not.
+    const runner = (systemPrompt: string, userContent: string): Promise<DistillObservation[]> =>
+      defaultRunner(systemPrompt, userContent, distillModel);
 
-    const runner = async (systemPrompt: string, userContent: string): Promise<string> => {
-      const qualifiedModel = normalizeModel(appConfig.distillModel);
-      const model = createModel(qualifiedModel, sharedRateLimiter(providerFromModel(qualifiedModel)));
-      const { stream } = await model.doStream({
-        prompt: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: [{ type: "text", text: userContent }] },
-        ],
-      });
-      const reader = stream.getReader();
-      let text = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (value.type === "error") throw value.error instanceof Error ? value.error : new Error(String(value.error));
-        if (value.type === "text-delta") text += value.delta;
-      }
-      return text.trim();
-    };
-
-    const cacheDir = join(dir, "distilled");
+    // Keyed by the model that produced it: a cache shared across models would answer a run of one
+    // with the other's facts and report them under the model that was never called.
+    const cacheDir = join(dir, "distilled", distillModel.replace(/[^a-zA-Z0-9._-]/g, "_"));
     await ensureDir(cacheDir);
     const scenarios: DatasetScenario[] = [];
 

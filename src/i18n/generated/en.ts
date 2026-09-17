@@ -330,6 +330,7 @@ export const EN_MESSAGES = {
   "cli.help.desc.auth": [{ kind: "text", value: "authenticate a provider (API key or subscription)" }],
   "cli.help.desc.config": [{ kind: "text", value: "manage config" }],
   "cli.help.desc.history": [{ kind: "text", value: "show recent sessions" }],
+  "cli.help.desc.import": [{ kind: "text", value: "learn from another agent's transcripts" }],
   "cli.help.desc.login": [{ kind: "text", value: "authenticate with the cloud" }],
   "cli.help.desc.logout": [{ kind: "text", value: "remove cloud credentials" }],
   "cli.help.desc.logs": [{ kind: "text", value: "view server logs" }],
@@ -363,6 +364,199 @@ export const EN_MESSAGES = {
   "cli.help.section.options": [{ kind: "text", value: "Options" }],
   "cli.help.section.usage": [{ kind: "text", value: "Usage" }],
   "cli.history.none": [{ kind: "text", value: "No saved sessions." }],
+  "cli.args.missing_value": [
+    { kind: "arg", name: "flag" },
+    { kind: "text", value: " needs a value." },
+  ],
+  "cli.args.invalid_since": [
+    { kind: "text", value: "Invalid --since value: " },
+    { kind: "arg", name: "value" },
+    { kind: "text", value: ". Use format like 5m, 2h, 1d." },
+  ],
+  "cli.import.col.session": [{ kind: "text", value: "Session" }],
+  "cli.import.col.project": [{ kind: "text", value: "Project" }],
+  "cli.import.col.turns": [{ kind: "text", value: "Turns" }],
+  "cli.import.col.memories": [{ kind: "text", value: "Memories" }],
+  "cli.import.col.replaced": [{ kind: "text", value: "Replaced" }],
+  "cli.import.col.tokens": [{ kind: "text", value: "Tokens" }],
+  "cli.import.invalid_max_turns": [
+    { kind: "text", value: "Invalid --max-turns value: " },
+    { kind: "arg", name: "value" },
+    { kind: "text", value: ". Use a whole number of turns, 1 or more." },
+  ],
+  "cli.import.held_back": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turn is" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turns are" },
+        ],
+      },
+    },
+    { kind: "text", value: " left; run it again for the next batch." },
+  ],
+  "cli.import.no_model": [
+    { kind: "text", value: "No model available: " },
+    { kind: "arg", name: "model" },
+    {
+      kind: "text",
+      value: ". Run acolyte auth to connect a provider, or use --dry-run to see what would be imported.",
+    },
+  ],
+  "cli.import.none": [
+    { kind: "text", value: "Nothing new to read for " },
+    { kind: "arg", name: "project" },
+    { kind: "text", value: " in the last " },
+    { kind: "arg", name: "since" },
+    { kind: "text", value: "." },
+  ],
+  "cli.import.no_project": [
+    {
+      kind: "text",
+      value:
+        "This folder has no project. Import reads the transcripts of the repository you are standing in and identifies it by an owner/repo remote, so run it from inside one.",
+    },
+  ],
+  "cli.import.already_running": [
+    { kind: "text", value: "An import is already running. Wait for it to finish, or stop it and run this again." },
+  ],
+  "cli.import.plan": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turn" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " turns" },
+        ],
+      },
+    },
+    { kind: "text", value: " to read, roughly " },
+    { kind: "arg", name: "low" },
+    { kind: "text", value: "–" },
+    { kind: "arg", name: "high" },
+    { kind: "text", value: " tokens." },
+  ],
+  "cli.import.stale": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "text", value: "Skipped " },
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " session: the project has " },
+          { kind: "arg", name: "commits" },
+          { kind: "text", value: " commits since it ended" },
+        ],
+        other: [
+          { kind: "text", value: "Skipped " },
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " sessions: the project has up to " },
+          { kind: "arg", name: "commits" },
+          { kind: "text", value: " commits since they ended" },
+        ],
+      },
+    },
+    { kind: "text", value: ". Add --include-stale to read them anyway." },
+  ],
+  "cli.import.undated": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "text", value: "Skipped " },
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " session: it carries no time, so its age cannot be checked" },
+        ],
+        other: [
+          { kind: "text", value: "Skipped " },
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " sessions: they carry no time, so their age cannot be checked" },
+        ],
+      },
+    },
+    { kind: "text", value: ". Add --include-stale to read them anyway." },
+  ],
+  "cli.import.unattributable": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " session has no project: the folder it recorded no longer names a repository" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " sessions have no project: the folders they recorded no longer name a repository" },
+        ],
+      },
+    },
+    { kind: "text", value: "." },
+  ],
+  "cli.import.done": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " memory" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " memories" },
+        ],
+      },
+    },
+    { kind: "text", value: " saved, " },
+    { kind: "arg", name: "superseded" },
+    { kind: "text", value: " replaced, " },
+    { kind: "arg", name: "tokens" },
+    { kind: "text", value: " tokens. Written to " },
+    { kind: "arg", name: "path" },
+  ],
+  "cli.import.session_done": [
+    { kind: "arg", name: "session" },
+    { kind: "text", value: " " },
+    { kind: "arg", name: "project" },
+    { kind: "text", value: ": " },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " memory" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " memories" },
+        ],
+      },
+    },
+    { kind: "text", value: ", " },
+    { kind: "arg", name: "superseded" },
+    { kind: "text", value: " replaced, " },
+    { kind: "arg", name: "tokens" },
+    { kind: "text", value: " tokens" },
+  ],
+  "cli.import.reset": [
+    { kind: "text", value: "Cleared " },
+    { kind: "arg", name: "path" },
+  ],
   "cli.login.opening.browser": [{ kind: "text", value: "Opening browser to sign in…" }],
   "cli.login.open.manually": [
     { kind: "text", value: "If no browser opens, visit: " },
@@ -456,11 +650,6 @@ export const EN_MESSAGES = {
     { kind: "arg", name: "level" },
     { kind: "text", value: ". Use debug, info, warn, or error." },
   ],
-  "cli.logs.invalid_since": [
-    { kind: "text", value: "Invalid --since value: " },
-    { kind: "arg", name: "value" },
-    { kind: "text", value: ". Use format like 5m, 2h, 1d." },
-  ],
   "cli.logs.no_file": [{ kind: "text", value: "No log file found. Start a server first." }],
   "cli.logs.no_lines": [{ kind: "text", value: "No log lines match the given filters." }],
   "cli.memory.archive.none": [{ kind: "text", value: "No retired memories." }],
@@ -468,6 +657,9 @@ export const EN_MESSAGES = {
   "cli.memory.restore.none": [
     { kind: "text", value: "No retired memory found for: " },
     { kind: "arg", name: "ids" },
+  ],
+  "cli.model.not_configured": [
+    { kind: "text", value: "No model configured. Run acolyte config set model <id> to choose one." },
   ],
   "cli.memory.restored": [
     { kind: "text", value: "Restored " },
@@ -728,7 +920,6 @@ export const EN_MESSAGES = {
   "status.label.cloud_url": [{ kind: "text", value: "Cloud URL" }],
   "status.label.cloud_user": [{ kind: "text", value: "User" }],
   "status.label.memory": [{ kind: "text", value: "Memory" }],
-  "status.label.model": [{ kind: "text", value: "Model" }],
   "status.label.protocol_version": [{ kind: "text", value: "Protocol version" }],
   "status.label.providers": [{ kind: "text", value: "Providers" }],
   "status.label.resources.config.collisions": [{ kind: "text", value: "Config file collisions" }],

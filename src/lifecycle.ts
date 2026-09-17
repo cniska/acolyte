@@ -106,6 +106,7 @@ function createRunContext(
     projectRulesPrompt: input.projectRulesPrompt,
     workspace: input.workspace,
     model: params.model,
+    authRoute: input.authRoute,
     tools: params.prepared.tools,
     activeSkills: params.prepared.skillsForPrompt,
     locale: input.locale,
@@ -187,6 +188,7 @@ function commitMemory(ctx: RunContext, input: LifecycleInput): void {
   ctx.promptUsage.memoryTokens += distillTokens;
   scheduleMemoryCommit(
     {
+      model: ctx.model,
       sessionId: ctx.request.sessionId,
       resourceId: ctx.request.resourceId,
       workspace: ctx.workspace,

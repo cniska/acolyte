@@ -337,6 +337,7 @@ export const FI_MESSAGES = {
   "cli.help.desc.auth": [{ kind: "text", value: "tunnistaudu palveluntarjoajalle (API-avain tai tilaus)" }],
   "cli.help.desc.config": [{ kind: "text", value: "hallitse asetuksia" }],
   "cli.help.desc.history": [{ kind: "text", value: "näytä viimeisimmät istunnot" }],
+  "cli.help.desc.import": [{ kind: "text", value: "opi toisen agentin keskustelutallenteista" }],
   "cli.help.desc.login": [{ kind: "text", value: "kirjaudu pilveen" }],
   "cli.help.desc.logout": [{ kind: "text", value: "poista pilven tunnukset" }],
   "cli.help.desc.logs": [{ kind: "text", value: "näytä palvelimen lokit" }],
@@ -370,6 +371,202 @@ export const FI_MESSAGES = {
   "cli.help.section.options": [{ kind: "text", value: "Valitsimet" }],
   "cli.help.section.usage": [{ kind: "text", value: "Käyttö" }],
   "cli.history.none": [{ kind: "text", value: "Ei tallennettuja istuntoja." }],
+  "cli.args.missing_value": [
+    { kind: "arg", name: "flag" },
+    { kind: "text", value: " tarvitsee arvon." },
+  ],
+  "cli.args.invalid_since": [
+    { kind: "text", value: "Virheellinen --since-arvo: " },
+    { kind: "arg", name: "value" },
+    { kind: "text", value: ". Käytä muotoa 5m, 2h tai 1d." },
+  ],
+  "cli.import.col.session": [{ kind: "text", value: "Istunto" }],
+  "cli.import.col.project": [{ kind: "text", value: "Projekti" }],
+  "cli.import.col.turns": [{ kind: "text", value: "Vuoroja" }],
+  "cli.import.col.memories": [{ kind: "text", value: "Muistoja" }],
+  "cli.import.col.replaced": [{ kind: "text", value: "Korvattu" }],
+  "cli.import.col.tokens": [{ kind: "text", value: "Tokeneita" }],
+  "cli.import.invalid_max_turns": [
+    { kind: "text", value: "Virheellinen --max-turns-arvo: " },
+    { kind: "arg", name: "value" },
+    { kind: "text", value: ". Käytä kokonaislukua, vähintään 1." },
+  ],
+  "cli.import.held_back": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " vuoro on" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " vuoroa on" },
+        ],
+      },
+    },
+    { kind: "text", value: " jäljellä; aja komento uudelleen seuraavaa erää varten." },
+  ],
+  "cli.import.no_model": [
+    { kind: "text", value: "Mallia ei ole saatavilla: " },
+    { kind: "arg", name: "model" },
+    {
+      kind: "text",
+      value: ". Yhdistä palveluntarjoaja komennolla acolyte auth tai katso tuotavat tiedot valitsimella --dry-run.",
+    },
+  ],
+  "cli.import.none": [
+    { kind: "text", value: "Ei uutta luettavaa projektille " },
+    { kind: "arg", name: "project" },
+    { kind: "text", value: " viimeisen " },
+    { kind: "arg", name: "since" },
+    { kind: "text", value: " ajalta." },
+  ],
+  "cli.import.no_project": [
+    {
+      kind: "text",
+      value:
+        "Tällä kansiolla ei ole projektia. Tuonti lukee sen repositorion tallenteet, jossa olet, ja tunnistaa sen owner/repo-etävarastosta, joten aja komento sellaisen sisällä.",
+    },
+  ],
+  "cli.import.already_running": [
+    { kind: "text", value: "Tuonti on jo käynnissä. Odota sen valmistumista tai pysäytä se ja aja tämä uudelleen." },
+  ],
+  "cli.import.plan": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " vuoro" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " vuoroa" },
+        ],
+      },
+    },
+    { kind: "text", value: " luettavaksi, noin " },
+    { kind: "arg", name: "low" },
+    { kind: "text", value: "–" },
+    { kind: "arg", name: "high" },
+    { kind: "text", value: " tokenia." },
+  ],
+  "cli.import.stale": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "text", value: "Ohitettiin " },
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " istunto: projektissa on " },
+          { kind: "arg", name: "commits" },
+          { kind: "text", value: " committia sen päättymisen jälkeen" },
+        ],
+        other: [
+          { kind: "text", value: "Ohitettiin " },
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " istuntoa: projektissa on enintään " },
+          { kind: "arg", name: "commits" },
+          { kind: "text", value: " committia niiden päättymisen jälkeen" },
+        ],
+      },
+    },
+    { kind: "text", value: ". Lisää --include-stale lukeaksesi ne silti." },
+  ],
+  "cli.import.undated": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "text", value: "Ohitettiin " },
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " istunto: siitä puuttuu aika, joten ikää ei voi tarkistaa" },
+        ],
+        other: [
+          { kind: "text", value: "Ohitettiin " },
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " istuntoa: niistä puuttuu aika, joten ikää ei voi tarkistaa" },
+        ],
+      },
+    },
+    { kind: "text", value: ". Lisää --include-stale lukeaksesi ne silti." },
+  ],
+  "cli.import.unattributable": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " istunnolla ei ole projektia: sen tallentama kansio ei enää nimeä repositoriota" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          {
+            kind: "text",
+            value: " istunnolla ei ole projektia: niiden tallentamat kansiot eivät enää nimeä repositoriota",
+          },
+        ],
+      },
+    },
+    { kind: "text", value: "." },
+  ],
+  "cli.import.done": [
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " muisto" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " muistoa" },
+        ],
+      },
+    },
+    { kind: "text", value: " tallennettu, " },
+    { kind: "arg", name: "superseded" },
+    { kind: "text", value: " korvattu, " },
+    { kind: "arg", name: "tokens" },
+    { kind: "text", value: " tokenia. Kirjoitettu polkuun " },
+    { kind: "arg", name: "path" },
+  ],
+  "cli.import.session_done": [
+    { kind: "arg", name: "session" },
+    { kind: "text", value: " " },
+    { kind: "arg", name: "project" },
+    { kind: "text", value: ": " },
+    {
+      kind: "plural",
+      name: "count",
+      arms: {
+        one: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " muisto" },
+        ],
+        other: [
+          { kind: "arg", name: "count" },
+          { kind: "text", value: " muistoa" },
+        ],
+      },
+    },
+    { kind: "text", value: ", " },
+    { kind: "arg", name: "superseded" },
+    { kind: "text", value: " korvattu, " },
+    { kind: "arg", name: "tokens" },
+    { kind: "text", value: " tokenia" },
+  ],
+  "cli.import.reset": [
+    { kind: "text", value: "Tyhjennetty " },
+    { kind: "arg", name: "path" },
+  ],
   "cli.login.opening.browser": [{ kind: "text", value: "Avataan selain kirjautumista varten…" }],
   "cli.login.open.manually": [
     { kind: "text", value: "Jos selain ei aukea, siirry osoitteeseen: " },
@@ -465,11 +662,6 @@ export const FI_MESSAGES = {
     { kind: "arg", name: "level" },
     { kind: "text", value: ". Käytä debug, info, warn tai error." },
   ],
-  "cli.logs.invalid_since": [
-    { kind: "text", value: "Virheellinen --since-arvo: " },
-    { kind: "arg", name: "value" },
-    { kind: "text", value: ". Käytä muotoa 5m, 2h tai 1d." },
-  ],
   "cli.logs.no_file": [{ kind: "text", value: "Lokitiedostoa ei löytynyt. Käynnistä ensin palvelin." }],
   "cli.logs.no_lines": [{ kind: "text", value: "Yksikään lokirivi ei vastaa annettuja suodattimia." }],
   "cli.memory.archive.none": [{ kind: "text", value: "Ei arkistoituja muistoja." }],
@@ -477,6 +669,9 @@ export const FI_MESSAGES = {
   "cli.memory.restore.none": [
     { kind: "text", value: "Arkistoitua muistia ei löytynyt tunnisteille: " },
     { kind: "arg", name: "ids" },
+  ],
+  "cli.model.not_configured": [
+    { kind: "text", value: "Mallia ei ole määritetty. Valitse malli komennolla acolyte config set model <id>." },
   ],
   "cli.memory.restored": [
     { kind: "text", value: "Palautettiin " },
@@ -754,7 +949,6 @@ export const FI_MESSAGES = {
   "status.label.cloud_url": [{ kind: "text", value: "Pilven URL" }],
   "status.label.cloud_user": [{ kind: "text", value: "Käyttäjä" }],
   "status.label.memory": [{ kind: "text", value: "Muisti" }],
-  "status.label.model": [{ kind: "text", value: "Malli" }],
   "status.label.protocol_version": [{ kind: "text", value: "Protokollan versio" }],
   "status.label.providers": [{ kind: "text", value: "Palveluntarjoajat" }],
   "status.label.resources.config.collisions": [{ kind: "text", value: "Asetustiedostojen päällekkäisyydet" }],
